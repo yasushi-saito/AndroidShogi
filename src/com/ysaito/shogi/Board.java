@@ -32,6 +32,17 @@ public class Board implements java.io.Serializable {
 	public static final int P_INVALID = 0;
 	public static final int P_GOTE= -1;
 	
+	public static class Move implements java.io.Serializable {
+	  public int piece;
+	  public int from_x, from_y, to_x, to_y;
+	  public boolean promote;
+	  
+	  @Override public String toString() {
+	    return ("Piece: " + piece + " [" + from_x + "," + from_y + "]->[" +
+	        to_x + "," + to_y + "](" + promote); 
+	  }
+	}
+	
 	// Given a piece in mSquares[], see if it's owned by gote. 
 	public static final int player(int pos) { 
 		if (pos > 0) return P_SENTE;
