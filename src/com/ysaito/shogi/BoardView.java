@@ -15,6 +15,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.TextView;
 
 import com.ysaito.shogi.Board;
 
@@ -36,7 +37,6 @@ public class BoardView extends View implements View.OnTouchListener {
   //
   // @invariant (0,0) <= (x,y) < (9,9).
   static class Position {
-    
     // Point to a coordinate on the board
     public Position(int x, int y) { mX = x; mY = y; }
 
@@ -93,6 +93,7 @@ public class BoardView extends View implements View.OnTouchListener {
     int mY;
   }
 
+  // A class describing the layout of this view.
   static class ScreenLayout {
     public ScreenLayout(int width, int height) {
       mWidth = width;
@@ -104,16 +105,18 @@ public class BoardView extends View implements View.OnTouchListener {
         dim = width;
         // Captured pieces are shown at the top & bottom of the board
         mPortrait = true;
-        mCapturedGote= new Rect(0, 0, dim, dim/ 10);
-        mCapturedSente = new Rect(0, dim * 11 / 10, dim, dim * 12 / 10);
+        mCapturedWhite= new Rect(0, 0, dim, dim/ 10);
+        mCapturedBlack = new Rect(0, dim * 11 / 10, dim, dim * 12 / 10);
         mBoard = new Rect(0, dim/ 10, dim, dim * 11 / 10);
+        mStatus = new Rect(0, dim * 12 / 10, width, height);
       } else {
         // Captured pieces are shown at the left & right of the board
         mPortrait = false;
         dim = height;
-        mCapturedGote = new Rect(0, 0, dim / 10, dim);
-        mCapturedSente = new Rect(dim * 11 / 10, 0, dim * 12/ 10, dim);
+        mCapturedWhite = new Rect(0, 0, dim / 10, dim);
+        mCapturedBlack = new Rect(dim * 11 / 10, 0, dim * 12/ 10, dim);
         mBoard = new Rect(dim / 10, 0, dim * 11 / 10, dim);
+        mStatus = new Rect(dim * 12 / 10, 0, width, height);
       }
       mSquareDim = dim / Board.DIM;
     }
@@ -163,7 +166,7 @@ public class BoardView extends View implements View.OnTouchListener {
     // @p index is an integer 0, 1, 2, ... that specifies the 
     // position of the piece in captured list.
     int capturedScreenX(Board.Player player, int index) {
-      Rect r = (player == Board.Player.BLACK ? mCapturedSente : mCapturedGote);
+      Rect r = (player == Board.Player.BLACK ? mCapturedBlack : mCapturedWhite);
       if (mPortrait) {
         return r.left + mSquareDim * index * 4 / 3;
       } else {
@@ -172,7 +175,7 @@ public class BoardView extends View implements View.OnTouchListener {
     }
     
     int capturedScreenY(Board.Player player, int index) {
-      Rect r = (player == Board.Player.BLACK ? mCapturedSente : mCapturedGote);
+      Rect r = (player == Board.Player.BLACK ? mCapturedBlack : mCapturedWhite);
       if (mPortrait) {
         return r.top;
       } else {
@@ -181,7 +184,7 @@ public class BoardView extends View implements View.OnTouchListener {
     }
 
     int capturedPieceIndex(Board.Player player, int sx, int sy) {
-      Rect r = (player == Board.Player.BLACK ? mCapturedSente : mCapturedGote);
+      Rect r = (player == Board.Player.BLACK ? mCapturedBlack : mCapturedWhite);
       if (sx < r.left|| sx>= r.right) return -1;
       if (sy < r.top || sy >= r.bottom) return -1;
       if (mPortrait) {
@@ -194,9 +197,10 @@ public class BoardView extends View implements View.OnTouchListener {
     boolean mPortrait;
     int mWidth, mHeight;  // screen pixel size
     int mSquareDim; // pixel size of each square in the board
-    Rect mBoard;
-    Rect mCapturedSente;
-    Rect mCapturedGote;
+    Rect mBoard;   // display the board status
+    Rect mCapturedBlack;  // display pieces captured by black player
+    Rect mCapturedWhite;  // display pieces captured by white player
+    Rect mStatus;  //display arbitrary status messages
   }
   ScreenLayout mCachedLayout;
   
@@ -211,6 +215,7 @@ public class BoardView extends View implements View.OnTouchListener {
   static final String TAG = "Board";
 
   EventListener mListener;
+  TextView mStatusView;
 
   public BoardView(Context context, AttributeSet attrs) {
     super(context, attrs);
@@ -225,6 +230,10 @@ public class BoardView extends View implements View.OnTouchListener {
     mListener = listener; 
   }
 
+  public final void setStatusView(TextView v) {
+    mStatusView = v;
+  }
+  
   public final void setTurn(Board.Player turn) { mCurrentPlayer = turn; }
 
   @Override public boolean onTouch(View v, MotionEvent event) {
@@ -302,29 +311,17 @@ public class BoardView extends View implements View.OnTouchListener {
     return true;
   }
 
+  //
+  // Screen drawing
+  //
   @Override public void onDraw(Canvas canvas) {
     if (mBoard == null) return;
     int DIM = Board.DIM;
-
     ScreenLayout layout = getScreenLayout();
-
-    // Draw the board
-    Paint p = new Paint();
-    p.setColor(0xfff5deb3);
-    
     Rect boardRect = layout.getBoard();
     int squareDim = layout.squareDim();
-    
-    canvas.drawRect(boardRect, p);
 
-    // Draw the gridlines
-    p.setColor(0xff000000);
-    for (int i = 0; i < DIM; ++i) {
-      int sx = layout.screenX(i);
-      int sy = layout.screenY(i);
-      canvas.drawLine(sx, boardRect.top, sx, boardRect.bottom, p);
-      canvas.drawLine(boardRect.left, sy, boardRect.right, sy, p);
-    }
+    drawEmptyBoard(canvas, layout);
 
     // Draw pieces
     for (int y = 0; y < Board.DIM; ++y) {
@@ -356,6 +353,7 @@ public class BoardView extends View implements View.OnTouchListener {
     }
 
     if (mMoveFrom != null) {
+      Paint p = new Paint();
       p.setColor(0x28000000);
       if (mMoveFrom.isOnBoard()) {
         ArrayList<Position> dests = possibleMoveDestinations(
@@ -373,10 +371,19 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
     if (mMoveTo != null) {
+      Paint p = new Paint();
       p.setColor(0x50000000);
       int sx = layout.screenX(mMoveTo.getX());
       int sy = layout.screenY(mMoveTo.getY());
       canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
+    }
+    
+    if (mStatusView != null) {
+      String status = "Current player: ";
+      if (mCurrentPlayer == Board.Player.BLACK) status += "black"; 
+      else if (mCurrentPlayer == Board.Player.WHITE) status += "white"; 
+      else status += "none";
+      mStatusView.setText(status);
     }
   }
 
@@ -385,6 +392,23 @@ public class BoardView extends View implements View.OnTouchListener {
     mBoard = new Board(board);
     invalidate();
   }
+  
+  void drawEmptyBoard(Canvas canvas, ScreenLayout layout) {
+    Rect boardRect = layout.getBoard();
+    Paint p = new Paint();
+    p.setColor(0xfff5deb3);
+    canvas.drawRect(boardRect, p);
+    
+    // Draw the gridlines
+    p.setColor(0xff000000);
+    for (int i = 0; i < Board.DIM; ++i) {
+      int sx = layout.screenX(i);
+      int sy = layout.screenY(i);
+      canvas.drawLine(sx, boardRect.top, sx, boardRect.bottom, p);
+      canvas.drawLine(boardRect.left, sy, boardRect.right, sy, p);
+    }
+  }
+
 
   void drawCapturedPieces(Canvas canvas, ScreenLayout layout,
       Board.Player player, int bits) {

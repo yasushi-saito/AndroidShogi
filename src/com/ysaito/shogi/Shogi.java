@@ -16,6 +16,7 @@ import android.os.Message;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
+import android.widget.TextView;
 
 import com.ysaito.shogi.BonanzaController;
 
@@ -31,6 +32,7 @@ public class Shogi extends Activity {
   AlertDialog mPromoteDialog;
   BonanzaController mController;
   BoardView mBoardView;
+  TextView mStatusView;
   
   Board.Player mHumanPlayer;
   
@@ -56,9 +58,13 @@ public class Shogi extends Activity {
     }
 
     mHumanPlayer = Board.Player.BLACK;
+    mStatusView = (TextView)findViewById(R.id.gamestatus);
+    mStatusView.setText("FOOHAH!");
     mBoardView = (BoardView)findViewById(R.id.boardview);
     mBoardView.setTurn(mHumanPlayer);
+    
     mBoardView.setEventListener(mViewListener);
+    mBoardView.setStatusView(mStatusView);
     mController = new BonanzaController(mControllerHandler, mHumanPlayer);
   }
 
