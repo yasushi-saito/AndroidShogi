@@ -23,10 +23,14 @@ public class BoardView extends View implements View.OnTouchListener {
   Bitmap mSenteBitmaps[];
   Bitmap mGoteBitmaps[];
 
-  int mTurn;  // who's allowed to move pieces? One of Board.P_XXX.
+  int mCurrentPlayer;  // who's allowed to move pieces? One of Board.P_XXX.
 
   // Current state of the board
   Board mBoard;   
+
+  public interface EventListener {
+    void onHumanMove(Board.Move move);
+  }
 
   // Position represents a logical position of a piece.
   //
@@ -118,7 +122,7 @@ public class BoardView extends View implements View.OnTouchListener {
     // @p index is an integer 0, 1, 2, ... that specifies the 
     // position of the piece in captured list.
     int capturedScreenX(int player, int index) {
-      Rect r = (player == Board.P_SENTE ? mCapturedSente : mCapturedGote);
+      Rect r = (player == Board.P_UP ? mCapturedSente : mCapturedGote);
       if (mPortrait) {
         return r.left + mSquareDim * index * 4 / 3;
       } else {
@@ -126,7 +130,7 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
     int capturedScreenY(int player, int index) {
-      Rect r = (player == Board.P_SENTE ? mCapturedSente : mCapturedGote);
+      Rect r = (player == Board.P_UP ? mCapturedSente : mCapturedGote);
       if (mPortrait) {
         return r.top;
       } else {
@@ -153,15 +157,11 @@ public class BoardView extends View implements View.OnTouchListener {
 
   private static final String TAG = "Board";
 
-  public interface EventListener {
-    void onHumanMove(Board.Move move);
-  }
-
   private EventListener mListener;
 
   public BoardView(Context context, AttributeSet attrs) {
     super(context, attrs);
-    mTurn = Board.P_INVALID;
+    mCurrentPlayer = Board.P_INVALID;
     mBoard = new Board();
     mBoard.setPiece(4,4, -Board.K_KYO);
     initializeBitmaps();
@@ -172,7 +172,7 @@ public class BoardView extends View implements View.OnTouchListener {
     mListener = listener; 
   }
 
-  public void setTurn(int turn) { mTurn = turn; }
+  public void setTurn(int turn) { mCurrentPlayer = turn; }
 
   public boolean onTouch(View v, MotionEvent event) {
     ScreenLayout layout = getScreenLayout();
@@ -188,7 +188,7 @@ public class BoardView extends View implements View.OnTouchListener {
     if (action == MotionEvent.ACTION_DOWN) {
       // Start of touch operation
       int piece = mBoard.getPiece(px, py);
-      if (Board.player(piece) != mTurn) {
+      if (Board.player(piece) != mCurrentPlayer) {
         // Tried to move a piece not owned by the player
         return false;
       }
@@ -210,6 +210,7 @@ public class BoardView extends View implements View.OnTouchListener {
     if (action == MotionEvent.ACTION_UP) {
       if (mMoveTo != null && mListener != null) {
         Board.Move move = new Board.Move();
+        move.player = mCurrentPlayer;
         move.piece = mBoard.getPiece(mMoveFrom.x, mMoveFrom.y);
         move.from_x = mMoveFrom.x;
         move.from_y = mMoveFrom.y;
@@ -258,7 +259,7 @@ public class BoardView extends View implements View.OnTouchListener {
         int t = Board.type(v);
 
         Bitmap bm;
-        if (Board.player(v) == Board.P_GOTE) {
+        if (Board.player(v) == Board.P_DOWN) {
           bm = mGoteBitmaps[t];
         } else {
           bm = mSenteBitmaps[t];
@@ -273,10 +274,10 @@ public class BoardView extends View implements View.OnTouchListener {
     }
 
     if (mBoard.mCapturedSente != 0) {
-      drawCapturedPieces(canvas, layout, Board.P_SENTE, mBoard.mCapturedSente);
+      drawCapturedPieces(canvas, layout, Board.P_UP, mBoard.mCapturedSente);
     }
     if (mBoard.mCapturedGote!= 0) {
-      drawCapturedPieces(canvas, layout, Board.P_GOTE, mBoard.mCapturedGote);
+      drawCapturedPieces(canvas, layout, Board.P_DOWN, mBoard.mCapturedGote);
     }
 
     if (mMoveFrom != null) {
@@ -307,7 +308,7 @@ public class BoardView extends View implements View.OnTouchListener {
 
   void drawCapturedPieces(Canvas canvas, ScreenLayout layout,
       int player, int bits) {
-    Bitmap[] bitmaps = (player == Board.P_SENTE ? mSenteBitmaps : mGoteBitmaps);
+    Bitmap[] bitmaps = (player == Board.P_UP ? mSenteBitmaps : mGoteBitmaps);
     int seq = 0;
     int n = Board.numCapturedFu(bits);
     if (n > 0) {

@@ -58,7 +58,7 @@ static void RunCommand(const char* command) {
 static int jni_active = 0;
 static int jni_initialized = 0;
 
-JNIEXPORT void JNICALL Java_com_ysaito_shogi_BonanzaJNI_Initialize(
+void Java_com_ysaito_shogi_BonanzaJNI_Initialize(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jobject board) {
@@ -83,7 +83,7 @@ JNIEXPORT void JNICALL Java_com_ysaito_shogi_BonanzaJNI_Initialize(
   }
 }
 
-JNIEXPORT void JNICALL Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
+void Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint piece,
@@ -120,7 +120,7 @@ JNIEXPORT void JNICALL Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
   jni_active = 0;
 }
 
-JNIEXPORT void JNICALL Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
+void Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jobject board) {
