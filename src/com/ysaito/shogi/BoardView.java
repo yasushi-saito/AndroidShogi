@@ -64,7 +64,7 @@ public class BoardView extends View implements View.OnTouchListener {
     super(context, attrs);
     mTurn = Board.P_INVALID;
     mBoard = new Board();
-    mBoard.setPiece(4,4, Board.K_KEI);
+    mBoard.setPiece(4,4, -Board.K_KYO);
     initializeBitmaps();
     setOnTouchListener(this);
   }	
@@ -217,107 +217,135 @@ public class BoardView extends View implements View.OnTouchListener {
     assert 1 == 0;
   }
 
+  class MoveDestinationsState {
+    public MoveDestinationsState(int player, int cur_x, int cur_y) {
+      mPlayer = player;
+      mCurX = cur_x;
+      mCurY = cur_y;
+    }
+    
+    public ArrayList<Position> getDests() { return mDests; }
+    
+    public void tryMoveMulti(int dx, int dy) {
+      mSeenOpponentPiece = false;
+      int x = mCurX;
+      int y = mCurY;
+      for (;;) {
+        x += dx;
+        y += dy;
+        if (!canMoveTo(x, y)) break;
+      }
+    }
+    
+    public void tryMove(int dx, int dy) {
+      mSeenOpponentPiece = false;
+      canMoveTo(mCurX + dx, mCurY + dy);
+    }
+    
+    boolean canMoveTo(int x, int y) {
+      // Don't allowing moving outside the board
+      if (x < 0 || x >= Board.DIM || y < 0 || y >= Board.DIM) {
+        return false;
+      }
+      
+      int existing = mBoard.getPiece(x, y);
+      if (existing != 0) {
+        // Can't occupy the same square twice
+        if (Board.player(existing) == mPlayer) return false;
+        
+        // We can't skip over an opponent
+        if (mSeenOpponentPiece) return false;
+        
+        mSeenOpponentPiece = true;
+        mDests.add(new Position(x, y));
+        return true;
+      }
+      mDests.add(new Position(x, y));
+      return true;
+    }
+    
+    final ArrayList<Position> mDests = new ArrayList<Position>();
+    int mPlayer;
+    int mCurX;
+    int mCurY;
+    boolean mSeenOpponentPiece;
+  }
+  
   private ArrayList<Position> possibleMoveDestinations(int piece, int cur_x, int cur_y) {
     int type = Board.type(piece);
     int player = Board.player(piece);
     ArrayList<Position> dests = new ArrayList<Position>();
+    MoveDestinationsState state = new MoveDestinationsState(player, cur_x, cur_y);
+    
     switch (type) {
       case Board.K_FU: 
-        maybeAddDest(player, cur_x, cur_y, 0, -1, dests);
+        state.tryMove(0, -1);
         break;
-      case Board.K_KYO: 
-        for (int i = 1; i < Board.DIM; ++i) {
-          if (!maybeAddDest(player, cur_x, cur_y, 0, -i, dests)) break;
-        }
+      case Board.K_KYO:
+        state.tryMoveMulti(0, -1);
         break;
       case Board.K_KEI:
-        maybeAddDest(player, cur_x, cur_y, -1, -2, dests);
-        maybeAddDest(player, cur_x, cur_y, 1, -2, dests);
+        state.tryMove(-1, -2);
+        state.tryMove(1, -2);
         break;
       case Board.K_GIN:
-        maybeAddDest(player, cur_x, cur_y, -1, -1, dests);
-        maybeAddDest(player, cur_x, cur_y, 0, -1, dests);
-        maybeAddDest(player, cur_x, cur_y, 1, -1, dests);
-        maybeAddDest(player, cur_x, cur_y, -1, 1, dests);
-        maybeAddDest(player, cur_x, cur_y, 1, 1, dests);
+        state.tryMove(-1, -1);
+        state.tryMove(0, -1);
+        state.tryMove(1, -1);
+        state.tryMove(-1, 1);
+        state.tryMove(1, 1);
         break;
       case Board.K_KIN:
       case Board.K_TO:
       case Board.K_NARI_KYO:
       case Board.K_NARI_KEI:
-        maybeAddDest(player, cur_x, cur_y, -1, -1, dests);
-        maybeAddDest(player, cur_x, cur_y, 0, -1, dests);
-        maybeAddDest(player, cur_x, cur_y, 1, -1, dests);
-        maybeAddDest(player, cur_x, cur_y, -1, 0, dests);    			
-        maybeAddDest(player, cur_x, cur_y, 1, 0, dests);
-        maybeAddDest(player, cur_x, cur_y, 0, 1, dests);
+        state.tryMove(-1, -1);
+        state.tryMove(0, -1);
+        state.tryMove(1, -1);
+        state.tryMove(-1, 0);    			
+        state.tryMove(1, 0);
+        state.tryMove(0, 1);
         break;
       case Board.K_KAKU:
       case Board.K_UMA:
-        for (int i = 1; i < Board.DIM; ++i) {
-          if (!maybeAddDest(player, cur_x, cur_y, -i, -i, dests)) break;
-        }
-        for (int i = 1; i < Board.DIM; ++i) {
-          if (!maybeAddDest(player, cur_x, cur_y, i, i, dests)) break;
-        }
-        for (int i = 1; i < Board.DIM; ++i) {
-          if (!maybeAddDest(player, cur_x, cur_y, i, -i, dests)) break;
-        }
-        for (int i = 1; i < Board.DIM; ++i) {
-          if (!maybeAddDest(player, cur_x, cur_y, -i, i, dests)) break;
-        }
+        state.tryMoveMulti(-1, -1);
+        state.tryMoveMulti(1, 1);
+        state.tryMoveMulti(1, -1);
+        state.tryMoveMulti(-1, 1);
         if (type == Board.K_UMA) {
-          maybeAddDest(player, cur_x, cur_y, 0, -1, dests);
-          maybeAddDest(player, cur_x, cur_y, 0, 1, dests);
-          maybeAddDest(player, cur_x, cur_y, 1, 0, dests);
-          maybeAddDest(player, cur_x, cur_y, -1, 0, dests);
+          state.tryMove(0, -1);
+          state.tryMove(0, 1);
+          state.tryMove(1, 0);
+          state.tryMove(-1, 0);
         }
         break;
       case Board.K_HI:
       case Board.K_RYU:
-        for (int i = 1; i < Board.DIM; ++i) {
-          if (!maybeAddDest(player, cur_x, cur_y, 0, -i, dests)) break;
-        }
-        for (int i = 1; i < Board.DIM; ++i) {
-          if (!maybeAddDest(player, cur_x, cur_y, 0, i, dests)) break;
-        }
-        for (int i = 1; i < Board.DIM; ++i) {
-          if (!maybeAddDest(player, cur_x, cur_y, i, 0, dests)) break;
-        }
-        for (int i = 1; i < Board.DIM; ++i) {
-          if (!maybeAddDest(player, cur_x, cur_y, -i, 0, dests)) break;
-        }
+        state.tryMoveMulti(0, -1);
+        state.tryMoveMulti(0, 1);
+        state.tryMoveMulti(-1, 0);
+        state.tryMoveMulti(1, 0);
         if (type == Board.K_RYU) {
-          maybeAddDest(player, cur_x, cur_y, -1, -1, dests);
-          maybeAddDest(player, cur_x, cur_y, -1, 1, dests);
-          maybeAddDest(player, cur_x, cur_y, 1, -1, dests);
-          maybeAddDest(player, cur_x, cur_y, 1, 1, dests);
+          state.tryMove(-1, -1);
+          state.tryMove(-1, 1);
+          state.tryMove(1, -1);
+          state.tryMove(1, 1);
         }
         break;
       case Board.K_OU:
-        maybeAddDest(player, cur_x, cur_y, 0, -1, dests);
-        maybeAddDest(player, cur_x, cur_y, 0, 1, dests);
-        maybeAddDest(player, cur_x, cur_y, 1, 0, dests);
-        maybeAddDest(player, cur_x, cur_y, -1, 0, dests);
-        maybeAddDest(player, cur_x, cur_y, -1, -1, dests);
-        maybeAddDest(player, cur_x, cur_y, -1, 1, dests);
-        maybeAddDest(player, cur_x, cur_y, 1, -1, dests);
-        maybeAddDest(player, cur_x, cur_y, 1, 1, dests);
+        state.tryMove(0, -1);
+        state.tryMove(0, 1);
+        state.tryMove(1, 0);
+        state.tryMove(-1, 0);
+        state.tryMove(-1, -1);
+        state.tryMove(-1, 1);
+        state.tryMove(1, -1);
+        state.tryMove(1, 1);
         break;
       default:
         Log.wtf(TAG, "Illegal type: " + type);
     }
-    return dests;
-  }
-
-  private boolean maybeAddDest(int player, int cur_x, int cur_y, int delta_x, int delta_y, ArrayList<Position> dest) {
-    if (player == Board.P_GOTE) delta_y = -delta_y;
-    int x = cur_x + delta_x;
-    int y = cur_y + delta_y;
-    if (x < 0 || x >= Board.DIM || y < 0 || y >= Board.DIM) return false;
-    if (mBoard.getPiece(x, y) != 0) return false;
-    dest.add(new Position(x, y));
-    return true;
+    return state.getDests();
   }
 
   private Position findSnapSquare(Rect screenRect, int from_x, int from_y, float cur_sx, float cur_sy) {

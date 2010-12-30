@@ -28,6 +28,12 @@ public class Shogi extends Activity {
   BonanzaController mController;
   BoardView mBoardView;
   
+  static final int S_INITIAL = 0;
+  static final int S_SENTE = 1;
+  static final int S_GOTE = 2;
+  static final int S_FINISHED = 3;
+  int mState;
+  
   // Becomes true if downloading is cancelled by the user.
   // TODO(saito): is there a way to synchronize accesses to this field?
   boolean mDownloadCancelled;
@@ -41,6 +47,7 @@ public class Shogi extends Activity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.main);
 
+    mState = S_INITIAL;
     mExtDir = getExternalFilesDir(null);
     Log.d(TAG, "Found dir2: " + mExtDir.getAbsolutePath());
     if (!installedShogiData()) {
@@ -49,6 +56,7 @@ public class Shogi extends Activity {
       // showDialog(DOWNLOAD_DIALOG);
     }
 
+    mState = S_SENTE;
     mBoardView = (BoardView)findViewById(R.id.boardview);
     mBoardView.setTurn(Board.P_SENTE);
     mBoardView.setEventListener(mViewListener);
@@ -80,6 +88,7 @@ public class Shogi extends Activity {
     public void onHumanMove(Board.Move move) {
       Log.d(TAG, "Move: " + move.toString());
       mController.humanMove(move);
+      mController.computerMove();
     }
   };
   

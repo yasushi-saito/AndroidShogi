@@ -55,7 +55,7 @@ out( const char *format, ... )
        && pf_log != NULL )
     {
       va_start( arg, format );
-      vfprintf( pf_log, format, arg ); 
+      vfprintf( pf_log, format, arg );
       va_end( arg );
       fflush( pf_log );
     }
@@ -87,16 +87,16 @@ out_file( FILE *pf, const char *format, ... )
   if ( pf != NULL )
     {
       va_start( arg, format );
-      vfprintf( pf, format, arg ); 
+      vfprintf( pf, format, arg );
       va_end( arg );
       fflush( pf );
     }
-  
+
 #if ! defined(NO_LOGGING)
   if ( pf_log != NULL )
     {
       va_start( arg, format );
-      vfprintf( pf_log, format, arg ); 
+      vfprintf( pf_log, format, arg );
       va_end( arg );
       fflush( pf_log );
     }
@@ -109,20 +109,20 @@ void
 out_warning( const char *format, ... )
 {
   va_list arg;
-  
+
   fprintf( stderr, "\n%s", str_warning );
   va_start( arg, format );
   vfprintf( stderr, format, arg );
   va_end( arg );
   fprintf( stderr, "\n\n" );
   fflush( stderr );
-  
+
 #if ! defined(NO_LOGGING)
   if ( pf_log != NULL )
     {
       fprintf( pf_log, "\n%s", str_warning );
       va_start( arg, format );
-      vfprintf( pf_log, format, arg ); 
+      vfprintf( pf_log, format, arg );
       va_end( arg );
       fprintf( pf_log, "\n\n" );
       fflush( pf_log );
@@ -136,14 +136,14 @@ void
 out_error( const char *format, ... )
 {
   va_list arg;
-  
+
   fprintf( stderr, "\nERROR: " );
   va_start( arg, format );
   vfprintf( stderr, format, arg );
   va_end( arg );
   fprintf( stderr, "\n\n" );
   fflush( stderr );
-  
+
 #if ! defined(NO_LOGGING)
   if ( pf_log != NULL )
     {
@@ -155,7 +155,7 @@ out_error( const char *format, ... )
       fflush( pf_log );
     }
 #endif
-  
+
 }
 
 
@@ -178,10 +178,7 @@ file_open( const char *str_file, const char *str_mode )
 
   struct stat st;
   fstat(fileno(pf), &st);
-  __android_log_print(ANDROID_LOG_DEBUG, DEBUG_TAG, 
-		      "Open %s, size=%lld", 
-		      abs_path,
-		      (long long)st.st_size);
+  LOG_DEBUG("Open %s, size=%lld", abs_path, (long long)st.st_size);
   return pf;
 }
 
@@ -260,7 +257,7 @@ open_history( const char *str_name1, const char *str_name2 )
   FILE *pf;
   int i, iret;
   char str_file[SIZE_FILENAME];
-  
+
   if ( record_game.pf != NULL && ! record_game.moves )
     {
       record_game.str_name1[0] = '\0';
@@ -271,7 +268,7 @@ open_history( const char *str_name1, const char *str_name2 )
 	  strncpy( record_game.str_name1, str_name1, SIZE_PLAYERNAME-1 );
 	  record_game.str_name1[SIZE_PLAYERNAME-1] = '\0';
 	}
-      
+
       if ( str_name2 )
 	{
 	  strncpy( record_game.str_name2, str_name2, SIZE_PLAYERNAME-1 );
@@ -285,7 +282,7 @@ open_history( const char *str_name1, const char *str_name2 )
 
   iret = record_close( &record_game );
   if ( iret < 0 ) { return -1; }
-  
+
   for ( i = 0; i < 999; i++ )
     {
       snprintf( str_file, SIZE_FILENAME, "%s/game%03d.csa",
@@ -337,7 +334,7 @@ out_board( const tree_t * restrict ptree, FILE *pf, unsigned int move,
     is_promote = 0;
 #endif
   }
-  
+
   if ( ( game_status & flag_reverse ) && ! is_strict )
     {
       fprintf( pf, "          <reversed>        \n" );
@@ -346,7 +343,7 @@ out_board( const tree_t * restrict ptree, FILE *pf, unsigned int move,
       for ( irank = rank9; irank >= rank1; irank-- )
 	{
 	  fprintf( pf, "P%d", irank + 1 );
-	  
+
 	  for ( ifile = file9; ifile >= file1; ifile-- )
 	    {
 	      i = irank * nfile + ifile;
@@ -362,7 +359,7 @@ out_board( const tree_t * restrict ptree, FILE *pf, unsigned int move,
     for ( irank = rank1; irank <= rank9; irank++ )
       {
 	fprintf( pf, "P%d", irank + 1 );
-	
+
 	for ( ifile = file1; ifile <= file9; ifile++ )
 	  {
 	    i = irank * nfile + ifile;
@@ -372,7 +369,7 @@ out_board( const tree_t * restrict ptree, FILE *pf, unsigned int move,
 	fprintf( pf, "\n" );
       }
   }
-    
+
   out_hand( pf, HAND_B, "P+" );
   out_hand( pf, HAND_W, "P-" );
   fflush( pf );
@@ -384,6 +381,9 @@ out_board( const tree_t * restrict ptree, FILE *pf, unsigned int move,
 int
 next_cmdline( int is_wait )
 {
+  str_buffer_cmdline[0] = '\0';
+  return 0;
+
   char *str_line_end;
   size_t size;
   int iret;
@@ -400,6 +400,7 @@ next_cmdline( int is_wait )
 	  } while ( ! str_line_end && iret );
 	  if ( ! iret )
 	    {
+              LOG_DEBUG("QUIT1");
 	      game_status |= flag_quit;
 	      return 1;
 	    }
@@ -421,7 +422,7 @@ next_cmdline( int is_wait )
 	  }
 #endif
 	iret = check_input_buffer();
-	
+
 #if defined(DEKUNOBOU) || defined(CSA_LAN)
     tag:
 #endif
@@ -431,13 +432,14 @@ next_cmdline( int is_wait )
 	if ( iret < 0 ) { return iret; }
 	if ( ! iret )
 	  {
+            LOG_DEBUG("QUIT2");
 	    game_status |= flag_quit;
 	    return 1;
 	  }
 	if ( ! str_line_end ) { return 0; }
       }
     }
-  
+
   if ( str_line_end - str_buffer_cmdline + 1 >= SIZE_CMDLINE )
     {
       str_error = str_ovrflw_line;
@@ -445,11 +447,11 @@ next_cmdline( int is_wait )
 	       strlen( str_line_end + 1 ) + 1 );
       return -2;
     }
-  
+
   size = str_line_end - str_buffer_cmdline;
   memcpy( str_cmdline, str_buffer_cmdline, size );
   *( str_cmdline + size ) = '\0';
-  
+
 #if defined(DEKUNOBOU)
   if ( dek_ngame )
     {
@@ -554,7 +556,7 @@ stdout_normal( void )
 #  if defined(_WIN32)
   HANDLE hStdout;
   WORD wAttributes;
-  
+
   hStdout = GetStdHandle( STD_OUTPUT_HANDLE );
   if ( hStdout == INVALID_HANDLE_VALUE )
     {
@@ -675,7 +677,7 @@ read_command( char ** pstr_line_end )
 
   do { count_byte = (int)read( 0, str_end, SIZE_CMDBUFFER-1-count_cmdbuff ); }
   while ( count_byte < 0 && errno == EINTR );
-  
+
   if ( count_byte < 0 )
     {
       str_error = "read() faild.";

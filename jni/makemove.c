@@ -2,15 +2,16 @@
 #include <string.h>
 #include "shogi.h"
 
+#include "shogi_jni.h"
 #define DropB( PIECE, piece )  Xor( to, BB_B ## PIECE );                    \
                                HASH_KEY    ^= ( b_ ## piece ## _rand )[to]; \
                                HAND_B      -= flag_hand_ ## piece;          \
-                               BOARD[to]  = piece
+                               BOARD[to]  = piece; LOG(to,-piece);
 
 #define DropW( PIECE, piece )  Xor( to, BB_W ## PIECE );                    \
                                HASH_KEY    ^= ( w_ ## piece ## _rand )[to]; \
                                HAND_W      -= flag_hand_ ## piece;          \
-                               BOARD[to]  = - piece
+                               BOARD[to]  = - piece; LOG(to,-piece);
 
 #define CapB( PIECE, piece, pro_piece )                   \
           Xor( to, BB_B ## PIECE );                       \
@@ -30,7 +31,7 @@
           HASH_KEY    ^= ( b_ ## pro_piece ## _rand )[to]     \
                        ^ ( b_ ## piece     ## _rand )[from];  \
           MATERIAL    += MT_PRO_ ## PIECE;                    \
-          BOARD[to] = pro_piece
+          BOARD[to] = pro_piece;LOG(to,pro_piece);
 
 #define NocapProW( PIECE, PRO_PIECE, piece, pro_piece )       \
           Xor( from, BB_W ## PIECE );                         \
@@ -38,20 +39,33 @@
           HASH_KEY    ^= ( w_ ## pro_piece ## _rand )[to]     \
                        ^ ( w_ ## piece     ## _rand )[from];  \
           MATERIAL    -= MT_PRO_ ## PIECE;                    \
-          BOARD[to]  = - pro_piece
- 
+          BOARD[to]  = - pro_piece;LOG(to,-pro_piece);
+
 #define NocapNoproB( PIECE, piece )                          \
           SetClear( BB_B ## PIECE );                         \
           HASH_KEY    ^= ( b_ ## piece ## _rand )[to]        \
                        ^ ( b_ ## piece ## _rand )[from];     \
-          BOARD[to] = piece
+          BOARD[to] = piece;LOG(to,piece);
 
 #define NocapNoproW( PIECE, piece )                          \
           SetClear( BB_W ## PIECE );                         \
           HASH_KEY    ^= ( w_ ## piece ## _rand )[to]        \
                        ^ ( w_ ## piece ## _rand )[from];     \
-          BOARD[to] = - piece
+          BOARD[to] = - piece;LOG(to,-piece);
 
+static void YYLOG(int to, int piece) {
+  LOG_DEBUG("YYMove: %d %d", to, piece);
+}
+
+static void LOG(int to, int piece) {
+  if (to == 0 && piece==-15) {
+    LOG_DEBUG("CCMove: %d %d", to, piece);
+  }
+  tree_t* ptree = &tree;
+  if (BOARD[0] == -15) {
+    YYLOG(to, piece);
+  }
+}
 
 void
 make_move_b( tree_t * restrict ptree, unsigned int move, int ply )
@@ -154,7 +168,7 @@ make_move_b( tree_t * restrict ptree, unsigned int move, int ply )
                        SetClear( BB_B_HDK );
                        SetClear( BB_B_RD );                break;
       }
-    
+
     if ( ipiece_cap )
       {
 	switch( ipiece_cap )
@@ -397,7 +411,7 @@ make_move_root( tree_t * restrict ptree, unsigned int move, int flag )
 	  str_error = str_perpet_check;
 	  UnMakeMove( root_turn, move, 1 );
 	  return -2;
-      
+
 	case four_fold_rep:
 	  drawn = 1;
 	  break;
@@ -496,7 +510,7 @@ unmake_move_root( tree_t * restrict ptree, unsigned int move )
 
   ptree->nsuc_check[1] = ptree->nsuc_check[0];
   ptree->nsuc_check[0] = ptree->nsuc_check[PLY_MAX];
-  
+
   root_nrep   -= 1;
   game_status &= ~( flag_drawn | flag_mated );
   root_turn   = Flip(root_turn);

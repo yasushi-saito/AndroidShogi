@@ -528,7 +528,7 @@ enum { value_null           = b0000,
        node_do_null         = b0100,
        node_do_recap        = b1000,
        node_do_mate         = b0001 << 4,
-       node_mate_threat     = b0010 << 4, /* <- don't change it */ 
+       node_mate_threat     = b0010 << 4, /* <- don't change it */
        node_do_futile       = b0100 << 4,
        state_node_end };
 /* note: maximum bits are 8.  tlp_state_node uses type unsigned char. */

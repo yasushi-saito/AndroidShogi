@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "shogi.h"
-
+#include "shogi_jni.h"
 /* unacceptable when the program is thinking, or quit pondering */
 #define AbortDifficultCommand                                              \
 	  if ( game_status & flag_thinking )                               \
@@ -140,7 +140,7 @@ proce_csalan( tree_t * restrict ptree )
   char *last;
 
   token = strtok_r( str_cmdline, str_delimiters, &last );
-    
+
   if ( token == NULL ) { return 1; }
   if ( *token == ach_turn[client_turn] && is_move( token+1 ) )
     {
@@ -153,7 +153,7 @@ proce_csalan( tree_t * restrict ptree )
 	  str_error = str_bad_cmdline;
 	  return -1;
 	}
-      
+
       l = strtol( token+1, &ptr, 0 );
       if ( token+1 == ptr || l == LONG_MAX || l < 1 )
 	{
@@ -180,9 +180,9 @@ proce_csalan( tree_t * restrict ptree )
 	  game_status |= flag_suspend;
 	  return 2;
 	}
-      
+
       ShutdownClient;
-      
+
       if ( client_ngame == client_max_game ) { return cmd_quit(); }
 
       sckt_csa = sckt_connect( client_str_addr, (int)client_port );
@@ -190,7 +190,7 @@ proce_csalan( tree_t * restrict ptree )
       str_buffer_cmdline[0] = '\0';
       return client_next_game( ptree );
     }
-  
+
   return 1;
 }
 #endif
@@ -230,7 +230,7 @@ cmd_usrmove( tree_t * restrict ptree, const char *str_move, char **lasts )
       str_error = str_game_ended;
       return -2;
     }
-  
+
   if ( game_status & flag_thinking )
     {
       str_error = str_busy_think;
@@ -559,7 +559,7 @@ cmd_display( tree_t * restrict ptree, char **lasts )
 	return -2;
       }
     }
-  
+
   Out( "\n" );
   iret = out_board( ptree, stdout, 0, 0 );
   if ( iret < 0 ) { return iret; }
@@ -624,9 +624,9 @@ cmd_hash( char **lasts )
       str_error = str_bad_cmdline;
       return -2;
     }
-  
+
   AbortDifficultCommand;
-  
+
   log2_ntrans_table = (int)l;
   memory_free( (void *)ptrans_table_orig );
   return ini_trans_table();
@@ -902,14 +902,14 @@ cmd_move( tree_t * restrict ptree, char **lasts )
       str_error = str_game_ended;
       return -2;
     }
-  
+
   AbortDifficultCommand;
 
   if ( str == NULL )
     {
       iret = get_elapsed( &time_turn_start );
       if ( iret < 0 ) { return iret; }
-      
+
       iret = com_turn_start( ptree, 0 );
       if ( iret < 0 ) { return iret; }
     }
@@ -917,23 +917,23 @@ cmd_move( tree_t * restrict ptree, char **lasts )
     {
       iret = get_elapsed( &time_turn_start );
       if ( iret < 0 ) { return iret; }
-      
+
       iret = com_turn_start( ptree, flag_refer_rest );
       if ( iret < 0 ) { return iret; }
     }
   else {
     iret = interpret_CSA_move( ptree, &move, str );
     if ( iret < 0 ) { return iret; }
-    
+
     iret = get_elapsed( &time_turn_start );
     if ( iret < 0 ) { return iret; }
-    
+
     iret = make_move_root( ptree, move, ( flag_history | flag_time | flag_rep
 					  | flag_detect_hang
 					  | flag_rejections ) );
     if ( iret < 0 ) { return iret; }
   }
-  
+
   return 1;
 }
 
@@ -1024,6 +1024,7 @@ cmd_problem( tree_t * restrict ptree, char **lasts )
 static int
 cmd_quit( void )
 {
+  LOG_DEBUG("QUIT3");
   game_status |= flag_quit;
   return 1;
 }
@@ -1037,7 +1038,7 @@ cmd_suspend( void )
       game_status |= flag_quit_ponder;
       return 2;
     }
-  
+
   game_status |= flag_suspend;
   return 1;
 }
@@ -1075,7 +1076,7 @@ cmd_time( char **lasts )
   else if ( ! strcmp( str, "remain" ) )
     {
       long l1, l2;
-      
+
       str = strtok_r( NULL, str_delimiters, lasts );
       if ( str == NULL )
 	{
@@ -1455,9 +1456,8 @@ cmd_dek( char **lasts )
   dek_win      = 0;
   dek_turn     = 1;
   game_status |= flag_resigned;
-  
+
   return 1;
 }
 
 #endif
-
