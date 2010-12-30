@@ -216,7 +216,7 @@ public class BoardView extends View implements View.OnTouchListener {
     super(context, attrs);
     mCurrentPlayer = Board.Player.INVALID;
     mBoard = new Board();
-    mBoard.setPiece(4,4, -Board.K_KIN);
+    mBoard.setPiece(4,4, Board.K_GIN);
     initializeBitmaps();
     setOnTouchListener(this);
   }	
@@ -289,7 +289,10 @@ public class BoardView extends View implements View.OnTouchListener {
         } else {
           move.piece = getCapturedPiece(
               mBoard, mCurrentPlayer, mMoveFrom.capturedIndex());
+          move.from_x = move.from_y = -1;
         }
+        
+        mCurrentPlayer = Board.Player.INVALID;
         mListener.onHumanMove(move);
       }
       mMoveTo = null;
@@ -354,12 +357,18 @@ public class BoardView extends View implements View.OnTouchListener {
 
     if (mMoveFrom != null) {
       p.setColor(0x28000000);
-      ArrayList<Position> dests = possibleMoveDestinations(
-          mBoard.getPiece(mMoveFrom.getX(), mMoveFrom.getY()),
-          mMoveFrom.getX(), mMoveFrom.getY());
-      for (Position dest: dests) {
-        int sx = layout.screenX(dest.getX());
-        int sy = layout.screenY(dest.getY());
+      if (mMoveFrom.isOnBoard()) {
+        ArrayList<Position> dests = possibleMoveDestinations(
+            mBoard.getPiece(mMoveFrom.getX(), mMoveFrom.getY()),
+            mMoveFrom.getX(), mMoveFrom.getY());
+        for (Position dest: dests) {
+          int sx = layout.screenX(dest.getX());
+          int sy = layout.screenY(dest.getY());
+          canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
+        }
+      } else {
+        int sx = layout.capturedScreenX(mMoveFrom.player(), mMoveFrom.capturedIndex());
+        int sy = layout.capturedScreenY(mMoveFrom.player(), mMoveFrom.capturedIndex());
         canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
       }
     }
@@ -371,7 +380,8 @@ public class BoardView extends View implements View.OnTouchListener {
     }
   }
 
-  public final void setBoard(Board board) {
+  public final void setState(Board board, Board.Player currentPlayer) {
+    mCurrentPlayer = currentPlayer;
     mBoard = new Board(board);
     mBoard.mCapturedWhite = 0x1234;
     mBoard.mCapturedBlack = 0x1234;

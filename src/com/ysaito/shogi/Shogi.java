@@ -32,11 +32,7 @@ public class Shogi extends Activity {
   BonanzaController mController;
   BoardView mBoardView;
   
-  static final int S_INITIAL = 0;
-  static final int S_SENTE = 1;
-  static final int S_GOTE = 2;
-  static final int S_FINISHED = 3;
-  int mState;
+  Board.Player mHumanPlayer;
   
   // Becomes true if downloading is cancelled by the user.
   // TODO(saito): is there a way to synchronize accesses to this field?
@@ -51,7 +47,6 @@ public class Shogi extends Activity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.main);
 
-    mState = S_INITIAL;
     mExtDir = getExternalFilesDir(null);
     Log.d(TAG, "Found dir2: " + mExtDir.getAbsolutePath());
     if (!installedShogiData()) {
@@ -60,11 +55,11 @@ public class Shogi extends Activity {
       // showDialog(DOWNLOAD_DIALOG);
     }
 
-    mState = S_SENTE;
+    mHumanPlayer = Board.Player.BLACK;
     mBoardView = (BoardView)findViewById(R.id.boardview);
-    mBoardView.setTurn(Board.Player.BLACK);
+    mBoardView.setTurn(mHumanPlayer);
     mBoardView.setEventListener(mViewListener);
-    mController = new BonanzaController(mControllerHandler);
+    mController = new BonanzaController(mControllerHandler, mHumanPlayer);
   }
 
   @Override
@@ -78,46 +73,21 @@ public class Shogi extends Activity {
   protected Dialog onCreateDialog(int id) {
     switch (id) {
       case DIALOG_DOWNLOAD:
-        mDownloadDialog = new ProgressDialog(this);
-        mDownloadDialog.setCancelable(true);
-        mDownloadDialog.setMessage("Downloading shogi-data.zip");
-        mDownloadDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-          public void onCancel(DialogInterface unused) {
-            mDownloadCancelled = true;
-          }
-        });
+        mDownloadDialog = newDownloadDialog();
         DownloadThread t = new DownloadThread(this);
         t.start();
         return mDownloadDialog;
-      case DIALOG_PROMOTE: {
-        AlertDialog.Builder b = new AlertDialog.Builder(this);
-        b.setTitle("Promote piece?");
-        b.setCancelable(true);
-        b.setOnCancelListener(
-            new DialogInterface.OnCancelListener() {
-              public void onCancel(DialogInterface unused) {
-              }
-            });
-        b.setItems(
-            new CharSequence[] {"Promote", "Do not promote"},
-            new DialogInterface.OnClickListener() {
-              public void onClick(DialogInterface d, int item) {
-                mLastMove.promote = false;
-                if (item == 0) mLastMove.promote = true;
-                mController.humanMove(mLastMove);
-                mController.computerMove();
-                mLastMove = null;
-              }
-            });
-        mPromoteDialog = b.create();
+      case DIALOG_PROMOTE: 
+        mPromoteDialog = createPromoteDialog();
         return mPromoteDialog;
-      }
-        default:    
-          return null;
+      default:    
+        return null;
     }
   }
 
-
+  boolean isComputerPlayer(Board.Player p) { return p != mHumanPlayer; }
+  boolean isHumanPlayer(Board.Player p) { return p == mHumanPlayer; }
+  
   // Download Bonanza data files
   boolean installedShogiData() {
     return false;
@@ -128,10 +98,17 @@ public class Shogi extends Activity {
       Log.d(TAG, "Got controller callback");
       BonanzaController.Result r = (BonanzaController.Result)(
           msg.getData().get("result"));
-      mBoardView.setBoard(r.board);
+      Log.d(TAG, "Controller msg: " + r.nextPlayer.toString());
+      mBoardView.setState(r.board, r.nextPlayer);
+      if (isComputerPlayer(r.nextPlayer)) {
+        mController.computerMove(r.nextPlayer);
+      }
     }
   };
   
+  //
+  // Handling of move requests from BoardView
+  //
   Board.Move mLastMove;  // state kept during the run of promotion dialog
   final BoardView.EventListener mViewListener = new BoardView.EventListener() {
     public void onHumanMove(Board.Move move) {
@@ -139,17 +116,53 @@ public class Shogi extends Activity {
         mLastMove = move;
         showDialog(DIALOG_PROMOTE);
       } else {
-        mController.humanMove(move);
-        mController.computerMove();
+        mController.humanMove(move.player, move);
       }
     }
   };
+  
+  AlertDialog createPromoteDialog() {
+    AlertDialog.Builder b = new AlertDialog.Builder(this);
+    b.setTitle("Promote piece?");
+    b.setCancelable(true);
+    b.setOnCancelListener(
+        new DialogInterface.OnCancelListener() {
+          public void onCancel(DialogInterface unused) {
+          }
+        });
+    b.setItems(
+        new CharSequence[] {"Promote", "Do not promote"},
+        new DialogInterface.OnClickListener() {
+          public void onClick(DialogInterface d, int item) {
+            mLastMove.promote = false;
+            if (item == 0) mLastMove.promote = true;
+            mController.humanMove(mLastMove.player, mLastMove);
+            mLastMove = null;
+          }
+        });
+    return b.create();
+  }
   
   static final boolean MoveAllowsForPromotion(Board.Move move) {
     if (Board.isPromoted(move.piece)) return false;  // already promoted
     if (move.player == Board.Player.WHITE && move.to_y < 6) return false;
     if (move.player == Board.Player.BLACK && move.to_y >= 3) return false;
     return true;
+  }
+
+  //
+  // Data download
+  //
+  ProgressDialog newDownloadDialog() {
+    ProgressDialog d = new ProgressDialog(this);
+    d.setCancelable(true);
+    d.setMessage("Downloading shogi-data.zip");
+    d.setOnCancelListener(new DialogInterface.OnCancelListener() {
+      public void onCancel(DialogInterface unused) {
+        mDownloadCancelled = true;
+      }
+    });
+    return d;
   }
   
   final Handler mDownloadHandler = new Handler() {

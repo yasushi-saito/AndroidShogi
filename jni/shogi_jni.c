@@ -1,4 +1,5 @@
 #include <jni.h>
+#include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
 #include <android/log.h>
@@ -6,9 +7,63 @@
 #include "shogi.h"
 #include "shogi_jni.h"
 
-void CheckFailure(const char* file, int line, const char* msg) {
+// CAUTION: These constants must match the values defined in BonanzaJNI.java
+#define R_OK 0
+#define R_ILLEGAL_MOVE -1
+#define R_CHECKMATE -2
+
+static char* Basename(const char* path, char* buf, int buf_size) {
+  const char* r = strrchr(path, '/');
+  if (r == NULL) r = path;
+  else r++;
+  snprintf(buf, buf_size, "%s", r);
+  return buf;
+}
+
+static void PrintExtraMessage(const char* fmt, va_list ap,
+                              char* buf, int buf_size) {
+  vsnprintf(buf, buf_size, fmt, ap);
+  if (str_error != NULL) {
+    strncat(buf, ": ", buf_size - 1);
+    strncat(buf, str_error, buf_size - 1);
+  }
+}
+
+void CheckFailure(const char* file, int line,
+                  const char* label, const char* fmt, ...) {
+  char msg_buf[256];
+  char file_buf[256];
+  msg_buf[0] = '\0';
+  if (fmt != NULL) {
+    va_list ap;
+    va_start(ap, fmt);
+    PrintExtraMessage(fmt, ap, msg_buf, sizeof(msg_buf));
+    va_end(ap);
+  }
   __android_log_print(ANDROID_LOG_FATAL, DEBUG_TAG,
-		      "Assertion failure: %s:%d: %s", file, line, msg);
+		      "Aborted: %s:%d: %s %s",
+                      Basename(file, file_buf, sizeof(file_buf)),
+                      line, label, msg_buf);
+  abort();
+}
+
+void CheckIntCmpFailure(const char* file, int line,
+                        int a, int b,
+                        const char* label,
+                        const char* fmt, ...) {
+  char msg_buf[256];
+  char file_buf[256];
+  msg_buf[0] = '\0';
+  if (fmt != NULL) {
+    va_list ap;
+    va_start(ap, fmt);
+    PrintExtraMessage(fmt, ap, msg_buf, sizeof(msg_buf));
+    va_end(ap);
+  }
+  __android_log_print(ANDROID_LOG_FATAL, DEBUG_TAG,
+		      "Aborted: %s:%d: %s %d<>%d %s",
+                      Basename(file, file_buf, sizeof(file_buf)),
+                      line, label, a, b, msg_buf);
   abort();
 }
 
@@ -39,7 +94,7 @@ static void LogTree(const char* label, tree_t* ptree) {
   if (game_status & flag_resigned) {
     strcat(msg, "resigned ");
   }
-  LOG_DEBUG("%s: game: %s", msg);
+  LOG_DEBUG("%s: game: %s", label, msg);
 }
 
 // Copy the board config (piece locations and captured pieces for each player)
@@ -69,10 +124,9 @@ static void FillBoard(const char* label,
 static void RunCommand(const char* command) {
   LOG_DEBUG("Run %s", command);
   strcpy(str_cmdline, command);
-  CHECK(procedure(&tree) >= 0);
+  CHECK_GE(procedure(&tree), 0);
 }
 
-static int jni_active = 0;
 static int jni_initialized = 0;
 
 void Java_com_ysaito_shogi_BonanzaJNI_Initialize(
@@ -80,7 +134,6 @@ void Java_com_ysaito_shogi_BonanzaJNI_Initialize(
     jclass unused_bonanza_class,
     jobject board) {
   CHECK(!jni_initialized);
-  CHECK(!jni_active);
   jni_initialized = 1;
 
   LOG_DEBUG("Initializing Bonanza");
@@ -100,7 +153,7 @@ void Java_com_ysaito_shogi_BonanzaJNI_Initialize(
   }
 }
 
-void Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
+jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint piece,
@@ -111,51 +164,59 @@ void Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
     jboolean promote,
     jobject board) {
   CHECK(jni_initialized);
-  CHECK(!jni_active);
-  jni_active = 1;
   // The coordinates passed from Java are based on [0,0] at the upper-left
   // corner.  Translate them to the shogi coordinate, with [1,1] at the
   // upper-right corner.
-  ++from_y;
   ++to_y;
   to_x = 9 - to_x;
-  from_x = 9 - from_x;
 
   if (promote) {
     if (piece > 0) {
-      CHECK(piece < 8);
       piece += 8;
     } else {
-      CHECK(piece > -8);
       piece -= 8;
     }
   }
+
+  CHECK2(piece != 0 && piece >= -15 && piece <= 15,
+         "Piece: %d", piece);
+  char buf[1024];
   const char* piece_name = astr_table_piece[abs(piece)];
   LOG_DEBUG("HumanMove: %s %d %d %d %d",
             piece_name,
             from_x, from_y, to_x, to_y);
-
-  char buf[1024];
-  snprintf(buf, sizeof(buf),
-           "%d%d%d%d%s", from_x, from_y, to_x, to_y, piece_name);
+  if (from_x < 0) {
+    // Drop a captured piece
+    snprintf(buf, sizeof(buf), "00%d%d%s", to_x, to_y, piece_name);
+  } else {
+    // Move piece on the board
+    ++from_y;
+    from_x = 9 - from_x;
+    snprintf(buf, sizeof(buf),
+             "%d%d%d%d%s", from_x, from_y, to_x, to_y, piece_name);
+  }
   unsigned int move;
-  CHECK(interpret_CSA_move(&tree, &move, buf) >= 0);
-  CHECK(make_move_root(&tree, move,
-                       (flag_history | flag_time | flag_rep
-                        | flag_detect_hang
-                        | flag_rejections)) >= 0);
-  FillBoard("Human", env, &tree, board);
-  jni_active = 0;
+  int r = interpret_CSA_move(&tree, &move, buf);
+  if (r < 0) {
+    LOG_DEBUG("Failed to parse move: %s: %s", buf, str_error);
+    FillBoard("Human", env, &tree, board);
+    return R_ILLEGAL_MOVE;
+  } else {
+    CHECK_GE(make_move_root(&tree, move,
+                            (flag_history | flag_time | flag_rep
+                             | flag_detect_hang
+                             | flag_rejections)), 0);
+    FillBoard("Human", env, &tree, board);
+    return R_OK;
+  }
 }
 
-void Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
+jint Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jobject board) {
-  CHECK(!jni_active);
-  jni_active = 1;
   __android_log_print(ANDROID_LOG_DEBUG, DEBUG_TAG, "ComputerMove");
-  CHECK(com_turn_start(&tree, 0) >= 0);
+  CHECK_GE(com_turn_start(&tree, 0), 0);
   FillBoard("Computer", env, &tree, board);
-  jni_active = 0;
+  return R_OK;
 }
