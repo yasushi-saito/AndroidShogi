@@ -86,7 +86,7 @@ public class BonanzaController {
     Log.d(TAG, "Human");
     Result r = new Result();
     BonanzaJNI.HumanMove(move.piece, move.from_x, move.from_y,
-          move.to_x, move.to_y, r.board);
+          move.to_x, move.to_y, move.promote, r.board);
     sendOutputMessage(r);
   }
 

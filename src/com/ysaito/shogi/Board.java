@@ -31,14 +31,17 @@ public class Board implements java.io.Serializable {
   // Type of the players "P_UP" starts at the bottom of the board and moves up.
   // P_DOWN is the opposite. Often (but not always), P_UP is the "black" 
   // (sente) player, and P_DOWN is the "white" (gote) player.
-  public static final int P_UP = 1;
-  public static final int P_INVALID = 0;
-  public static final int P_DOWN = -1;
+  enum Player {
+    UP, INVALID, DOWN
+  }
+  
+  //public static final int P_UP = 1;
+  //public static final int P_INVALID = 0;
+  //public static final int P_DOWN = -1;
 
   // Struct that represents a move by a human player
   public static class Move implements java.io.Serializable {
-    // Either P_UP or P_DOWN.
-    public int player;
+    public Player player;  // P_UP or P_DOWN
 
     // The piece to move. The value is negative for the P_DOWN player.
     public int piece;
@@ -77,10 +80,10 @@ public class Board implements java.io.Serializable {
   }
 
   // Given a piece in mSquares[], return the player type, P_XXX. 
-  public static final int player(int piece) { 
-    if (piece > 0) return P_UP;
-    if (piece == 0) return P_INVALID;
-    return P_DOWN;
+  public static final Player player(int piece) { 
+    if (piece > 0) return Player.UP;
+    if (piece == 0) return Player.INVALID;
+    return Player.DOWN;
   }
 
   // Given a piece in mSquares[], return its type, K_XXX.

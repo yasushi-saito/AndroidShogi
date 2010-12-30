@@ -62,7 +62,7 @@ public class Shogi extends Activity {
 
     mState = S_SENTE;
     mBoardView = (BoardView)findViewById(R.id.boardview);
-    mBoardView.setTurn(Board.P_UP);
+    mBoardView.setTurn(Board.Player.UP);
     mBoardView.setEventListener(mViewListener);
     mController = new BonanzaController(mControllerHandler);
   }
@@ -147,8 +147,8 @@ public class Shogi extends Activity {
   
   static final boolean MoveAllowsForPromotion(Board.Move move) {
     if (Board.isPromoted(move.piece)) return false;  // already promoted
-    if (move.player == Board.P_DOWN && move.to_y < 6) return false;
-    if (move.player == Board.P_UP && move.to_y >= 3) return false;
+    if (move.player == Board.Player.DOWN && move.to_y < 6) return false;
+    if (move.player == Board.Player.UP && move.to_y >= 3) return false;
     return true;
   }
   

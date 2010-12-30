@@ -10,7 +10,7 @@ public class BonanzaJNI {
   // On successful return, @p board will store the state of the board after the
   // move.
   static public native void HumanMove(int piece, int from_x, int from_y, 
-      int to_x, int to_y, 
+      int to_x, int to_y, boolean promote,
       Board board);
   
   // Let the computer ponder the next move. On successful return, 

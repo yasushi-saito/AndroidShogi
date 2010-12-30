@@ -12,17 +12,9 @@ void CheckFailure(const char* file, int line, const char* msg) {
   abort();
 }
 
-// Copy the board config (piece locations and captured pieces for each player)
-// from "ptree" to "board".
-static void FillBoard(const char* label,
-                      JNIEnv* env,
-		      tree_t* ptree, /* source */
-		      jobject board /* dest */) {
-  jclass boardClass = (*env)->GetObjectClass(env, board);
-  jfieldID fid = (*env)->GetFieldID(env, boardClass, "mSquares", "[I");
-  jintArray jarray = (jintArray)((*env)->GetObjectField(env, board, fid));
-
+static void LogTree(const char* label, tree_t* ptree) {
   char msg[1024];
+#if 0  // full board display. this is too verbose, so turn off
   for (int i = 0; i < 9; ++i) {
     sprintf(msg, "%d: ", i);
     for (int j = 0; j < 9; ++j) {
@@ -31,17 +23,31 @@ static void FillBoard(const char* label,
     }
     LOG_DEBUG("%s: Board: %s", label, msg);
   }
+#endif
+  msg[0] = '\0';
   if (game_status & flag_quit) {
-    LOG_DEBUG("%s: quit", label);
+    strcat(msg, "quit ");
   }
   if (game_status & flag_mated) {
-    LOG_DEBUG("%s: mated", label);
+    strcat(msg, "mated ");
   }
   if (game_status & flag_resigned) {
-    LOG_DEBUG("%s: resigned", label);
+    strcat(msg, "resigned ");
   }
+  LOG_DEBUG("%s: game: %s", msg);
+}
 
+// Copy the board config (piece locations and captured pieces for each player)
+// from "ptree" to "board".
+static void FillBoard(const char* label,
+                      JNIEnv* env,
+		      tree_t* ptree, /* source */
+		      jobject board /* dest */) {
+  LogTree(label, ptree);
 
+  jclass boardClass = (*env)->GetObjectClass(env, board);
+  jfieldID fid = (*env)->GetFieldID(env, boardClass, "mSquares", "[I");
+  jintArray jarray = (jintArray)((*env)->GetObjectField(env, board, fid));
   jint tmp[nsquare];
   for (int i = 0; i < nsquare; ++i) {
     tmp[i] = BOARD[i];
@@ -91,6 +97,7 @@ void Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
     jint from_y,
     jint to_x,
     jint to_y,
+    jboolean promote,
     jobject board) {
   CHECK(jni_initialized);
   CHECK(!jni_active);
@@ -102,6 +109,16 @@ void Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
   ++to_y;
   to_x = 9 - to_x;
   from_x = 9 - from_x;
+
+  if (promote) {
+    if (piece > 0) {
+      CHECK(piece < 8);
+      piece += 8;
+    } else {
+      CHECK(piece > -8);
+      piece -= 8;
+    }
+  }
   const char* piece_name = astr_table_piece[abs(piece)];
   LOG_DEBUG("HumanMove: %s %d %d %d %d",
             piece_name,

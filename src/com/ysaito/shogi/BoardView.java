@@ -23,7 +23,7 @@ public class BoardView extends View implements View.OnTouchListener {
   Bitmap mSenteBitmaps[];
   Bitmap mGoteBitmaps[];
 
-  int mCurrentPlayer;  // who's allowed to move pieces? One of Board.P_XXX.
+  Board.Player mCurrentPlayer;  
 
   // Current state of the board
   Board mBoard;   
@@ -121,16 +121,16 @@ public class BoardView extends View implements View.OnTouchListener {
     //
     // @p index is an integer 0, 1, 2, ... that specifies the 
     // position of the piece in captured list.
-    int capturedScreenX(int player, int index) {
-      Rect r = (player == Board.P_UP ? mCapturedSente : mCapturedGote);
+    int capturedScreenX(Board.Player player, int index) {
+      Rect r = (player == Board.Player.UP ? mCapturedSente : mCapturedGote);
       if (mPortrait) {
         return r.left + mSquareDim * index * 4 / 3;
       } else {
         return r.left;
       }
     }
-    int capturedScreenY(int player, int index) {
-      Rect r = (player == Board.P_UP ? mCapturedSente : mCapturedGote);
+    int capturedScreenY(Board.Player player, int index) {
+      Rect r = (player == Board.Player.UP ? mCapturedSente : mCapturedGote);
       if (mPortrait) {
         return r.top;
       } else {
@@ -161,9 +161,9 @@ public class BoardView extends View implements View.OnTouchListener {
 
   public BoardView(Context context, AttributeSet attrs) {
     super(context, attrs);
-    mCurrentPlayer = Board.P_INVALID;
+    mCurrentPlayer = Board.Player.INVALID;
     mBoard = new Board();
-    mBoard.setPiece(4,4, -Board.K_KYO);
+    mBoard.setPiece(4,4, Board.K_KYO);
     initializeBitmaps();
     setOnTouchListener(this);
   }	
@@ -172,7 +172,7 @@ public class BoardView extends View implements View.OnTouchListener {
     mListener = listener; 
   }
 
-  public void setTurn(int turn) { mCurrentPlayer = turn; }
+  public void setTurn(Board.Player turn) { mCurrentPlayer = turn; }
 
   public boolean onTouch(View v, MotionEvent event) {
     ScreenLayout layout = getScreenLayout();
@@ -259,7 +259,7 @@ public class BoardView extends View implements View.OnTouchListener {
         int t = Board.type(v);
 
         Bitmap bm;
-        if (Board.player(v) == Board.P_DOWN) {
+        if (Board.player(v) == Board.Player.DOWN) {
           bm = mGoteBitmaps[t];
         } else {
           bm = mSenteBitmaps[t];
@@ -274,10 +274,10 @@ public class BoardView extends View implements View.OnTouchListener {
     }
 
     if (mBoard.mCapturedSente != 0) {
-      drawCapturedPieces(canvas, layout, Board.P_UP, mBoard.mCapturedSente);
+      drawCapturedPieces(canvas, layout, Board.Player.UP, mBoard.mCapturedSente);
     }
     if (mBoard.mCapturedGote!= 0) {
-      drawCapturedPieces(canvas, layout, Board.P_DOWN, mBoard.mCapturedGote);
+      drawCapturedPieces(canvas, layout, Board.Player.DOWN, mBoard.mCapturedGote);
     }
 
     if (mMoveFrom != null) {
@@ -307,8 +307,8 @@ public class BoardView extends View implements View.OnTouchListener {
   }
 
   void drawCapturedPieces(Canvas canvas, ScreenLayout layout,
-      int player, int bits) {
-    Bitmap[] bitmaps = (player == Board.P_UP ? mSenteBitmaps : mGoteBitmaps);
+      Board.Player player, int bits) {
+    Bitmap[] bitmaps = (player == Board.Player.UP ? mSenteBitmaps : mGoteBitmaps);
     int seq = 0;
     int n = Board.numCapturedFu(bits);
     if (n > 0) {
@@ -354,7 +354,7 @@ public class BoardView extends View implements View.OnTouchListener {
   }
   
   void drawCapturedPiece(Canvas canvas, ScreenLayout layout, 
-      Bitmap bm, int num_pieces, int player, int seq) {
+      Bitmap bm, int num_pieces, Board.Player player, int seq) {
     int sx = layout.capturedScreenX(player, seq);
     int sy = layout.capturedScreenY(player, seq);
     drawPiece(canvas, layout, bm, sx, sy);
@@ -399,7 +399,7 @@ public class BoardView extends View implements View.OnTouchListener {
 
   // Helper class used to list possible squares a piece can move to
   class MoveDestinationsState {
-    public MoveDestinationsState(int player, int cur_x, int cur_y) {
+    public MoveDestinationsState(Board.Player player, int cur_x, int cur_y) {
       mPlayer = player;
       mCurX = cur_x;
       mCurY = cur_y;
@@ -448,7 +448,7 @@ public class BoardView extends View implements View.OnTouchListener {
     }
     
     final ArrayList<Position> mDests = new ArrayList<Position>();
-    int mPlayer;
+    Board.Player mPlayer;
     int mCurX;
     int mCurY;
     boolean mSeenOpponentPiece;
@@ -456,7 +456,7 @@ public class BoardView extends View implements View.OnTouchListener {
   
   private ArrayList<Position> possibleMoveDestinations(int piece, int cur_x, int cur_y) {
     int type = Board.type(piece);
-    int player = Board.player(piece);
+    Board.Player player = Board.player(piece);
     ArrayList<Position> dests = new ArrayList<Position>();
     MoveDestinationsState state = new MoveDestinationsState(player, cur_x, cur_y);
     
