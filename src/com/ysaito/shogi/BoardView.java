@@ -19,15 +19,18 @@ import com.ysaito.shogi.Board;
 
 public class BoardView extends View implements View.OnTouchListener {
   // Bitmap for all the pieces. mGoteBitmaps[i] is the same as mSenteBitmaps[i], except upside down.
-  private Bitmap mSenteBitmaps[];
-  private Bitmap mGoteBitmaps[];
+  Bitmap mSenteBitmaps[];
+  Bitmap mGoteBitmaps[];
 
-  private int mTurn;  // who's allowed to move pieces? One of Board.P_XXX.
+  int mTurn;  // who's allowed to move pieces? One of Board.P_XXX.
 
   // Current state of the board
-  private Board mBoard;   
+  Board mBoard;   
 
-  private class Position {
+  // Position represents a logical position of a piece.
+  //
+  // @invariant (0,0) <= (x,y) < (9,9).
+  static class Position {
     public Position(int v1, int v2) { x = v1; y = v2; }
 
     @Override public boolean equals(Object o) {
@@ -44,6 +47,78 @@ public class BoardView extends View implements View.OnTouchListener {
     public int y;
   }
 
+  static class ScreenLayout {
+    public ScreenLayout(int width, int height) {
+      mWidth = width;
+      mHeight = height;
+      
+      // TODO(saito) this code doesn't handle a square screen
+      int dim;
+      if (width < height) {
+        dim = width;
+        // Captured pieces are shown at the top & bottom of the board
+        mPortrait = true;
+        mCapturedGote= new Rect(0, 0, dim, dim/ 10);
+        mCapturedSente = new Rect(0, dim * 11 / 10, dim, dim * 12 / 10);
+        mBoard = new Rect(0, dim/ 10, dim, dim * 11 / 10);
+      } else {
+        // Captured pieces are shown at the left & right of the board
+        mPortrait = false;
+        dim = height;
+        mCapturedGote = new Rect(0, 0, dim / 10, dim);
+        mCapturedSente = new Rect(dim * 11 / 10, 0, dim * 12/ 10, dim);
+        mBoard = new Rect(dim / 10, 0, dim * 11 / 10, dim);
+      }
+      mSquareDim = dim / Board.DIM;
+    }
+  
+    // Get the screen dimension
+    public int getScreenWidth() { return mWidth; }
+    public int getScreenHeight() { return mHeight; }
+    public int squareDim() { return mSquareDim; }
+    public Rect getBoard() { return mBoard; }
+
+    // Convert screen X value to board position. Return -1 on error.
+    public int boardX(int sx) {
+      int px = (sx - mBoard.left) / mSquareDim;
+      if (px < 0 || px >= Board.DIM) px = -1;
+      return px;
+    }
+
+    // Convert screen Y value to board position. Return -1 on error.
+    public int boardY(int sy) {
+      int py = (sy - mBoard.top) / mSquareDim;
+      if (py < 0 || py >= Board.DIM) py = -1;
+      return py;
+    }
+    
+    // Convert board X position to the position of the left edge of the screen.
+    public int screenX(int px) { 
+      return mBoard.left + mBoard.width() * px / Board.DIM; 
+    }
+    
+    // Convert board Y position to the position of the top edge of the screen.
+    public int screenY(int py) { 
+      return mBoard.top + mBoard.height() * py / Board.DIM; 
+    }
+    
+    // Compute the distance from board position <px, py> to screen location 
+    // <event_x, event_y>.
+    float screenDistance(int px, int py, float event_x, float event_y) {
+      int sx = screenX(px) + mSquareDim / 2;
+      int sy = screenY(py) + mSquareDim / 2;
+      return Math.abs(sx - event_x) + Math.abs(sy - event_y);
+    }
+
+    boolean mPortrait;
+    int mWidth, mHeight;  // screen pixel size
+    int mSquareDim; // pixel size of each square in the board
+    Rect mBoard;
+    Rect mCapturedSente;
+    Rect mCapturedGote;
+  };
+  ScreenLayout mCachedLayout;
+  
   // If non-NULL, user is trying to move the piece from this square.
   // @invariant mMoveFrom == null || (0,0) <= mMoveFrom < (Board.DIM, Board.DIM)
   private Position mMoveFrom; 
@@ -76,13 +151,13 @@ public class BoardView extends View implements View.OnTouchListener {
   public void setTurn(int turn) { mTurn = turn; }
 
   public boolean onTouch(View v, MotionEvent event) {
-    Rect r = screenRect();
-    int squareDim = r.width() / Board.DIM;
+    ScreenLayout layout = getScreenLayout();
+    int squareDim = layout.squareDim();
     int action = event.getAction();
 
-    int px = (int)((event.getX() - r.left) / squareDim);
-    int py = (int)((event.getY() - r.top) / squareDim);
-    if (px < 0 || px >= Board.DIM || py < 0 || py >= Board.DIM) {
+    int px = layout.boardX((int)event.getX());
+    int py = layout.boardY((int)event.getY());
+    if (px < 0 || py < 0) {
       return false;
     }
 
@@ -99,7 +174,8 @@ public class BoardView extends View implements View.OnTouchListener {
     }
 
     if (mMoveFrom != null) {
-      Position to = findSnapSquare(r, mMoveFrom.x, mMoveFrom.y, event.getX(), event.getY());
+      Position to = findSnapSquare(layout, mMoveFrom.x, mMoveFrom.y, 
+          event.getX(), event.getY());
       // If "to" is different from the currently selected square, redraw
       if ((to == null && mMoveTo != null) ||
           (to != null && !to.equals(mMoveTo))) {
@@ -130,21 +206,24 @@ public class BoardView extends View implements View.OnTouchListener {
     if (mBoard == null) return;
     int DIM = Board.DIM;
 
-    Rect r = screenRect();
-    int squareDim = r.width() / Board.DIM;
+    ScreenLayout layout = getScreenLayout();
 
     // Draw the board
     Paint p = new Paint();
     p.setColor(0xfff5deb3);
-    canvas.drawRect(r, p);
+    
+    Rect boardRect = layout.getBoard();
+    int squareDim = layout.squareDim();
+    
+    canvas.drawRect(boardRect, p);
 
     // Draw the gridlines
     p.setColor(0xff000000);
     for (int i = 0; i < DIM; ++i) {
-      int sx = screenX(r, i);
-      int sy = screenY(r, i);
-      canvas.drawLine(sx, r.top, sx, r.bottom, p);
-      canvas.drawLine(r.left, sy, r.right, sy, p);
+      int sx = layout.screenX(i);
+      int sy = layout.screenY(i);
+      canvas.drawLine(sx, boardRect.top, sx, boardRect.bottom, p);
+      canvas.drawLine(boardRect.left, sy, boardRect.right, sy, p);
     }
 
     // Draw pieces
@@ -162,28 +241,28 @@ public class BoardView extends View implements View.OnTouchListener {
         }
         BitmapDrawable b = new BitmapDrawable(getResources(), bm);
 
-        int sx = screenX(r, x);
-        int sy = screenY(r, y);
+        int sx = layout.screenX(x);
+        int sy = layout.screenY(y);
         b.setBounds(sx, sy, sx + squareDim, sy + squareDim);
         b.draw(canvas);
       }
     }
 
     if (mMoveFrom != null) {
-      p.setColor(0x10000000);
+      p.setColor(0x28000000);
       ArrayList<Position> dests = possibleMoveDestinations(
           mBoard.getPiece(mMoveFrom.x, mMoveFrom.y),
           mMoveFrom.x, mMoveFrom.y);
       for (Position dest: dests) {
-        int sx = screenX(r, dest.x);
-        int sy = screenY(r, dest.y);
+        int sx = layout.screenX(dest.x);
+        int sy = layout.screenY(dest.y);
         canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
       }
     }
     if (mMoveTo != null) {
-      p.setColor(0x40000000);
-      int sx = screenX(r, mMoveTo.x);
-      int sy = screenY(r, mMoveTo.y);
+      p.setColor(0x50000000);
+      int sx = layout.screenX(mMoveTo.x);
+      int sy = layout.screenY(mMoveTo.y);
       canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
     }
   }
@@ -217,6 +296,7 @@ public class BoardView extends View implements View.OnTouchListener {
     assert 1 == 0;
   }
 
+  // Helper class used to list possible squares a piece can move to
   class MoveDestinationsState {
     public MoveDestinationsState(int player, int cur_x, int cur_y) {
       mPlayer = player;
@@ -225,7 +305,16 @@ public class BoardView extends View implements View.OnTouchListener {
     }
     
     public ArrayList<Position> getDests() { return mDests; }
+
+    // If the piece can be moved to <cur_x+dx, cur_y+dy>, add it to
+    // mDests.
+    public void tryMove(int dx, int dy) {
+      mSeenOpponentPiece = false;
+      canMoveTo(mCurX + dx, mCurY + dy);
+    }
     
+    // Perform tryMove for each <dx,dy>, <2*dx,2*dy>, ..., 
+    // Stop when reached the first disallowed square.
     public void tryMoveMulti(int dx, int dy) {
       mSeenOpponentPiece = false;
       int x = mCurX;
@@ -237,25 +326,18 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
     
-    public void tryMove(int dx, int dy) {
-      mSeenOpponentPiece = false;
-      canMoveTo(mCurX + dx, mCurY + dy);
-    }
-    
     boolean canMoveTo(int x, int y) {
-      // Don't allowing moving outside the board
+      // Disallow moving outside the board
       if (x < 0 || x >= Board.DIM || y < 0 || y >= Board.DIM) {
         return false;
       }
+      // Disallow skipping over an opponent
+      if (mSeenOpponentPiece) return false;
       
       int existing = mBoard.getPiece(x, y);
       if (existing != 0) {
-        // Can't occupy the same square twice
+        // Disallow occuping the same square twice
         if (Board.player(existing) == mPlayer) return false;
-        
-        // We can't skip over an opponent
-        if (mSeenOpponentPiece) return false;
-        
         mSeenOpponentPiece = true;
         mDests.add(new Position(x, y));
         return true;
@@ -348,13 +430,16 @@ public class BoardView extends View implements View.OnTouchListener {
     return state.getDests();
   }
 
-  private Position findSnapSquare(Rect screenRect, int from_x, int from_y, float cur_sx, float cur_sy) {
+  private Position findSnapSquare(
+      ScreenLayout layout,
+      int from_x, int from_y, 
+      float cur_sx, float cur_sy) {
     ArrayList<Position> dests = possibleMoveDestinations(mBoard.getPiece(from_x, from_y), from_x, from_y);
     Position nearest = null;
-    float min_distance = screenDistance(screenRect, from_x, from_y, cur_sx, cur_sy);
+    float min_distance = layout.screenDistance(from_x, from_y, cur_sx, cur_sy);
 
     for (Position dest: dests) {
-      float distance = screenDistance(screenRect, dest.x, dest.y, cur_sx, cur_sy);
+      float distance = layout.screenDistance(dest.x, dest.y, cur_sx, cur_sy);
       if (distance < min_distance) {
         nearest = dest;
         min_distance = distance;
@@ -363,18 +448,15 @@ public class BoardView extends View implements View.OnTouchListener {
     return nearest;
   }
 
-  private int screenX(Rect r, int x) { return r.left + r.width() * x / Board.DIM; }
-  private int screenY(Rect r, int y) { return r.top + r.height() * y / Board.DIM; }
-
-  // Compute the distance from board position <px, py> to screen location <event_x, event_y>. 
-  private float screenDistance(Rect r, int px, int py, float event_x, float event_y) {
-    int sx = screenX(r, px) + r.width() / 2 / Board.DIM;
-    int sy = screenY(r, py) + r.height() / 2 / Board.DIM;
-    return Math.abs(sx - event_x) + Math.abs(sy - event_y);
+  ScreenLayout getScreenLayout() {
+    if (mCachedLayout != null &&
+        mCachedLayout.getScreenWidth() == getWidth() &&
+        mCachedLayout.getScreenHeight() == getHeight()) {
+      // reuse the cached value
+    } else {
+      mCachedLayout = new ScreenLayout(getWidth(), getHeight());
+    }
+    return mCachedLayout;
   }
-
-  Rect screenRect() {
-    int screenDim = Math.min(getWidth(), getHeight());
-    return new Rect(0, 0, screenDim, screenDim);
-  }
-};
+  
+  };
