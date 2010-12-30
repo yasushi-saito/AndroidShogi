@@ -383,8 +383,6 @@ public class BoardView extends View implements View.OnTouchListener {
   public final void setState(Board board, Board.Player currentPlayer) {
     mCurrentPlayer = currentPlayer;
     mBoard = new Board(board);
-    mBoard.mCapturedWhite = 0x1234;
-    mBoard.mCapturedBlack = 0x1234;
     invalidate();
   }
 

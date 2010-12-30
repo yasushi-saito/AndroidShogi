@@ -145,6 +145,7 @@ public class Shogi extends Activity {
   
   static final boolean MoveAllowsForPromotion(Board.Move move) {
     if (Board.isPromoted(move.piece)) return false;  // already promoted
+    if (move.from_x < 0) return false;  // dropping a captured piece
     if (move.player == Board.Player.WHITE && move.to_y < 6) return false;
     if (move.player == Board.Player.BLACK && move.to_y >= 3) return false;
     return true;

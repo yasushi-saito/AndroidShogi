@@ -13,25 +13,25 @@ public class BonanzaController {
     public final Board board = new Board();
     public Board.Player nextPlayer; 
     public String error_message;
-    
+
     void setStatus(int jni_status, Board.Player cur_player) {
-    if (jni_status >= 0) {
-      if (cur_player == Board.Player.WHITE) {
-        nextPlayer = Board.Player.BLACK;
-      } else if (cur_player == Board.Player.BLACK) {
-        nextPlayer = Board.Player.WHITE;
+      if (jni_status >= 0) {
+        if (cur_player == Board.Player.WHITE) {
+          nextPlayer = Board.Player.BLACK;
+        } else if (cur_player == Board.Player.BLACK) {
+          nextPlayer = Board.Player.WHITE;
+        } else {
+          throw new AssertionError("Invalid player");
+        }
+        error_message = null;
       } else {
-        throw new AssertionError("Invalid player");
+        nextPlayer = cur_player;
+        if (jni_status == BonanzaJNI.ILLEGAL_MOVE) {
+          error_message = "Illegal move";
+        } else {  
+          error_message = "Unknown error";
+        }
       }
-      error_message = null;
-    } else {
-      nextPlayer = cur_player;
-      if (jni_status == BonanzaJNI.ILLEGAL_MOVE) {
-        error_message = "Illegal move";
-      } else {  
-        error_message = "Unknown error";
-      }
-    }
     }
   }
 
