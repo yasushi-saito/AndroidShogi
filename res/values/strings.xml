@@ -3,4 +3,5 @@
     <string name="app_name">Android Shogi</string>
     <string name="new_game">New Game</string>
     <string name="download_data">Download starting moves DB</string>
+    <string name="settings">Settings</string>
 </resources>

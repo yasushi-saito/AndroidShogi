@@ -379,7 +379,7 @@ public class BoardView extends View implements View.OnTouchListener {
     }
     
     if (mStatusView != null) {
-      String status = "Current player: ";
+      String status = "Turn: ";
       if (mCurrentPlayer == Board.Player.BLACK) status += "black"; 
       else if (mCurrentPlayer == Board.Player.WHITE) status += "white"; 
       else status += "none";
