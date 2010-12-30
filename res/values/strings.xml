@@ -4,4 +4,6 @@
     <string name="new_game">New Game</string>
     <string name="download_data">Download starting moves DB</string>
     <string name="settings">Settings</string>
+    <string name="player_black">Black</string>
+    <string name="player_white">White</string>    
 </resources>
