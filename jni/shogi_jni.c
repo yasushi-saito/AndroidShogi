@@ -24,6 +24,11 @@ static void LogTree(const char* label, tree_t* ptree) {
     LOG_DEBUG("%s: Board: %s", label, msg);
   }
 #endif
+  LOG_DEBUG("%s: captured black %x white %x material %x",
+            label,
+            ptree->posi.hand_black,
+            ptree->posi.hand_white,
+            ptree->posi.material);
   msg[0] = '\0';
   if (game_status & flag_quit) {
     strcat(msg, "quit ");
@@ -53,6 +58,12 @@ static void FillBoard(const char* label,
     tmp[i] = BOARD[i];
   }
   (*env)->SetIntArrayRegion(env,  jarray, 0, nsquare, tmp);
+
+  fid = (*env)->GetFieldID(env, boardClass, "mCapturedBlack", "I");
+  (*env)->SetIntField(env, board, fid, ptree->posi.hand_black);
+
+  fid = (*env)->GetFieldID(env, boardClass, "mCapturedWhite", "I");
+  (*env)->SetIntField(env, board, fid, ptree->posi.hand_white);
 }
 
 static void RunCommand(const char* command) {

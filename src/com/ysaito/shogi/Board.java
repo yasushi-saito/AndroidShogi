@@ -3,13 +3,14 @@ package com.ysaito.shogi;
 import java.util.Arrays;
 
 public class Board implements java.io.Serializable {
-  // Width and height of a board
+  // X and Y dimensions of a board
   public static final int DIM = 9; 
 
   // Total # of squares in a board
   public static final int NUM_SQUARES = DIM * DIM;
 
-  // Encoding of mSquares[]. A piecebelonging to sente (gote) is positive (negative), respectively.
+  // Encoding of mSquares[]. A piecebelonging to P_UP (resp. P_DOWN) is 
+  // positive (resp. negative).
   // The absolute value defines the type of the piece. It is one of the following.
   public static final int K_EMPTY = 0;  // placeholder for an unoccupied square
   public static final int K_FU = 1;
@@ -28,25 +29,20 @@ public class Board implements java.io.Serializable {
   public static final int K_RYU = 15;
   public static final int NUM_TYPES = 16;
 
-  // Type of the players "P_UP" starts at the bottom of the board and moves up.
-  // P_DOWN is the opposite. Often (but not always), P_UP is the "black" 
-  // (sente) player, and P_DOWN is the "white" (gote) player.
+  // Type of the players. "BLACK" is "sente" in japanese. It starts at the 
+  // bottom and moves up. "WHITE" is "gote" in japanese.
   enum Player {
-    UP, INVALID, DOWN
+    BLACK, INVALID, WHITE
   }
-  
-  //public static final int P_UP = 1;
-  //public static final int P_INVALID = 0;
-  //public static final int P_DOWN = -1;
 
   // Struct that represents a move by a human player
   public static class Move implements java.io.Serializable {
-    public Player player;  // P_UP or P_DOWN
+    public Player player;  // UP or DOWN
 
-    // The piece to move. The value is negative for the P_DOWN player.
+    // The piece to move. The value is negative if player==Player.DOWN.
     public int piece;
 
-    // The source and destination coordinates.
+    // The source and destination coordinates. Each value is in range [0,DIM).
     public int from_x, from_y, to_x, to_y;
 
     // If promote==true, promote the piece. 
@@ -79,22 +75,24 @@ public class Board implements java.io.Serializable {
     }
   }
 
-  // Given a piece in mSquares[], return the player type, P_XXX. 
+  // Public members
+  public int mSquares[];      // Contents of the board
+  public int mCapturedBlack;     // Pieces captured by Player.BLACK
+  public int mCapturedWhite;   // Pieces captured by Player.WHITE
+
+  // Given a piece in mSquares[], return the player type.
   public static final Player player(int piece) { 
-    if (piece > 0) return Player.UP;
+    if (piece > 0) return Player.BLACK;
     if (piece == 0) return Player.INVALID;
-    return Player.DOWN;
+    return Player.WHITE;
   }
 
-  // Given a piece in mSquares[], return its type, K_XXX.
+  // Given a piece in mSquares[], return its type, i.e., K_XXX.
   public static final int type(int piece) { 
     return (piece< 0 ? -piece: piece); 
   }
 
-  public int mSquares[];      // Contents of the board
-  public int mCapturedSente;  // Pieces captured by sente
-  public int mCapturedGote;   // Pieces captured by gote
-
+  // Helper functions to parse the value of mCapturedUp or mCapturedDown.
   public static final int numCapturedFu(int c) { return c & 0x1f; }
   public static final int numCapturedKyo(int c) { return (c >> 5) & 7; }
   public static final int numCapturedKei(int c) { return (c >>  8) & 0x07; }
@@ -109,8 +107,8 @@ public class Board implements java.io.Serializable {
 
   public Board(Board src) {
     mSquares = Arrays.copyOf(src.mSquares, src.mSquares.length);
-    mCapturedSente = src.mCapturedSente;
-    mCapturedGote = src.mCapturedGote;
+    mCapturedBlack = src.mCapturedBlack;
+    mCapturedWhite = src.mCapturedWhite;
   }
 
   public final void setPiece(int x, int y, int piece) {

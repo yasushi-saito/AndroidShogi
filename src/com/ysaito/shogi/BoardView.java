@@ -36,20 +36,61 @@ public class BoardView extends View implements View.OnTouchListener {
   //
   // @invariant (0,0) <= (x,y) < (9,9).
   static class Position {
-    public Position(int v1, int v2) { x = v1; y = v2; }
+    
+    // Point to a coordinate on the board
+    public Position(int x, int y) { mX = x; mY = y; }
 
+    // Point to a captured piece
+    public Position(Board.Player player, int index) {
+      mPlayer = player;
+      mCapturedIndex = index;
+    }
+    
     @Override public boolean equals(Object o) {
       if (o instanceof Position) {
         Position p = (Position)o;
-        return p.x == x && p.y == y;
+        return p.mPlayer == mPlayer &&
+               p.mCapturedIndex == mCapturedIndex &&
+               p.mX == mX && 
+               p.mY == mY;
       }
       return false;
     }
 
-    @Override public int hashCode() { return x + y; }
+    @Override public int hashCode() { 
+      return mX + mY + ((mPlayer != null) ? mPlayer.hashCode() : 0) + mCapturedIndex;
+    }
+    
+    boolean isOnBoard() { return mPlayer == null; }
+    
+    int getX() {
+      if (!isOnBoard()) throw new AssertionError("blah");
+      return mX;
+    }
 
-    public int x;
-    public int y;
+    int getY() {
+      if (!isOnBoard()) throw new AssertionError("blah");
+      return mY;
+    }
+    
+    Board.Player player() { 
+      if (isOnBoard()) throw new AssertionError("blah");
+      return mPlayer; 
+    }
+    
+    int capturedIndex() { 
+      if (isOnBoard()) throw new AssertionError("blah");
+      return mCapturedIndex; 
+    }
+    
+    // player and captured_index are set iff the Position describes
+    // a captured piece
+    Board.Player mPlayer;
+    int mCapturedIndex;
+    
+    // mX and mY are set iff the Position describes a coordinate on the board.
+    int mX;
+    int mY;
   }
 
   static class ScreenLayout {
@@ -122,15 +163,16 @@ public class BoardView extends View implements View.OnTouchListener {
     // @p index is an integer 0, 1, 2, ... that specifies the 
     // position of the piece in captured list.
     int capturedScreenX(Board.Player player, int index) {
-      Rect r = (player == Board.Player.UP ? mCapturedSente : mCapturedGote);
+      Rect r = (player == Board.Player.BLACK ? mCapturedSente : mCapturedGote);
       if (mPortrait) {
         return r.left + mSquareDim * index * 4 / 3;
       } else {
         return r.left;
       }
     }
+    
     int capturedScreenY(Board.Player player, int index) {
-      Rect r = (player == Board.Player.UP ? mCapturedSente : mCapturedGote);
+      Rect r = (player == Board.Player.BLACK ? mCapturedSente : mCapturedGote);
       if (mPortrait) {
         return r.top;
       } else {
@@ -138,68 +180,93 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
 
+    int capturedPieceIndex(Board.Player player, int sx, int sy) {
+      Rect r = (player == Board.Player.BLACK ? mCapturedSente : mCapturedGote);
+      if (sx < r.left|| sx>= r.right) return -1;
+      if (sy < r.top || sy >= r.bottom) return -1;
+      if (mPortrait) {
+        return (sx - r.left) / (mSquareDim * 4 / 3);
+      } else {
+        return (sy - r.top) / (mSquareDim * 4 / 3);
+      }
+    }
+    
     boolean mPortrait;
     int mWidth, mHeight;  // screen pixel size
     int mSquareDim; // pixel size of each square in the board
     Rect mBoard;
     Rect mCapturedSente;
     Rect mCapturedGote;
-  };
+  }
   ScreenLayout mCachedLayout;
   
   // If non-NULL, user is trying to move the piece from this square.
   // @invariant mMoveFrom == null || (0,0) <= mMoveFrom < (Board.DIM, Board.DIM)
-  private Position mMoveFrom; 
+  Position mMoveFrom; 
 
   // If non-NULL, user is trying to move the piece to this square.
   // @invariant mMoveTo== null || (0,0) <= mMoveTo < (Board.DIM, Board.DIM)
-  private Position mMoveTo;
+  Position mMoveTo;
 
-  private static final String TAG = "Board";
+  static final String TAG = "Board";
 
-  private EventListener mListener;
+  EventListener mListener;
 
   public BoardView(Context context, AttributeSet attrs) {
     super(context, attrs);
     mCurrentPlayer = Board.Player.INVALID;
     mBoard = new Board();
-    mBoard.setPiece(4,4, Board.K_KYO);
+    mBoard.setPiece(4,4, -Board.K_KIN);
     initializeBitmaps();
     setOnTouchListener(this);
   }	
 
-  public void setEventListener(EventListener listener) { 
+  public final void setEventListener(EventListener listener) { 
     mListener = listener; 
   }
 
-  public void setTurn(Board.Player turn) { mCurrentPlayer = turn; }
+  public final void setTurn(Board.Player turn) { mCurrentPlayer = turn; }
 
-  public boolean onTouch(View v, MotionEvent event) {
+  @Override public boolean onTouch(View v, MotionEvent event) {
     ScreenLayout layout = getScreenLayout();
     int squareDim = layout.squareDim();
     int action = event.getAction();
 
-    int px = layout.boardX((int)event.getX());
-    int py = layout.boardY((int)event.getY());
-    if (px < 0 || py < 0) {
-      return false;
-    }
-
     if (action == MotionEvent.ACTION_DOWN) {
       // Start of touch operation
-      int piece = mBoard.getPiece(px, py);
-      if (Board.player(piece) != mCurrentPlayer) {
-        // Tried to move a piece not owned by the player
-        return false;
+      int px = layout.boardX((int)event.getX());
+      int py = layout.boardY((int)event.getY());
+      if (px >= 0 && py >= 0) {
+        // Moving a piece on the board
+        int piece = mBoard.getPiece(px, py);
+        if (Board.player(piece) != mCurrentPlayer) {
+          // Tried to move a piece not owned by the player
+          return false;
+        }
+        mMoveFrom = new Position(px, py);
+      } else {
+        int pindex = layout.capturedPieceIndex(
+            mCurrentPlayer, (int)event.getX(), (int)event.getY());
+        int piece = getCapturedPiece(mBoard, mCurrentPlayer, pindex);
+        if (piece <= 0) return false;
+        mMoveFrom = new Position(mCurrentPlayer, pindex);
       }
-      mMoveFrom = new Position(px, py);
       invalidate();
       return true;
     }
 
     if (mMoveFrom != null) {
-      Position to = findSnapSquare(layout, mMoveFrom.x, mMoveFrom.y, 
-          event.getX(), event.getY());
+      Position to = null;
+      if (mMoveFrom.isOnBoard()) {
+        to = findSnapSquare(layout, mMoveFrom.getX(), mMoveFrom.getY(), 
+            event.getX(), event.getY());
+      } else {
+        int px = layout.boardX((int)event.getX());
+        int py = layout.boardY((int)event.getY());
+        if (px >= 0 && py >= 0 && mBoard.getPiece(px, py) == 0) {
+          to = new Position(px, py); 
+        }
+      }
       // If "to" is different from the currently selected square, redraw
       if ((to == null && mMoveTo != null) ||
           (to != null && !to.equals(mMoveTo))) {
@@ -211,12 +278,18 @@ public class BoardView extends View implements View.OnTouchListener {
       if (mMoveTo != null && mListener != null) {
         Board.Move move = new Board.Move();
         move.player = mCurrentPlayer;
-        move.piece = mBoard.getPiece(mMoveFrom.x, mMoveFrom.y);
-        move.from_x = mMoveFrom.x;
-        move.from_y = mMoveFrom.y;
-        move.to_x = mMoveTo.x;
-        move.to_y = mMoveTo.y;
-        move.promote = false; // TODO(saito) fix
+        move.to_x = mMoveTo.getX();
+        move.to_y = mMoveTo.getY();
+        move.promote = false; // filled by Shogi.jana
+        
+        if (mMoveFrom.isOnBoard()) {
+          move.piece = mBoard.getPiece(mMoveFrom.getX(), mMoveFrom.getY());
+          move.from_x = mMoveFrom.getX();
+          move.from_y = mMoveFrom.getY();
+        } else {
+          move.piece = getCapturedPiece(
+              mBoard, mCurrentPlayer, mMoveFrom.capturedIndex());
+        }
         mListener.onHumanMove(move);
       }
       mMoveTo = null;
@@ -226,8 +299,7 @@ public class BoardView extends View implements View.OnTouchListener {
     return true;
   }
 
-  @Override
-  public void onDraw(Canvas canvas) {
+  @Override public void onDraw(Canvas canvas) {
     if (mBoard == null) return;
     int DIM = Board.DIM;
 
@@ -259,7 +331,7 @@ public class BoardView extends View implements View.OnTouchListener {
         int t = Board.type(v);
 
         Bitmap bm;
-        if (Board.player(v) == Board.Player.DOWN) {
+        if (Board.player(v) == Board.Player.WHITE) {
           bm = mGoteBitmaps[t];
         } else {
           bm = mSenteBitmaps[t];
@@ -273,42 +345,42 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
 
-    if (mBoard.mCapturedSente != 0) {
-      drawCapturedPieces(canvas, layout, Board.Player.UP, mBoard.mCapturedSente);
+    if (mBoard.mCapturedBlack != 0) {
+      drawCapturedPieces(canvas, layout, Board.Player.BLACK, mBoard.mCapturedBlack);
     }
-    if (mBoard.mCapturedGote!= 0) {
-      drawCapturedPieces(canvas, layout, Board.Player.DOWN, mBoard.mCapturedGote);
+    if (mBoard.mCapturedWhite!= 0) {
+      drawCapturedPieces(canvas, layout, Board.Player.WHITE, mBoard.mCapturedWhite);
     }
 
     if (mMoveFrom != null) {
       p.setColor(0x28000000);
       ArrayList<Position> dests = possibleMoveDestinations(
-          mBoard.getPiece(mMoveFrom.x, mMoveFrom.y),
-          mMoveFrom.x, mMoveFrom.y);
+          mBoard.getPiece(mMoveFrom.getX(), mMoveFrom.getY()),
+          mMoveFrom.getX(), mMoveFrom.getY());
       for (Position dest: dests) {
-        int sx = layout.screenX(dest.x);
-        int sy = layout.screenY(dest.y);
+        int sx = layout.screenX(dest.getX());
+        int sy = layout.screenY(dest.getY());
         canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
       }
     }
     if (mMoveTo != null) {
       p.setColor(0x50000000);
-      int sx = layout.screenX(mMoveTo.x);
-      int sy = layout.screenY(mMoveTo.y);
+      int sx = layout.screenX(mMoveTo.getX());
+      int sy = layout.screenY(mMoveTo.getY());
       canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
     }
   }
 
-  public void setBoard(Board board) {
+  public final void setBoard(Board board) {
     mBoard = new Board(board);
-    mBoard.mCapturedSente = 0x2345;
-    mBoard.mCapturedGote = 0x2345;
+    mBoard.mCapturedWhite = 0x1234;
+    mBoard.mCapturedBlack = 0x1234;
     invalidate();
   }
 
   void drawCapturedPieces(Canvas canvas, ScreenLayout layout,
       Board.Player player, int bits) {
-    Bitmap[] bitmaps = (player == Board.Player.UP ? mSenteBitmaps : mGoteBitmaps);
+    Bitmap[] bitmaps = (player == Board.Player.BLACK ? mSenteBitmaps : mGoteBitmaps);
     int seq = 0;
     int n = Board.numCapturedFu(bits);
     if (n > 0) {
@@ -346,6 +418,26 @@ public class BoardView extends View implements View.OnTouchListener {
       ++seq;
     }
   }
+
+  static int getCapturedPiece(Board board, Board.Player player, int index) {
+    int bits = (player == Board.Player.BLACK ? 
+                board.mCapturedBlack : board.mCapturedWhite);
+    if (Board.numCapturedFu(bits) > 0) --index;
+    if (index < 0) return Board.K_FU;
+    if (Board.numCapturedKyo(bits) > 0) --index;
+    if (index < 0) return Board.K_KYO;
+    if (Board.numCapturedKei(bits) > 0) --index;
+    if (index < 0) return Board.K_KEI;
+    if (Board.numCapturedGin(bits) > 0) --index;
+    if (index < 0) return Board.K_GIN;
+    if (Board.numCapturedKin(bits) > 0) --index;
+    if (index < 0) return Board.K_KIN;
+    if (Board.numCapturedKaku(bits) > 0) --index;
+    if (index < 0) return Board.K_KAKU;
+    if (Board.numCapturedHi(bits) > 0) --index;
+    if (index < 0) return Board.K_HI;
+    throw new AssertionError("???");
+  }
   
   void drawPiece(Canvas canvas, ScreenLayout layout, Bitmap bm, int sx, int sy) {
     BitmapDrawable b = new BitmapDrawable(getResources(), bm);
@@ -370,7 +462,6 @@ public class BoardView extends View implements View.OnTouchListener {
           p);
     }
   }
-  
   
   // Load bitmaps for pieces. Called once when the process starts
   void initializeBitmaps() {
@@ -454,7 +545,12 @@ public class BoardView extends View implements View.OnTouchListener {
     boolean mSeenOpponentPiece;
   }
   
-  private ArrayList<Position> possibleMoveDestinations(int piece, int cur_x, int cur_y) {
+  // Generate the list of board positions that a piece at <cur_x, cur_y> can
+  // move to. It takes other pieces on the board into account, but it may
+  // still generate illegal moves -- e.g., this method doesn't check for
+  // nifu, sennichite, uchi-fu zume aren't by this method.
+  private ArrayList<Position> possibleMoveDestinations(
+      int piece, int cur_x, int cur_y) {
     int type = Board.type(piece);
     Board.Player player = Board.player(piece);
     ArrayList<Position> dests = new ArrayList<Position>();
@@ -531,7 +627,7 @@ public class BoardView extends View implements View.OnTouchListener {
     return state.getDests();
   }
 
-  private Position findSnapSquare(
+  Position findSnapSquare(
       ScreenLayout layout,
       int from_x, int from_y, 
       float cur_sx, float cur_sy) {
@@ -540,7 +636,7 @@ public class BoardView extends View implements View.OnTouchListener {
     float min_distance = layout.screenDistance(from_x, from_y, cur_sx, cur_sy);
 
     for (Position dest: dests) {
-      float distance = layout.screenDistance(dest.x, dest.y, cur_sx, cur_sy);
+      float distance = layout.screenDistance(dest.getX(), dest.getY(), cur_sx, cur_sy);
       if (distance < min_distance) {
         nearest = dest;
         min_distance = distance;
@@ -560,4 +656,4 @@ public class BoardView extends View implements View.OnTouchListener {
     return mCachedLayout;
   }
   
-  };
+}
