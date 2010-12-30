@@ -201,14 +201,19 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
     LOG_DEBUG("Failed to parse move: %s: %s", buf, str_error);
     FillBoard("Human", env, &tree, board);
     return R_ILLEGAL_MOVE;
-  } else {
-    CHECK_GE(make_move_root(&tree, move,
-                            (flag_history | flag_time | flag_rep
-                             | flag_detect_hang
-                             | flag_rejections)), 0);
-    FillBoard("Human", env, &tree, board);
-    return R_OK;
   }
+  r = make_move_root(&tree, move,
+                     (flag_history | flag_time | flag_rep
+                      | flag_detect_hang
+                      | flag_rejections));
+  if (r < 0) {
+    LOG_DEBUG("Failed to make move: %s: %s", buf, str_error);
+    FillBoard("Human", env, &tree, board);
+    return R_ILLEGAL_MOVE;
+  }
+
+  FillBoard("Human", env, &tree, board);
+  return R_OK;
 }
 
 jint Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
