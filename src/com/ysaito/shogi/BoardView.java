@@ -9,6 +9,7 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -108,6 +109,29 @@ public class BoardView extends View implements View.OnTouchListener {
       int sx = screenX(px) + mSquareDim / 2;
       int sy = screenY(py) + mSquareDim / 2;
       return Math.abs(sx - event_x) + Math.abs(sy - event_y);
+    }
+
+    // Return the position for displaying a captured piec.
+    
+    // @p player is one of Board.P_{SENTE,GOTE}
+    //
+    // @p index is an integer 0, 1, 2, ... that specifies the 
+    // position of the piece in captured list.
+    int capturedScreenX(int player, int index) {
+      Rect r = (player == Board.P_SENTE ? mCapturedSente : mCapturedGote);
+      if (mPortrait) {
+        return r.left + mSquareDim * index * 4 / 3;
+      } else {
+        return r.left;
+      }
+    }
+    int capturedScreenY(int player, int index) {
+      Rect r = (player == Board.P_SENTE ? mCapturedSente : mCapturedGote);
+      if (mPortrait) {
+        return r.top;
+      } else {
+        return r.top + mSquareDim * index * 4 / 3;
+      }
     }
 
     boolean mPortrait;
@@ -248,6 +272,13 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
 
+    if (mBoard.mCapturedSente != 0) {
+      drawCapturedPieces(canvas, layout, Board.P_SENTE, mBoard.mCapturedSente);
+    }
+    if (mBoard.mCapturedGote!= 0) {
+      drawCapturedPieces(canvas, layout, Board.P_GOTE, mBoard.mCapturedGote);
+    }
+
     if (mMoveFrom != null) {
       p.setColor(0x28000000);
       ArrayList<Position> dests = possibleMoveDestinations(
@@ -269,10 +300,79 @@ public class BoardView extends View implements View.OnTouchListener {
 
   public void setBoard(Board board) {
     mBoard = new Board(board);
+    mBoard.mCapturedSente = 0x2345;
+    mBoard.mCapturedGote = 0x2345;
     invalidate();
   }
 
-  private void initializeBitmaps() {
+  void drawCapturedPieces(Canvas canvas, ScreenLayout layout,
+      int player, int bits) {
+    Bitmap[] bitmaps = (player == Board.P_SENTE ? mSenteBitmaps : mGoteBitmaps);
+    int seq = 0;
+    int n = Board.numCapturedFu(bits);
+    if (n > 0) {
+      drawCapturedPiece(canvas, layout, bitmaps[Board.K_FU], n, player, seq);
+      ++seq;
+    }
+    n = Board.numCapturedKyo(bits);
+    if (n > 0) {
+      drawCapturedPiece(canvas, layout, bitmaps[Board.K_KYO], n, player, seq);
+      ++seq;
+    }
+    n = Board.numCapturedKei(bits);
+    if (n > 0) {
+      drawCapturedPiece(canvas, layout, bitmaps[Board.K_KEI], n, player, seq);
+      ++seq;
+    }
+    n = Board.numCapturedGin(bits);
+    if (n > 0) {
+      drawCapturedPiece(canvas, layout, bitmaps[Board.K_GIN], n, player, seq);
+      ++seq;
+    }
+    n = Board.numCapturedKin(bits);
+    if (n > 0) {
+      drawCapturedPiece(canvas, layout, bitmaps[Board.K_KIN], n, player, seq);
+      ++seq;
+    }
+    n = Board.numCapturedKaku(bits);
+    if (n > 0) {
+      drawCapturedPiece(canvas, layout, bitmaps[Board.K_KAKU], n, player, seq);
+      ++seq;
+    }
+    n = Board.numCapturedHi(bits);
+    if (n > 0) {
+      drawCapturedPiece(canvas, layout, bitmaps[Board.K_HI], n, player, seq);
+      ++seq;
+    }
+  }
+  
+  void drawPiece(Canvas canvas, ScreenLayout layout, Bitmap bm, int sx, int sy) {
+    BitmapDrawable b = new BitmapDrawable(getResources(), bm);
+    b.setBounds(sx, sy, sx + layout.squareDim(), sy + layout.squareDim());
+    b.draw(canvas);
+  }
+  
+  void drawCapturedPiece(Canvas canvas, ScreenLayout layout, 
+      Bitmap bm, int num_pieces, int player, int seq) {
+    int sx = layout.capturedScreenX(player, seq);
+    int sy = layout.capturedScreenY(player, seq);
+    drawPiece(canvas, layout, bm, sx, sy);
+    if (num_pieces >= 1) {
+      int fontSize = 14;
+      Paint p = new Paint();
+      p.setTextSize(fontSize);
+      p.setColor(0xffeeeeee);
+      p.setTypeface(Typeface.DEFAULT_BOLD);
+      canvas.drawText(Integer.toString(num_pieces),
+          sx + layout.squareDim() - fontSize / 4,
+          sy + layout.squareDim() - fontSize / 2,
+          p);
+    }
+  }
+  
+  
+  // Load bitmaps for pieces. Called once when the process starts
+  void initializeBitmaps() {
     Resources r = getResources();
     mSenteBitmaps = new Bitmap[Board.NUM_TYPES];
     mGoteBitmaps = new Bitmap[Board.NUM_TYPES];
