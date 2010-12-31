@@ -9,27 +9,56 @@ import android.util.Log;
 public class BonanzaController {
   static final String TAG = "BonanzaController"; 
 
-  public class Result implements java.io.Serializable {
+  public static class Result implements java.io.Serializable {
     public final Board board = new Board();
     public Board.Player nextPlayer; 
-    public String error_message;
+    public Board.GameState gameState;
+    public String errorMessage;
 
-    void setStatus(int jni_status, Board.Player cur_player) {
+    @Override
+    public String toString() {
+      String s = "state=" + gameState.toString() + 
+            " next: " + nextPlayer.toString();
+      if (errorMessage != null) s += " error: " + errorMessage;
+      return s;
+    }
+    void setStatus(int jni_status, Board.Player curPlayer) {
       if (jni_status >= 0) {
-        if (cur_player == Board.Player.WHITE) {
+        if (curPlayer == Board.Player.WHITE) {
           nextPlayer = Board.Player.BLACK;
-        } else if (cur_player == Board.Player.BLACK) {
+        } else if (curPlayer == Board.Player.BLACK) {
           nextPlayer = Board.Player.WHITE;
         } else {
           throw new AssertionError("Invalid player");
         }
-        error_message = null;
+        gameState = Board.GameState.ACTIVE;
+        errorMessage = null;
       } else {
-        nextPlayer = cur_player;
-        if (jni_status == BonanzaJNI.ILLEGAL_MOVE) {
-          error_message = "Illegal move";
-        } else {  
-          error_message = "Unknown error";
+        switch (jni_status) {
+          case BonanzaJNI.ILLEGAL_MOVE:
+            nextPlayer = curPlayer;
+            gameState = Board.GameState.ACTIVE;
+            errorMessage = "Illegal move";
+            break;
+          case BonanzaJNI.CHECKMATE:
+            nextPlayer = Board.Player.INVALID;
+            gameState = (curPlayer == Board.Player.BLACK) ?
+                Board.GameState.WHITE_LOST : Board.GameState.BLACK_LOST;
+            errorMessage = "Checkmate";
+            break;
+          case BonanzaJNI.RESIGNED:
+            nextPlayer = Board.Player.INVALID;          
+            gameState = (curPlayer == Board.Player.BLACK) ?
+                Board.GameState.BLACK_LOST : Board.GameState.WHITE_LOST;
+            errorMessage = "Resigned";
+            break;
+          case BonanzaJNI.DRAW:
+            nextPlayer = Board.Player.INVALID;          
+            gameState = Board.GameState.DRAW;
+            errorMessage = "Draw";
+            break;
+          default:
+            throw new AssertionError("Illegal jni_status: " + jni_status);
         }
       }
     }
@@ -48,7 +77,6 @@ public class BonanzaController {
     mInputHandler = new Handler(mThread.getLooper()) {
       @Override
       public void handleMessage(Message msg) {
-        Log.d(TAG, "Got message");
         String command = msg.getData().getString("command");
         if (command == "init") {
           doInit((Board.Player)msg.getData().get("player"));
@@ -113,8 +141,9 @@ public class BonanzaController {
   void doInit(Board.Player firstTurn) {
     Log.d(TAG, "Init");
     Result r = new Result();
-    BonanzaJNI.Initialize(r.board);
+    BonanzaJNI.Initialize(1, 60, 1, r.board);
     r.nextPlayer = firstTurn;
+    r.gameState = Board.GameState.ACTIVE;
     sendOutputMessage(r);
   }
 
@@ -140,4 +169,4 @@ public class BonanzaController {
     mThread.quit();
   }
 
-};
+}

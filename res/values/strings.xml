@@ -6,4 +6,7 @@
     <string name="settings">Settings</string>
     <string name="player_black">Black</string>
     <string name="player_white">White</string>    
+    <string name="human">Human</string>
+    <string name="computer">Computer</string>    
+    <string name="computer_difficulty">Computer Difficulty</string>        
 </resources>

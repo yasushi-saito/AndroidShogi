@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string-array name="player_types">
-    <item>Human</item>
-    <item>Computer Lv 1 (weak)</item>
-    <item>Computer Lv 2</item>
-    <item>Computer Lv 3 (strong)</item>
+    <item>Level 1 (weak)</item>
+    <item>Level 2</item>
+    <item>Level 3</item>
+    <item>Level 4</item>
+    <item>Level 5 (strong)</item>
   </string-array>  
 </resources>

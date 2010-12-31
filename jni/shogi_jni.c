@@ -11,6 +11,8 @@
 #define R_OK 0
 #define R_ILLEGAL_MOVE -1
 #define R_CHECKMATE -2
+#define R_RESIGNED -3
+#define R_DRAW -4
 
 static char* Basename(const char* path, char* buf, int buf_size) {
   const char* r = strrchr(path, '/');
@@ -89,7 +91,10 @@ static void LogTree(const char* label, tree_t* ptree) {
     strcat(msg, "quit ");
   }
   if (game_status & flag_mated) {
-    strcat(msg, "mated ");
+    strcat(msg, "checkmate ");
+  }
+  if (game_status & flag_drawn) {
+    strcat(msg, "draw ");
   }
   if (game_status & flag_resigned) {
     strcat(msg, "resigned ");
@@ -127,16 +132,57 @@ static void RunCommand(const char* command) {
   CHECK_GE(procedure(&tree), 0);
 }
 
+static void SetDifficulty(int difficulty,
+                          int total_think_time_secs,
+                          int per_turn_think_time_secs) {
+  RunCommand("ponder off");
+
+  node_limit   = UINT64_MAX;
+  sec_limit    = total_think_time_secs;
+  sec_limit_up = per_turn_think_time_secs;
+
+  if (difficulty == 1) {
+    depth_limit = 1;
+  } else if (difficulty == 2) {
+    depth_limit = 2;
+  } else if (difficulty == 3) {
+    depth_limit = 4;
+  } else if (difficulty == 4) {
+    depth_limit = 6;
+  } else {
+    depth_limit  = PLY_MAX;
+  }
+  LOG_DEBUG("Set difficult: #node=%llu #depth=%d total=%ds, per_turn=%ds",
+            node_limit, depth_limit, sec_limit, sec_limit_up);
+}
+
+static int GameStatusToReturnCode() {
+  CHECK2((game_status & flag_quit) == 0, "status: %x", game_status);
+  if (game_status & flag_mated) {
+    return R_CHECKMATE;
+  }
+  if (game_status & flag_drawn) {
+    return R_DRAW;
+  }
+  if (game_status & flag_resigned) {
+    return R_RESIGNED;
+  }
+  return R_OK;
+}
+
 static int jni_initialized = 0;
 
 void Java_com_ysaito_shogi_BonanzaJNI_Initialize(
     JNIEnv *env,
     jclass unused_bonanza_class,
+    jint difficulty,
+    jint total_think_time_secs,
+    jint per_turn_think_time_secs,
     jobject board) {
   CHECK(!jni_initialized);
   jni_initialized = 1;
-
-  LOG_DEBUG("Initializing Bonanza");
+  LOG_DEBUG("Initializing Bonanza: d=%d t=%d p=%d",
+            difficulty, total_think_time_secs, per_turn_think_time_secs);
   if (ini(&tree) < 0) {
     LOG_FATAL("Failed to initialize Bonanza: %s", str_error);
   } else {
@@ -147,8 +193,9 @@ void Java_com_ysaito_shogi_BonanzaJNI_Initialize(
     //
     // TODO(saito) I must be missing something. Enable background
     // thinking.
-    RunCommand("ponder off");
-    RunCommand("limit time 5 5");
+    SetDifficulty(difficulty,
+                  total_think_time_secs,
+                  per_turn_think_time_secs);
     FillBoard("Init", env, &tree, board);
   }
 }
@@ -211,9 +258,8 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
     FillBoard("Human", env, &tree, board);
     return R_ILLEGAL_MOVE;
   }
-
   FillBoard("Human", env, &tree, board);
-  return R_OK;
+  return GameStatusToReturnCode();
 }
 
 jint Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
@@ -223,5 +269,5 @@ jint Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
   __android_log_print(ANDROID_LOG_DEBUG, DEBUG_TAG, "ComputerMove");
   CHECK_GE(com_turn_start(&tree, 0), 0);
   FillBoard("Computer", env, &tree, board);
-  return R_OK;
+  return GameStatusToReturnCode();
 }

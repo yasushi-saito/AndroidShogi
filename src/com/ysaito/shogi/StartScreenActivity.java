@@ -8,6 +8,8 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
 
 /**
  * @author yasushi.saito@gmail.com 
@@ -18,6 +20,15 @@ public class StartScreenActivity extends Activity {
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.start_screen);
+    Button b = (Button)findViewById(R.id.new_game_button);
+    b.setOnClickListener(new Button.OnClickListener() {
+      @Override public void onClick(View v) { newGame(); }
+    });
+
+    b = (Button)findViewById(R.id.settings_button);
+    b.setOnClickListener(new Button.OnClickListener() {
+      @Override public void onClick(View v) { settings(); }
+    });
   }
   
   @Override

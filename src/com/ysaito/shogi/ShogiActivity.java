@@ -84,21 +84,30 @@ public class ShogiActivity extends Activity {
     }
   }
 
-  boolean isComputerPlayer(Board.Player p) { return p != mHumanPlayer; }
-  boolean isHumanPlayer(Board.Player p) { return p == mHumanPlayer; }
+  boolean isComputerPlayer(Board.Player p) { 
+    return p != Board.Player.INVALID && p != mHumanPlayer; 
+  }
+  
+  boolean isHumanPlayer(Board.Player p) { 
+    return p == mHumanPlayer; 
+  }
   
   // Download Bonanza data files
   boolean installedShogiData() {
     return false;
   }
 
+  //
+  // Handling results from the Bonanza controller thread
+  //
   final Handler mControllerHandler = new Handler() {
     @Override public void handleMessage(Message msg) {
       Log.d(TAG, "Got controller callback");
       BonanzaController.Result r = (BonanzaController.Result)(
           msg.getData().get("result"));
-      Log.d(TAG, "Controller msg: " + r.nextPlayer.toString());
-      mBoardView.setState(r.board, r.nextPlayer);
+      Log.d(TAG, "Controller msg: " + r.toString());
+      mBoardView.setState(r.gameState, r.board, r.nextPlayer, 
+          r.errorMessage);
       if (isComputerPlayer(r.nextPlayer)) {
         mController.computerMove(r.nextPlayer);
       }

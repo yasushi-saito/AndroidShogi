@@ -21,8 +21,7 @@ public class SettingsActivity extends Activity {
     ArrayAdapter adapter = ArrayAdapter.createFromResource(
         this, R.array.player_types, android.R.layout.simple_spinner_item);
     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-    ((Spinner)findViewById(R.id.player_black)).setAdapter(adapter);
-    ((Spinner)findViewById(R.id.player_white)).setAdapter(adapter);
+    ((Spinner)findViewById(R.id.computer_difficulty)).setAdapter(adapter);
   }
 
   

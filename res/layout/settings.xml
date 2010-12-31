@@ -10,24 +10,49 @@
        android:layout_marginTop="10dip"
        android:text="@string/player_black"
     /> 
-  <Spinner 
-       android:id="@+id/player_black"
+  <RadioGroup 
        android:layout_width="fill_parent"
        android:layout_height="wrap_content"
-       android:drawSelectorOnTop="true"
-       android:prompt="@string/player_black"
-  />      
+       android:orientation="horizontal"
+       android:id="@+id/player_black">
+       <RadioButton 
+        android:checked="true"
+        android:id="@+id/human_black" android:text="@string/human" />
+       <RadioButton 
+        android:checked="false"
+        android:id="@+id/computer_black" android:text="@string/computer" />
+  </RadioGroup>        
+
   <TextView
        android:layout_width="wrap_content"
        android:layout_height="wrap_content"
        android:layout_marginTop="10dip"
        android:text="@string/player_white"
     /> 
+  <RadioGroup 
+       android:layout_width="fill_parent"
+       android:layout_height="wrap_content"
+       android:orientation="horizontal"
+       android:id="@+id/player_white">
+       <RadioButton 
+        android:checked="false"
+        android:id="@+id/human_white" android:text="@string/human" />
+       <RadioButton 
+        android:checked="true"
+        android:id="@+id/computer_white" android:text="@string/computer" />
+  </RadioGroup>        
+
+  <TextView
+       android:layout_width="wrap_content"
+       android:layout_height="wrap_content"
+       android:layout_marginTop="10dip"
+       android:text="@string/computer_difficulty"
+    /> 
   <Spinner 
-       android:id="@+id/player_white"
+       android:id="@+id/computer_difficulty"
        android:layout_width="fill_parent"
        android:layout_height="wrap_content"
        android:drawSelectorOnTop="true"
-       android:prompt="@string/player_white"
+       android:prompt="@string/computer_difficulty"
   />      
 </LinearLayout>

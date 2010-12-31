@@ -24,8 +24,10 @@ public class BoardView extends View implements View.OnTouchListener {
   Bitmap mSenteBitmaps[];
   Bitmap mGoteBitmaps[];
 
+  Board.GameState mGameState;
   Board.Player mCurrentPlayer;  
-
+  String mErrorMessage;
+  
   // Current state of the board
   Board mBoard;   
 
@@ -220,8 +222,9 @@ public class BoardView extends View implements View.OnTouchListener {
   public BoardView(Context context, AttributeSet attrs) {
     super(context, attrs);
     mCurrentPlayer = Board.Player.INVALID;
+    mGameState = Board.GameState.ACTIVE;
     mBoard = new Board();
-    mBoard.setPiece(4,4, Board.K_GIN);
+    mBoard.setPiece(4, 4, Board.K_GIN);
     initializeBitmaps();
     setOnTouchListener(this);
   }	
@@ -379,17 +382,19 @@ public class BoardView extends View implements View.OnTouchListener {
     }
     
     if (mStatusView != null) {
-      String status = "Turn: ";
-      if (mCurrentPlayer == Board.Player.BLACK) status += "black"; 
-      else if (mCurrentPlayer == Board.Player.WHITE) status += "white"; 
-      else status += "none";
-      mStatusView.setText(status);
+      drawStatus();
     }
   }
 
-  public final void setState(Board board, Board.Player currentPlayer) {
+  public final void setState(
+      Board.GameState gameState,
+      Board board,
+      Board.Player currentPlayer,
+      String errorMessage) {
+    mGameState = gameState;
     mCurrentPlayer = currentPlayer;
     mBoard = new Board(board);
+    mErrorMessage = errorMessage;
     invalidate();
   }
   
@@ -409,7 +414,28 @@ public class BoardView extends View implements View.OnTouchListener {
     }
   }
 
-
+  void drawStatus() {
+    String status;
+    if (mGameState == Board.GameState.ACTIVE) {
+      status = "Turn: ";
+      if (mCurrentPlayer == Board.Player.BLACK) status += "black"; 
+      else if (mCurrentPlayer == Board.Player.WHITE) status += "white"; 
+      else status += "none";
+    } else if (mGameState == Board.GameState.BLACK_LOST) {
+      status = "Black lost";
+    } else if (mGameState == Board.GameState.WHITE_LOST) {
+      status = "White lost";
+    } else if (mGameState == Board.GameState.DRAW) {
+      status = "Draw";
+    } else {
+      throw new AssertionError(mGameState.toString());
+    }
+    if (mErrorMessage != null) {
+      status += ": " + mErrorMessage;
+    }
+    mStatusView.setText(status);
+  }
+  
   void drawCapturedPieces(Canvas canvas, ScreenLayout layout,
       Board.Player player, int bits) {
     Bitmap[] bitmaps = (player == Board.Player.BLACK ? mSenteBitmaps : mGoteBitmaps);

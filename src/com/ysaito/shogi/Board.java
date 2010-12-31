@@ -35,6 +35,13 @@ public class Board implements java.io.Serializable {
     BLACK, INVALID, WHITE
   }
 
+  public static enum GameState {
+    ACTIVE,     // game ongoing
+    BLACK_LOST,
+    WHITE_LOST,
+    DRAW,       // sennichite
+  }
+
   // Struct that represents a move by a human player
   public static class Move implements java.io.Serializable {
     public Player player;  // UP or DOWN
@@ -63,7 +70,7 @@ public class Board implements java.io.Serializable {
   }
 
   public static final boolean isPromoted(int piece) {
-    return type(piece) >= 10;
+    return type(piece) >= 9;
   }
 
   public static final int promote(int piece) {
