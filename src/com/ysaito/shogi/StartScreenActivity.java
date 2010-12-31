@@ -57,6 +57,6 @@ public class StartScreenActivity extends Activity {
   }
   
   void settings() {
-    startActivity(new Intent(this, SettingsActivity.class));
+    startActivity(new Intent(this, ShogiPreferenceActivity.class));
   }
 }

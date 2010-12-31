@@ -8,5 +8,6 @@
     <string name="player_white">White</string>    
     <string name="human">Human</string>
     <string name="computer">Computer</string>    
-    <string name="computer_difficulty">Computer Difficulty</string>        
+    <string name="computer_difficulty">Computer Difficulty</string>
+    <string name="reset_preferences">Reset Preferences</string>
 </resources>

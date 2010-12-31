@@ -218,7 +218,8 @@ public class BoardView extends View implements View.OnTouchListener {
 
   EventListener mListener;
   TextView mStatusView;
-
+  ArrayList<Board.Player> mHumanPlayers;
+  
   public BoardView(Context context, AttributeSet attrs) {
     super(context, attrs);
     mCurrentPlayer = Board.Player.INVALID;
@@ -229,23 +230,24 @@ public class BoardView extends View implements View.OnTouchListener {
     setOnTouchListener(this);
   }	
 
-  public final void setEventListener(EventListener listener) { 
-    mListener = listener; 
-  }
-
-  public final void setStatusView(TextView v) {
-    mStatusView = v;
+  public final void initialize(
+      EventListener listener,
+      TextView statusView,
+      ArrayList<Board.Player> humanPlayers) {
+    mListener = listener;
+    mStatusView = statusView;
+    mHumanPlayers = new ArrayList<Board.Player>(humanPlayers);
   }
   
   public final Board.GameState gameState() { return mGameState; }
   
-  public final void setTurn(Board.Player turn) { mCurrentPlayer = turn; }
-
   @Override public boolean onTouch(View v, MotionEvent event) {
+    if (!isHumanPlayer(mCurrentPlayer)) return false;
+    
     ScreenLayout layout = getScreenLayout();
     int squareDim = layout.squareDim();
     int action = event.getAction();
-
+    
     if (action == MotionEvent.ACTION_DOWN) {
       // Start of touch operation
       int px = layout.boardX((int)event.getX());
@@ -521,6 +523,10 @@ public class BoardView extends View implements View.OnTouchListener {
           sy + layout.squareDim() - fontSize / 2,
           p);
     }
+  }
+  
+  boolean isHumanPlayer(Board.Player p) {
+    return mHumanPlayers.contains(p);
   }
   
   // Load bitmaps for pieces. Called once when the process starts

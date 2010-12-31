@@ -1,6 +1,7 @@
 package com.ysaito.shogi;
 
 import java.io.File;
+import java.util.ArrayList;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -8,11 +9,13 @@ import android.app.Dialog;
 import android.app.DownloadManager;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -33,7 +36,9 @@ public class ShogiActivity extends Activity {
   BoardView mBoardView;
   TextView mStatusView;
   
-  Board.Player mHumanPlayer;
+  // List of players played by humans. The list size is usually one, when one side is 
+  // played by Human and the other side by the computer.
+  ArrayList<Board.Player> mHumanPlayers;
   
   // Becomes true if downloading is cancelled by the user.
   // TODO(saito): is there a way to synchronize accesses to this field?
@@ -49,22 +54,43 @@ public class ShogiActivity extends Activity {
     setContentView(R.layout.main);
 
     mExtDir = getExternalFilesDir(null);
-    Log.d(TAG, "onCreate, dir=" + mExtDir.getAbsolutePath());
     if (!installedShogiData()) {
       // Create a dialog and ask the download manager to fetch the file.
       // Block until download completes.
       // showDialog(DOWNLOAD_DIALOG);
     }
 
-    mHumanPlayer = Board.Player.BLACK;
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
+        getBaseContext());
+    String player_black = prefs.getString("player_black", "Human");
+    String player_white = prefs.getString("player_white", "Computer");
+    int computer_level = Integer.parseInt(
+        prefs.getString("computer_difficulty", "1"));
+    Log.d(TAG, "onCreate, dir=" + mExtDir.getAbsolutePath() 
+        + " black=" + player_black + " white=" + player_white);
+
+    mHumanPlayers = new ArrayList<Board.Player>();
+    // mHumanPlayers.add(Board.Player.BLACK);
+    if (true) {
+      if (player_black.equals("Human")) {
+        Log.d(TAG, "Add BLACK human player");
+        mHumanPlayers.add(Board.Player.BLACK);
+      }
+      if (player_white.equals("Human")) {
+        Log.d(TAG, "Add WHITE human player");        
+        mHumanPlayers.add(Board.Player.WHITE);      
+      }
+    }
     mStatusView = (TextView)findViewById(R.id.gamestatus);
     mStatusView.setText("FOOHAH!");
     mBoardView = (BoardView)findViewById(R.id.boardview);
-    mBoardView.setTurn(mHumanPlayer);
     
-    mBoardView.setEventListener(mViewListener);
-    mBoardView.setStatusView(mStatusView);
-    mController = new BonanzaController(mControllerHandler, mHumanPlayer);
+    mBoardView.initialize(mViewListener, mStatusView, mHumanPlayers);
+    
+    mController = new BonanzaController(mControllerHandler, Board.Player.BLACK);
+    // mController will call back via mControllerHandler when Bonanza is 
+    // initialized. mControllerHandler will cause mBoardView to start accepting
+    // user inputs.
   }
   
   @Override
@@ -102,11 +128,11 @@ public class ShogiActivity extends Activity {
   }
 
   boolean isComputerPlayer(Board.Player p) { 
-    return p != Board.Player.INVALID && p != mHumanPlayer; 
+    return p != Board.Player.INVALID && !isHumanPlayer(p);
   }
   
-  boolean isHumanPlayer(Board.Player p) { 
-    return p == mHumanPlayer; 
+  boolean isHumanPlayer(Board.Player p) {
+    return mHumanPlayers.contains(p);
   }
   
   // Download Bonanza data files
