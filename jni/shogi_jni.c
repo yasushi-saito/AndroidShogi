@@ -179,7 +179,6 @@ void Java_com_ysaito_shogi_BonanzaJNI_Initialize(
     jint total_think_time_secs,
     jint per_turn_think_time_secs,
     jobject board) {
-  CHECK(!jni_initialized);
   jni_initialized = 1;
   LOG_DEBUG("Initializing Bonanza: d=%d t=%d p=%d",
             difficulty, total_think_time_secs, per_turn_think_time_secs);

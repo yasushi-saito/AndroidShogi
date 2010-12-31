@@ -14,8 +14,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.widget.TextView;
 
 import com.ysaito.shogi.BonanzaController;
@@ -27,7 +25,8 @@ public class ShogiActivity extends Activity {
 
   static final int DIALOG_DOWNLOAD = 1234;
   static final int DIALOG_PROMOTE = 1235;
-  
+  static final int DIALOG_CONFIRM_QUIT = 1236;
+ 
   ProgressDialog mDownloadDialog;
   AlertDialog mPromoteDialog;
   BonanzaController mController;
@@ -50,7 +49,7 @@ public class ShogiActivity extends Activity {
     setContentView(R.layout.main);
 
     mExtDir = getExternalFilesDir(null);
-    Log.d(TAG, "Found dir2: " + mExtDir.getAbsolutePath());
+    Log.d(TAG, "onCreate, dir=" + mExtDir.getAbsolutePath());
     if (!installedShogiData()) {
       // Create a dialog and ask the download manager to fetch the file.
       // Block until download completes.
@@ -67,7 +66,23 @@ public class ShogiActivity extends Activity {
     mBoardView.setStatusView(mStatusView);
     mController = new BonanzaController(mControllerHandler, mHumanPlayer);
   }
+  
+  @Override
+  public void onDestroy() {
+    Log.d(TAG, "ShogiActivity destroyed");
+    super.onDestroy();
+  }
 
+  @Override
+  public void onBackPressed() { 
+    Log.d(TAG, "Back button");
+    if (mBoardView.gameState() == Board.GameState.ACTIVE) {
+      showDialog(DIALOG_CONFIRM_QUIT);
+    } else {
+      super.onBackPressed();
+    }
+  }
+  
   @Override
   protected Dialog onCreateDialog(int id) {
     switch (id) {
@@ -79,6 +94,8 @@ public class ShogiActivity extends Activity {
       case DIALOG_PROMOTE: 
         mPromoteDialog = createPromoteDialog();
         return mPromoteDialog;
+      case DIALOG_CONFIRM_QUIT:
+        return createConfirmQuitDialog();
       default:    
         return null;
     }
@@ -159,6 +176,25 @@ public class ShogiActivity extends Activity {
     return true;
   }
 
+  // 
+  // Confirm quitting the game ("BACK" button interceptor)
+  //
+  AlertDialog createConfirmQuitDialog() {
+    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    builder.setMessage("Are you sure you want to quite the game?");
+    builder.setCancelable(false);
+    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+      public void onClick(DialogInterface d, int id) {
+        finish();
+      }
+    });
+    builder.setNegativeButton("No",  new DialogInterface.OnClickListener() {
+      public void onClick(DialogInterface d, int id) {
+        // nothing to do
+      }
+    });
+    return builder.create();
+  }
   //
   // Data download
   //
@@ -196,8 +232,8 @@ public class ShogiActivity extends Activity {
     public DownloadThread(ShogiActivity s) {
       mContext = s;
     }
-
-    public void run() {
+    
+    @Override public void run() {
       // Arrange to download from XXXX to /sdcard/<app_dir>/shogi-data.zip
       Uri.Builder uriBuilder = new Uri.Builder();
       uriBuilder.scheme("http");
@@ -250,5 +286,5 @@ public class ShogiActivity extends Activity {
       }
       Log.d(TAG, "Download thread exiting");
     }
-  };
+  }
 }

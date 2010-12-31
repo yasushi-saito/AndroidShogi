@@ -224,7 +224,7 @@ public class BoardView extends View implements View.OnTouchListener {
     mCurrentPlayer = Board.Player.INVALID;
     mGameState = Board.GameState.ACTIVE;
     mBoard = new Board();
-    mBoard.setPiece(4, 4, Board.K_GIN);
+    mBoard.setPiece(4, 4, -Board.K_GIN);
     initializeBitmaps();
     setOnTouchListener(this);
   }	
@@ -236,6 +236,8 @@ public class BoardView extends View implements View.OnTouchListener {
   public final void setStatusView(TextView v) {
     mStatusView = v;
   }
+  
+  public final Board.GameState gameState() { return mGameState; }
   
   public final void setTurn(Board.Player turn) { mCurrentPlayer = turn; }
 
