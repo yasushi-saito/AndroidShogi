@@ -8,6 +8,8 @@ import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+
 /**
  * @author saito@google.com (Your Name Here)
  *
@@ -67,8 +69,9 @@ public class GameStatusView extends LinearLayout {
   }
   
   public void update(
-      Player currentPlayer,
-      GameState gameState) {
+      GameState gameState,
+      ArrayList<Move> moves,
+      Player currentPlayer) {
     if (currentPlayer == Player.WHITE) {
       mWhiteStatus.setBackgroundColor(0xffeeeeee);
       mWhiteStatus.setTextColor(0xff000000);
@@ -86,15 +89,21 @@ public class GameStatusView extends LinearLayout {
     mBlackStatus.invalidate();
     mWhiteStatus.invalidate();
 
+    String msg = "";
+    if (moves.size() > 0) {
+      Move m = moves.get(moves.size() - 1);
+      msg = m.toCsaString() + " ";
+    }
     if (gameState == GameState.ACTIVE) {
     } else if (gameState == GameState.BLACK_LOST) {
-      mGameStatus.setText("Black lost");
+      msg += "Black lost";
     } else if (gameState == GameState.WHITE_LOST) {
-      mGameStatus.setText("White lost");      
+      msg += "White lost";
     } else if (gameState == GameState.DRAW) {
-      mGameStatus.setText("Draw");      
+      msg += "Draw";
     } else {
       throw new AssertionError(gameState.toString());
     }
+    mGameStatus.setText(msg);
   }
 }

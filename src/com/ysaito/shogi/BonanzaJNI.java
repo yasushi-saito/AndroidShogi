@@ -28,14 +28,21 @@ public class BonanzaJNI {
       int per_turn_think_time_secs,
       Board board);
   
-  // Inform that the human player moved @p piece from (from_x,from_y) to (to_x,to_y).
+  // Inform that the human player made a move. @p move is a csa-format string,
+  // such as "7776FU".
   // On successful return, @p board stores the state of the board after the
   // move.
   static public native int HumanMove(
       int instanceId,
-      int piece, int from_x, int from_y, 
-      int to_x, int to_y,
+      String move,
       Board board);
+  
+  static public final class ComputerMoveResult {
+    // JNI code can't modify string in place. So instead of passing a "String move"
+    // directly to ComputerMove, pass this object and let it set the "move" field
+    // anew.
+    String move;
+  }
   
   // Let the computer ponder the next move. On successful return, 
   // @p board stores the play by the computer, and @p move stores
@@ -43,7 +50,7 @@ public class BonanzaJNI {
   static public native int ComputerMove(
       int instanceId,
       Board board,
-      Move move);
+      ComputerMoveResult move);
   
   // Abort the current game. This method can be called from any thread.
   // If another thread is running HumanMove or ComputerMove, it will see

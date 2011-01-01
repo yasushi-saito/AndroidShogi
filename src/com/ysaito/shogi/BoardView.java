@@ -42,6 +42,8 @@ public class BoardView extends View implements View.OnTouchListener {
       GameStatusView statusView,
       ArrayList<Player> humanPlayers) {
     mListener = listener;
+    
+    // TODO(saito) remove mStatusView
     mStatusView = statusView;
     mHumanPlayers = new ArrayList<Player>(humanPlayers);
   }
@@ -203,7 +205,7 @@ public class BoardView extends View implements View.OnTouchListener {
       canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
     }
 
-    mStatusView.update(mCurrentPlayer, mGameState);
+    // mStatusView.update(mCurrentPlayer, mMoves, mGameState);
   }
 
   //
@@ -221,7 +223,7 @@ public class BoardView extends View implements View.OnTouchListener {
   Player mCurrentPlayer;   // Player currently holding the turn
   Board mBoard;            // Current state of the board
   String mErrorMessage;
-
+  
   // Position represents a logical position of a piece.
   //
   // @invariant (0,0) <= (x,y) < (9,9).

@@ -28,7 +28,18 @@ public class Board implements java.io.Serializable {
   public static final int K_UMA = 14;
   public static final int K_RYU = 15;
   public static final int NUM_TYPES = 16;
-
+  static String[] csaPieceNames = {
+    null, "FU", "KY", "KE", "GI", "KI", "KA", "HI", "OU", 
+          "TO", "NY", "NK", "NG", null, "UM", "RY"
+  };
+  public static int fromCsaPieceName(String s) {
+    for (int i = 0; i < csaPieceNames.length; ++i) {
+      String n = csaPieceNames[i];
+      if (n != null && n.equals(s)) return i;
+    }
+    throw new AssertionError("Illegal piece name: " + s);
+  }
+  
   public static final boolean isPromoted(int piece) {
     return type(piece) >= 9;
   }
@@ -41,7 +52,7 @@ public class Board implements java.io.Serializable {
       return piece + 8;
     }
   }
-
+  
   // Public members
   public int mSquares[];      // Contents of the board
   public int mCapturedBlack;     // Pieces captured by Player.BLACK

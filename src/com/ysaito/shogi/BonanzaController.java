@@ -171,21 +171,17 @@ public class BonanzaController {
 
   void doHumanMove(Move move, Player player) {
     Result r = new Result();
-    int iret = BonanzaJNI.HumanMove(
-        mInstanceId,
-        move.piece, move.fromX, move.fromY,
-        move.toX, move.toY, r.board);
+    int iret = BonanzaJNI.HumanMove(mInstanceId, move.toCsaString(),  r.board);
     r.setState(iret, move, player);
     sendOutputMessage(r);
   }
 
   void doComputerMove(Player player) {
     Result r = new Result();
-    Move move = new Move();
+    BonanzaJNI.ComputerMoveResult move = new BonanzaJNI.ComputerMoveResult();
     int iret = BonanzaJNI.ComputerMove(mInstanceId, r.board, move);
-    r.setState(iret, move, player);
-    Log.d(TAG, "CMOVE: [" + move.piece + "] [" + move.fromX + "," + move.fromY
-        + "]->[" + move.toX + "," + move.toY + "]");
+    r.setState(iret, Move.fromCsaString(move.move), player);
+    Log.d(TAG, "CMOVE: " + move.move);
     sendOutputMessage(r);
   }
   

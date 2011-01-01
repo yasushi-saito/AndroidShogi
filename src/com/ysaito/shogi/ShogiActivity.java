@@ -26,6 +26,8 @@ public class ShogiActivity extends Activity {
   BoardView mBoardView;
   GameStatusView mStatusView;
   
+  ArrayList<Move> mMoves;  // History of moves made by both players
+  
   // List of players played by humans. The list size is usually one, when one side is 
   // played by Human and the other side by the computer.
   ArrayList<Player> mHumanPlayers;
@@ -38,7 +40,8 @@ public class ShogiActivity extends Activity {
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.main);
-
+    
+    mMoves = new ArrayList<Move>();
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
         getBaseContext());
     String player_black = prefs.getString("player_black", "Human");
@@ -120,8 +123,10 @@ public class ShogiActivity extends Activity {
     @Override public void handleMessage(Message msg) {
       BonanzaController.Result r = (BonanzaController.Result)(
           msg.getData().get("result"));
-      mBoardView.setState(r.gameState, r.board, r.nextPlayer, 
-          r.errorMessage);
+      mBoardView.setState(r.gameState, r.board, r.nextPlayer, r.errorMessage);
+      if (r.lastMove != null) mMoves.add(r.lastMove);
+      mStatusView.update(r.gameState, mMoves, r.nextPlayer);
+      
       if (isComputerPlayer(r.nextPlayer)) {
         mController.computerMove(r.nextPlayer);
       }

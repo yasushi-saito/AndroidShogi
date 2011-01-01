@@ -115,6 +115,13 @@ static void FillIntField(JNIEnv* env,
   (*env)->SetIntField(env, obj, fid, value);
 }
 
+static int ExtractIntField(JNIEnv* env,
+                        jclass cls, jobject obj,
+                        const char* field) {
+  jfieldID fid = (*env)->GetFieldID(env, cls, field, "I");
+  return (*env)->GetIntField(env, obj, fid);
+}
+
 // Copy the board config (piece locations and captured pieces for each player)
 // from "ptree" to "board".
 static void FillBoard(const char* label,
@@ -137,28 +144,6 @@ static void FillBoard(const char* label,
 
   fid = (*env)->GetFieldID(env, boardClass, "mCapturedWhite", "I");
   (*env)->SetIntField(env, board, fid, ptree->posi.hand_white);
-}
-
-static void FillMove(JNIEnv* env,
-                     unsigned int move,
-                     jobject dest) {
-  jclass moveClass = (*env)->GetObjectClass(env, dest);
-
-  int is_promote  = (int)I2IsPromote(move);
-  int ipiece_move = (int)I2PieceMove(move);
-  int ifrom       = (int)I2From(move);
-  int ito         = (int)I2To(move);
-
-  FillIntField(env, ito / 9, moveClass, dest, "toX");
-  FillIntField(env, ito % 9, moveClass, dest, "toY");
-
-  if (ifrom < nsquare) {
-    // Move of a piece on the board
-    FillIntField(env, ifrom / 9, moveClass, dest, "fromX");
-    FillIntField(env, ifrom % 9, moveClass, dest, "fromY");
-  }
-  FillIntField(env, ipiece_move + (is_promote != 0),
-               moveClass, dest, "piece");
 }
 
 static void RunCommand(const char* command) {
@@ -247,11 +232,7 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint instance_id,
-    jint piece,
-    jint from_x,
-    jint from_y,
-    jint to_x,
-    jint to_y,
+    jstring move_str,
     jobject board) {
   pthread_mutex_lock(&g_lock);
   if (instance_id != g_instance_id) {
@@ -259,34 +240,13 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
     return R_INSTANCE_DELETED;
   }
 
-  // The coordinates passed from Java are based on [0,0] at the upper-left
-  // corner.  Translate them to the shogi coordinate, with [1,1] at the
-  // upper-right corner.
-  ++to_y;
-  to_x = 9 - to_x;
-
-  CHECK2(piece != 0 && piece >= -15 && piece <= 15,
-         "Piece: %d", piece);
-  char buf[1024];
-  const char* piece_name = astr_table_piece[abs(piece)];
-  LOG_DEBUG("HumanMove: %s %d %d %d %d",
-            piece_name,
-            from_x, from_y, to_x, to_y);
-  if (from_x < 0) {
-    // Drop a captured piece
-    snprintf(buf, sizeof(buf), "00%d%d%s", to_x, to_y, piece_name);
-  } else {
-    // Move piece on the board
-    ++from_y;
-    from_x = 9 - from_x;
-    snprintf(buf, sizeof(buf),
-             "%d%d%d%d%s", from_x, from_y, to_x, to_y, piece_name);
-  }
+  const char* tmp = (*env)->GetStringUTFChars(env, move_str, NULL);
+  CHECK(tmp != NULL);
   int status = R_OK;
   unsigned int move;
-  int r = interpret_CSA_move(&tree, &move, buf);
+  int r = interpret_CSA_move(&tree, &move, tmp);
   if (r < 0) {
-    LOG_DEBUG("Failed to parse move: %s: %s", buf, str_error);
+    LOG_DEBUG("Failed to parse move: %s: %s", tmp, str_error);
     status = R_ILLEGAL_MOVE;
   } else {
     r = make_move_root(&tree, move,
@@ -294,7 +254,7 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
                         | flag_detect_hang
                         | flag_rejections));
     if (r < 0) {
-      LOG_DEBUG("Failed to make move: %s: %s", buf, str_error);
+      LOG_DEBUG("Failed to make move: %s: %s", tmp, str_error);
       FillBoard("Human", env, &tree, board);
       status = R_ILLEGAL_MOVE;
     } else {
@@ -304,6 +264,7 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
       status = GameStatusToReturnCode();
     }
   }
+  (*env)->ReleaseStringUTFChars(env, move_str, tmp);
   FillBoard("Human", env, &tree, board);
   pthread_mutex_unlock(&g_lock);
   return status;
@@ -327,7 +288,12 @@ jint Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
     const char *str_move = str_CSA_move( move );
     LOG_DEBUG("Comp: %x %s", move, str_move);
     FillBoard("Computer", env, &tree, board);
-    FillMove(env, move, dest_move);
+
+    jclass move_class = (*env)->GetObjectClass(env, dest_move);
+    jfieldID fid = (*env)->GetFieldID(env, move_class,
+                                      "move", "Ljava/lang/String;");
+    (*env)->SetObjectField(env, dest_move, fid,
+                           (*env)->NewStringUTF(env, str_move));
     status = GameStatusToReturnCode();
   }
   pthread_mutex_unlock(&g_lock);
