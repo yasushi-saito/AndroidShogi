@@ -11,6 +11,7 @@ public class BonanzaController {
 
   public static class Result implements java.io.Serializable {
     public final Board board = new Board();
+    public Move lastMove;
     public Player nextPlayer; 
     public GameState gameState;
     public String errorMessage;
@@ -23,7 +24,7 @@ public class BonanzaController {
       return s;
     }
     
-    final void setStatus(int jni_status, Player curPlayer) {
+    final void setState(int jni_status, Move m, Player curPlayer) {
       if (jni_status >= 0) {
         if (curPlayer == Player.WHITE) {
           nextPlayer = Player.BLACK;
@@ -32,6 +33,7 @@ public class BonanzaController {
         } else {
           throw new AssertionError("Invalid player");
         }
+        lastMove = m;
         gameState = GameState.ACTIVE;
         errorMessage = null;
       } else {
@@ -39,22 +41,26 @@ public class BonanzaController {
           case BonanzaJNI.ILLEGAL_MOVE:
             nextPlayer = curPlayer;
             gameState = GameState.ACTIVE;
+            lastMove = null;
             errorMessage = "Illegal move";
             break;
           case BonanzaJNI.CHECKMATE:
             nextPlayer = Player.INVALID;
+            lastMove = m;
             gameState = (curPlayer == Player.BLACK) ?
                 GameState.WHITE_LOST : GameState.BLACK_LOST;
             errorMessage = "Checkmate";
             break;
           case BonanzaJNI.RESIGNED:
-            nextPlayer = Player.INVALID;          
+            nextPlayer = Player.INVALID;
+            lastMove = m;            
             gameState = (curPlayer == Player.BLACK) ?
                 GameState.BLACK_LOST : GameState.WHITE_LOST;
             errorMessage = "Resigned";
             break;
           case BonanzaJNI.DRAW:
-            nextPlayer = Player.INVALID;          
+            nextPlayer = Player.INVALID;
+            lastMove = m;
             gameState = GameState.DRAW;
             errorMessage = "Draw";
             break;
@@ -156,7 +162,6 @@ public class BonanzaController {
   }
 
   void doInit() {
-    Log.d(TAG, "Init");
     Result r = new Result();
     mInstanceId =BonanzaJNI.Initialize(mComputerDifficulty, 60, 1, r.board);
     r.nextPlayer = Player.BLACK;
@@ -165,21 +170,22 @@ public class BonanzaController {
   }
 
   void doHumanMove(Move move, Player player) {
-    Log.d(TAG, "Human");
     Result r = new Result();
     int iret = BonanzaJNI.HumanMove(
         mInstanceId,
-        move.piece, move.from_x, move.from_y,
-        move.to_x, move.to_y, move.promote, r.board);
-    r.setStatus(iret, player);
+        move.piece, move.fromX, move.fromY,
+        move.toX, move.toY, r.board);
+    r.setState(iret, move, player);
     sendOutputMessage(r);
   }
 
   void doComputerMove(Player player) {
-    Log.d(TAG, "Computer");
     Result r = new Result();
-    int iret = BonanzaJNI.ComputerMove(mInstanceId, r.board);
-    r.setStatus(iret, player);
+    Move move = new Move();
+    int iret = BonanzaJNI.ComputerMove(mInstanceId, r.board, move);
+    r.setState(iret, move, player);
+    Log.d(TAG, "CMOVE: [" + move.piece + "] [" + move.fromX + "," + move.fromY
+        + "]->[" + move.toX + "," + move.toY + "]");
     sendOutputMessage(r);
   }
   

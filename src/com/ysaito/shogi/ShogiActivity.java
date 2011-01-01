@@ -12,7 +12,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import android.widget.TextView;
 import com.ysaito.shogi.BonanzaController;
 
 public class ShogiActivity extends Activity {
@@ -52,16 +51,16 @@ public class ShogiActivity extends Activity {
     // mHumanPlayers.add(Player.BLACK);
     if (true) {
       if (player_black.equals("Human")) {
-        Log.d(TAG, "Add BLACK human player");
         mHumanPlayers.add(Player.BLACK);
       }
       if (player_white.equals("Human")) {
-        Log.d(TAG, "Add WHITE human player");        
         mHumanPlayers.add(Player.WHITE);      
       }
     }
     mStatusView = (GameStatusView)findViewById(R.id.gamestatusview);
-    mStatusView.initialize("FOO", "BAR");
+    mStatusView.initialize(
+        PlayerName(player_black, computer_level),
+        PlayerName(player_white, computer_level));
     
     mBoardView = (BoardView)findViewById(R.id.boardview);
     mBoardView.initialize(mViewListener, mStatusView, mHumanPlayers);
@@ -70,6 +69,11 @@ public class ShogiActivity extends Activity {
     // mController will call back via mControllerHandler when Bonanza is 
     // initialized. mControllerHandler will cause mBoardView to start accepting
     // user inputs.
+  }
+  
+  String PlayerName(String type, int level) {
+    if (type.equals("Human")) return type;
+    return "Computer Lv" + level;
   }
   
   @Override
@@ -81,7 +85,6 @@ public class ShogiActivity extends Activity {
 
   @Override
   public void onBackPressed() { 
-    Log.d(TAG, "Back button");
     if (mBoardView.gameState() == GameState.ACTIVE) {
       showDialog(DIALOG_CONFIRM_QUIT);
     } else {
@@ -115,10 +118,8 @@ public class ShogiActivity extends Activity {
   //
   final Handler mControllerHandler = new Handler() {
     @Override public void handleMessage(Message msg) {
-      Log.d(TAG, "Got controller callback");
       BonanzaController.Result r = (BonanzaController.Result)(
           msg.getData().get("result"));
-      Log.d(TAG, "Controller msg: " + r.toString());
       mBoardView.setState(r.gameState, r.board, r.nextPlayer, 
           r.errorMessage);
       if (isComputerPlayer(r.nextPlayer)) {
@@ -130,14 +131,17 @@ public class ShogiActivity extends Activity {
   //
   // Handling of move requests from BoardView
   //
-  Move mLastMove;  // state kept during the run of promotion dialog
+  Player mLastPlayer;  // state kept during the run of promotion dialog
+  Move mLastMove;    
+  
   final BoardView.EventListener mViewListener = new BoardView.EventListener() {
-    public void onHumanMove(Move move) {
-      if (MoveAllowsForPromotion(move)) {
+    public void onHumanMove(Player player, Move move) {
+      if (MoveAllowsForPromotion(player, move)) {
+        mLastPlayer = player;
         mLastMove = move;
         showDialog(DIALOG_PROMOTE);
       } else {
-        mController.humanMove(move.player, move);
+        mController.humanMove(player, move);
       }
     }
   };
@@ -155,20 +159,21 @@ public class ShogiActivity extends Activity {
         new CharSequence[] {"Promote", "Do not promote"},
         new DialogInterface.OnClickListener() {
           public void onClick(DialogInterface d, int item) {
-            mLastMove.promote = false;
-            if (item == 0) mLastMove.promote = true;
-            mController.humanMove(mLastMove.player, mLastMove);
+            if (item == 0) {
+              mLastMove.piece = Board.promote(mLastMove.piece);
+            }
+            mController.humanMove(mLastPlayer, mLastMove);
             mLastMove = null;
           }
         });
     return b.create();
   }
   
-  static final boolean MoveAllowsForPromotion(Move move) {
+  static final boolean MoveAllowsForPromotion(Player player, Move move) {
     if (Board.isPromoted(move.piece)) return false;  // already promoted
-    if (move.from_x < 0) return false;  // dropping a captured piece
-    if (move.player == Player.WHITE && move.to_y < 6) return false;
-    if (move.player == Player.BLACK && move.to_y >= 3) return false;
+    if (move.fromX < 0) return false;  // dropping a captured piece
+    if (player == Player.WHITE && move.toY < 6) return false;
+    if (player == Player.BLACK && move.toY >= 3) return false;
     return true;
   }
 

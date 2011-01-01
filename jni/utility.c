@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "shogi.h"
-
+#include "shogi_jni.h"
 
 int
 ini_game( tree_t * restrict ptree, const min_posi_t *pmin_posi, int flag,
@@ -195,7 +195,7 @@ ini_game( tree_t * restrict ptree, const min_posi_t *pmin_posi, int flag,
   nlance_box -= PopuCount( bb );
   nlance_box -= (int)I2HandLance(HAND_B);
   nlance_box -= (int)I2HandLance(HAND_W);
-  
+
   BBOr( bb, BB_BKNIGHT, BB_WKNIGHT );
   BBOr( bb, bb, BB_BPRO_KNIGHT );
   BBOr( bb, bb, BB_WPRO_KNIGHT );
@@ -291,7 +291,7 @@ gen_legal_moves( tree_t * restrict ptree, unsigned int *p0 )
 	}
       else { i++; }
     }
-  
+
   return n;
 }
 
@@ -348,7 +348,7 @@ is_hand_eq_supe( unsigned int u, unsigned int uref )
        && IsHandGold(u)   >= IsHandGold(uref)
        && IsHandBishop(u) >= IsHandBishop(uref)
        && IsHandRook(u)   >= IsHandRook(uref) ) { return 1; }
-  
+
   return 0;
 #endif
 }
@@ -455,9 +455,9 @@ com_turn_start( tree_t * restrict ptree, int flag )
   if ( ! ( flag & flag_from_ponder ) )
     {
       assert( ! ( game_status & mask_game_end ) );
-      
+
       time_start = time_turn_start;
-      
+
       game_status |=  flag_thinking;
       iret         = iterate( ptree, flag );
       game_status &= ~flag_thinking;
@@ -468,6 +468,8 @@ com_turn_start( tree_t * restrict ptree, int flag )
   move     = last_pv.a[1];
   value    = root_turn ? -last_root_value : last_root_value;
   str_move = str_CSA_move( move );
+
+  // LOG_DEBUG("CompX: %x %s", move, str_move);
 
   if ( value < -resign_threshold && last_pv.type != pv_fail_high )
     {
@@ -593,7 +595,7 @@ com_turn_start( tree_t * restrict ptree, int flag )
        sec_elapsed / 60U, sec_elapsed % 60U,
        sec_total   / 60U, sec_total   % 60U,
        sec_b_total, sec_w_total );
- 
+
   if ( ! is_resign )
     {
 #if ! defined(NO_STDOUT)
@@ -601,7 +603,7 @@ com_turn_start( tree_t * restrict ptree, int flag )
       if ( iret < 0 ) { return iret; }
 #endif
     }
-  
+
   return 1;
 }
 

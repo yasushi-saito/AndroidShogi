@@ -29,19 +29,21 @@ public class BonanzaJNI {
       Board board);
   
   // Inform that the human player moved @p piece from (from_x,from_y) to (to_x,to_y).
-  // On successful return, @p board will store the state of the board after the
+  // On successful return, @p board stores the state of the board after the
   // move.
   static public native int HumanMove(
       int instanceId,
       int piece, int from_x, int from_y, 
-      int to_x, int to_y, boolean promote,
+      int to_x, int to_y,
       Board board);
   
   // Let the computer ponder the next move. On successful return, 
-  // @p board will store the play by the computer.
+  // @p board stores the play by the computer, and @p move stores
+  // the move made.
   static public native int ComputerMove(
       int instanceId,
-      Board board);
+      Board board,
+      Move move);
   
   // Abort the current game. This method can be called from any thread.
   // If another thread is running HumanMove or ComputerMove, it will see

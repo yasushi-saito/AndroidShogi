@@ -15,7 +15,6 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.TextView;
 
 import com.ysaito.shogi.Board;
 
@@ -24,7 +23,7 @@ public class BoardView extends View implements View.OnTouchListener {
   // onHumanMove is called when a human player moves a piece, or drops a
   // captured piece.
   public interface EventListener {
-    void onHumanMove(Move move);
+    void onHumanMove(Player player, Move move);
   }
 
   public BoardView(Context context, AttributeSet attrs) {
@@ -115,23 +114,20 @@ public class BoardView extends View implements View.OnTouchListener {
     if (action == MotionEvent.ACTION_UP) {
       if (mMoveTo != null && mListener != null) {
         Move move = new Move();
-        move.player = mCurrentPlayer;
-        move.to_x = mMoveTo.getX();
-        move.to_y = mMoveTo.getY();
-        move.promote = false; // filled by Shogi.jana
+        move.toX = mMoveTo.getX();
+        move.toY = mMoveTo.getY();
 
         if (mMoveFrom.isOnBoard()) {
           move.piece = mBoard.getPiece(mMoveFrom.getX(), mMoveFrom.getY());
-          move.from_x = mMoveFrom.getX();
-          move.from_y = mMoveFrom.getY();
+          move.fromX = mMoveFrom.getX();
+          move.fromY = mMoveFrom.getY();
         } else {
           move.piece = getCapturedPiece(
               mBoard, mCurrentPlayer, mMoveFrom.capturedIndex());
-          move.from_x = move.from_y = -1;
+          move.fromX = move.fromY = -1;
         }
-
+        mListener.onHumanMove(mCurrentPlayer, move);
         mCurrentPlayer = Player.INVALID;
-        mListener.onHumanMove(move);
       }
       mMoveTo = null;
       mMoveFrom = null;

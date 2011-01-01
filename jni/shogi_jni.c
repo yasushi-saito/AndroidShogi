@@ -108,6 +108,13 @@ static void LogTree(const char* label, tree_t* ptree) {
   LOG_DEBUG("%s: game: %s", label, msg);
 }
 
+static void FillIntField(JNIEnv* env,
+                         int value, jclass cls, jobject obj,
+                         const char* field) {
+  jfieldID fid = (*env)->GetFieldID(env, cls, field, "I");
+  (*env)->SetIntField(env, obj, fid, value);
+}
+
 // Copy the board config (piece locations and captured pieces for each player)
 // from "ptree" to "board".
 static void FillBoard(const char* label,
@@ -130,6 +137,28 @@ static void FillBoard(const char* label,
 
   fid = (*env)->GetFieldID(env, boardClass, "mCapturedWhite", "I");
   (*env)->SetIntField(env, board, fid, ptree->posi.hand_white);
+}
+
+static void FillMove(JNIEnv* env,
+                     unsigned int move,
+                     jobject dest) {
+  jclass moveClass = (*env)->GetObjectClass(env, dest);
+
+  int is_promote  = (int)I2IsPromote(move);
+  int ipiece_move = (int)I2PieceMove(move);
+  int ifrom       = (int)I2From(move);
+  int ito         = (int)I2To(move);
+
+  FillIntField(env, ito / 9, moveClass, dest, "toX");
+  FillIntField(env, ito % 9, moveClass, dest, "toY");
+
+  if (ifrom < nsquare) {
+    // Move of a piece on the board
+    FillIntField(env, ifrom / 9, moveClass, dest, "fromX");
+    FillIntField(env, ifrom % 9, moveClass, dest, "fromY");
+  }
+  FillIntField(env, ipiece_move + (is_promote != 0),
+               moveClass, dest, "piece");
 }
 
 static void RunCommand(const char* command) {
@@ -223,7 +252,6 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
     jint from_y,
     jint to_x,
     jint to_y,
-    jboolean promote,
     jobject board) {
   pthread_mutex_lock(&g_lock);
   if (instance_id != g_instance_id) {
@@ -236,14 +264,6 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
   // upper-right corner.
   ++to_y;
   to_x = 9 - to_x;
-
-  if (promote) {
-    if (piece > 0) {
-      piece += 8;
-    } else {
-      piece -= 8;
-    }
-  }
 
   CHECK2(piece != 0 && piece >= -15 && piece <= 15,
          "Piece: %d", piece);
@@ -278,6 +298,9 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
       FillBoard("Human", env, &tree, board);
       status = R_ILLEGAL_MOVE;
     } else {
+      unsigned int move = last_pv.a[1];
+      const char *str_move = str_CSA_move( move );
+      LOG_DEBUG("Human: %x %s", move, str_move);
       status = GameStatusToReturnCode();
     }
   }
@@ -290,7 +313,8 @@ jint Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint instance_id,
-    jobject board) {
+    jobject board,
+    jobject dest_move) {
   int status = R_OK;
   pthread_mutex_lock(&g_lock);
   if (instance_id != g_instance_id) {
@@ -298,7 +322,12 @@ jint Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
   } else {
     __android_log_print(ANDROID_LOG_DEBUG, DEBUG_TAG, "ComputerMove");
     CHECK_GE(com_turn_start(&tree, 0), 0);
+
+    unsigned int move = last_pv_save.a[1];
+    const char *str_move = str_CSA_move( move );
+    LOG_DEBUG("Comp: %x %s", move, str_move);
     FillBoard("Computer", env, &tree, board);
+    FillMove(env, move, dest_move);
     status = GameStatusToReturnCode();
   }
   pthread_mutex_unlock(&g_lock);
