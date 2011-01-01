@@ -29,46 +29,6 @@ public class Board implements java.io.Serializable {
   public static final int K_RYU = 15;
   public static final int NUM_TYPES = 16;
 
-  // Type of the players. "BLACK" is "sente" in japanese. It starts at the 
-  // bottom and moves up. "WHITE" is "gote" in japanese.
-  enum Player {
-    BLACK, INVALID, WHITE
-  }
-
-  public static enum GameState {
-    ACTIVE,     // game ongoing
-    BLACK_LOST,
-    WHITE_LOST,
-    DRAW,       // sennichite
-  }
-
-  // Struct that represents a move by a human player
-  public static class Move implements java.io.Serializable {
-    public Player player;  // UP or DOWN
-
-    // The piece to move. The value is negative if player==Player.DOWN.
-    public int piece;
-
-    // The source and destination coordinates. Each value is in range [0,DIM).
-    public int from_x, from_y, to_x, to_y;
-
-    // If promote==true, promote the piece. 
-    //
-    // Note: this field is not set by BoardView.
-    // The EventListener impl in Shogi class runs a dialog if the move 
-    // allows for promotion, the Shogi class will run a dialog 
-    // and sets @v promote=true if the user indicates the wish.
-    //
-    // @invariant !isPromoted(piece) && <to_x,to_y> is in 
-    // the opponent's territory.
-    public boolean promote;
-
-    @Override public String toString() {
-      return ("Piece: " + piece + " [" + from_x + "," + from_y + "]->[" +
-          to_x + "," + to_y + "](" + promote + ")"); 
-    }
-  }
-
   public static final boolean isPromoted(int piece) {
     return type(piece) >= 9;
   }

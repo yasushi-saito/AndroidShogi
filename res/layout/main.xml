@@ -4,18 +4,17 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     >
-<com.ysaito.shogi.BoardView 
-	android:id="@+id/boardview"
-  android:layout_width="fill_parent" 
-  android:layout_height="1dp" 
-  android:layout_weight="1"
-  android:layout_gravity="top|fill_vertical"
+  <com.ysaito.shogi.GameStatusView
+    android:id="@+id/gamestatusview"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="top"
     />
-<TextView 
-  android:id="@+id/gamestatus"
-  android:layout_width="fill_parent"
-  android:layout_height="wrap_content"
-  android:layout_weight="0"
-  android:layout_gravity="top"
-  />
+  <com.ysaito.shogi.BoardView 
+	  android:id="@+id/boardview"
+    android:layout_width="fill_parent" 
+    android:layout_height="1dp" 
+    android:layout_weight="1"
+    android:layout_gravity="top|fill_vertical"
+    />
 </LinearLayout>

@@ -11,8 +11,8 @@ public class BonanzaController {
 
   public static class Result implements java.io.Serializable {
     public final Board board = new Board();
-    public Board.Player nextPlayer; 
-    public Board.GameState gameState;
+    public Player nextPlayer; 
+    public GameState gameState;
     public String errorMessage;
 
     @Override
@@ -22,39 +22,40 @@ public class BonanzaController {
       if (errorMessage != null) s += " error: " + errorMessage;
       return s;
     }
-    void setStatus(int jni_status, Board.Player curPlayer) {
+    
+    final void setStatus(int jni_status, Player curPlayer) {
       if (jni_status >= 0) {
-        if (curPlayer == Board.Player.WHITE) {
-          nextPlayer = Board.Player.BLACK;
-        } else if (curPlayer == Board.Player.BLACK) {
-          nextPlayer = Board.Player.WHITE;
+        if (curPlayer == Player.WHITE) {
+          nextPlayer = Player.BLACK;
+        } else if (curPlayer == Player.BLACK) {
+          nextPlayer = Player.WHITE;
         } else {
           throw new AssertionError("Invalid player");
         }
-        gameState = Board.GameState.ACTIVE;
+        gameState = GameState.ACTIVE;
         errorMessage = null;
       } else {
         switch (jni_status) {
           case BonanzaJNI.ILLEGAL_MOVE:
             nextPlayer = curPlayer;
-            gameState = Board.GameState.ACTIVE;
+            gameState = GameState.ACTIVE;
             errorMessage = "Illegal move";
             break;
           case BonanzaJNI.CHECKMATE:
-            nextPlayer = Board.Player.INVALID;
-            gameState = (curPlayer == Board.Player.BLACK) ?
-                Board.GameState.WHITE_LOST : Board.GameState.BLACK_LOST;
+            nextPlayer = Player.INVALID;
+            gameState = (curPlayer == Player.BLACK) ?
+                GameState.WHITE_LOST : GameState.BLACK_LOST;
             errorMessage = "Checkmate";
             break;
           case BonanzaJNI.RESIGNED:
-            nextPlayer = Board.Player.INVALID;          
-            gameState = (curPlayer == Board.Player.BLACK) ?
-                Board.GameState.BLACK_LOST : Board.GameState.WHITE_LOST;
+            nextPlayer = Player.INVALID;          
+            gameState = (curPlayer == Player.BLACK) ?
+                GameState.BLACK_LOST : GameState.WHITE_LOST;
             errorMessage = "Resigned";
             break;
           case BonanzaJNI.DRAW:
-            nextPlayer = Board.Player.INVALID;          
-            gameState = Board.GameState.DRAW;
+            nextPlayer = Player.INVALID;          
+            gameState = GameState.DRAW;
             errorMessage = "Draw";
             break;
           default:
@@ -64,14 +65,19 @@ public class BonanzaController {
     }
   }
 
-  Handler mOutputHandler;
-
-  final Handler mInputHandler;
-
+  // Config params
+  int mComputerDifficulty;
+  
+  Handler mOutputHandler;  // for reporting status to the caller
+  Handler mInputHandler;   // for sending command to the controller thread 
   HandlerThread mThread;
 
-  public BonanzaController(Handler handler, Board.Player firstTurn) {
+  int mInstanceId;
+  
+  public BonanzaController(Handler handler, int difficulty) {
     mOutputHandler = handler;
+    mComputerDifficulty = difficulty;
+    mInstanceId = -1;
     mThread = new HandlerThread("BonanzaController");
     mThread.start();
     mInputHandler = new Handler(mThread.getLooper()) {
@@ -79,42 +85,53 @@ public class BonanzaController {
       public void handleMessage(Message msg) {
         String command = msg.getData().getString("command");
         if (command == "init") {
-          doInit((Board.Player)msg.getData().get("player"));
+          doInit();
         } else if (command == "humanMove") {
           doHumanMove(
-              (Board.Move)msg.getData().get("move"),
-              (Board.Player)msg.getData().get("player"));
+              (Move)msg.getData().get("move"),
+              (Player)msg.getData().get("player"));
         } else if (command == "computerMove") {
-          doComputerMove((Board.Player)msg.getData().get("player"));
-        } else if (command == "stop") {
-          doStop();
+          doComputerMove((Player)msg.getData().get("player"));
+        } else if (command == "destroy") {
+          doDestroy();
         } else {
-          Log.e(TAG, "Invalid command: " + command);
+          throw new AssertionError("Invalid command: " + command);
         }
       }
     };
-    sendInputMessage("init", firstTurn, null);
+    sendInputMessage("init", null, null);
+  }
+  
+  // Stop the background thread that controls Bonanza. Must be called once before
+  // abandonding this object.
+  void destroy() {
+    sendInputMessage("destroy", null, null);
   }
 
+  // Tell Bonanza that the human player has made @p move. Bonanza will
+  // asynchronously ack through the mOutputHandler.
+  //
   // @p player is the player that has made the @p move. It is used only to
   // report back Result.nextPlayer.
   //
   // @invariant player == move.player
-  public void humanMove(Board.Player player, Board.Move move) {
+  public void humanMove(Player player, Move move) {
     sendInputMessage("humanMove", player, move);
   }
-
+  
+  // Ask Bonanza to make a move. Bonanza will asynchronously report its move
+  // through the mOutputHandler.
+  //
   // @p player is the identity of the computer player. It is used only to 
   // report back Result.nextPlayer.
-  public void computerMove(Board.Player player) {
+  public void computerMove(Player player) {
     sendInputMessage("computerMove", player, null);
   }
 
-  public void stop() {
-    sendInputMessage("stop", null, null);
-  }
-
-  void sendInputMessage(String command, Board.Player curPlayer, Board.Move move) {
+  //
+  // Implementation details
+  //
+  void sendInputMessage(String command, Player curPlayer, Move move) {
     Message msg = mInputHandler.obtainMessage();
     Bundle b = new Bundle();
     b.putString("command", command);
@@ -132,40 +149,42 @@ public class BonanzaController {
     mOutputHandler.sendMessage(msg);
   }
 
-  static Board.Player nextPlayer(Board.Player curPlayer) {
-    if (curPlayer == Board.Player.BLACK) return Board.Player.WHITE;
-    if (curPlayer == Board.Player.WHITE) return Board.Player.BLACK;
+  static Player nextPlayer(Player curPlayer) {
+    if (curPlayer == Player.BLACK) return Player.WHITE;
+    if (curPlayer == Player.WHITE) return Player.BLACK;
     throw new AssertionError("Invalid player");
   }
 
-  void doInit(Board.Player firstTurn) {
+  void doInit() {
     Log.d(TAG, "Init");
     Result r = new Result();
-    BonanzaJNI.Initialize(1, 60, 1, r.board);
-    r.nextPlayer = firstTurn;
-    r.gameState = Board.GameState.ACTIVE;
+    mInstanceId =BonanzaJNI.Initialize(mComputerDifficulty, 60, 1, r.board);
+    r.nextPlayer = Player.BLACK;
+    r.gameState = GameState.ACTIVE;
     sendOutputMessage(r);
   }
 
-  void doHumanMove(Board.Move move, Board.Player player) {
+  void doHumanMove(Move move, Player player) {
     Log.d(TAG, "Human");
     Result r = new Result();
-    int iret = BonanzaJNI.HumanMove(move.piece, move.from_x, move.from_y,
-          move.to_x, move.to_y, move.promote, r.board);
+    int iret = BonanzaJNI.HumanMove(
+        mInstanceId,
+        move.piece, move.from_x, move.from_y,
+        move.to_x, move.to_y, move.promote, r.board);
     r.setStatus(iret, player);
     sendOutputMessage(r);
   }
 
-  void doComputerMove(Board.Player player) {
+  void doComputerMove(Player player) {
     Log.d(TAG, "Computer");
     Result r = new Result();
-    int iret = BonanzaJNI.ComputerMove(r.board);
+    int iret = BonanzaJNI.ComputerMove(mInstanceId, r.board);
     r.setStatus(iret, player);
     sendOutputMessage(r);
   }
   
-  void doStop() {
-    Log.d(TAG, "Stop");
+  void doDestroy() {
+    Log.d(TAG, "Destroy");
     mThread.quit();
   }
 

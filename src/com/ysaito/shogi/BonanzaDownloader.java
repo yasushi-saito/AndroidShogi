@@ -22,6 +22,16 @@ import java.util.zip.ZipFile;
 /**
  * @author saito@google.com (Your Name Here)
  *
+ * Helper class for downloading large data files (fv.bin etc) from the network.
+ * 
+ * Downloading runs in a separate thread. The thread will communicate its status
+ * through a Handler. Each message sent to the handler is of type Status.
+ * 
+ * While download or zip extraction is ongoing, the thread will repeatedly sends
+ * Messages with state DOWNLOADING or EXTRACTING. If an error happens, or 
+ * download+extraction finishes, the thread will send the final Message with state 
+ * either SUCCESS or ERROR.
+ * 
  */
 public class BonanzaDownloader {
   static final String[] REQUIRED_FILES = {
@@ -52,14 +62,17 @@ public class BonanzaDownloader {
     Log.d(TAG, "Start downloading");
   }
   
+  // Must be called once to start downloading
   void start() {
     mThread.start();
   }
-
+  
+  // Must be called to stop the download thread.
   void destroy() {
     mStopped = true;
   }
   
+  // See if all the files required to run Bonanza are present in @p externalDir.
   static boolean hasRequiredFiles(File externalDir) {
     for (String basename: REQUIRED_FILES) {
       File file = new File(externalDir, basename);
@@ -68,6 +81,9 @@ public class BonanzaDownloader {
     return true;
   }
   
+  // 
+  // Implementation details
+  //
   static final String TAG = "ShogiDownload";
   Handler mHandler;
   File mExternalDir;

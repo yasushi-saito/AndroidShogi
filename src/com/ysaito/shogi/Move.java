@@ -3,32 +3,35 @@
 package com.ysaito.shogi;
 
 /**
- * @author saito@google.com (Your Name Here)
+ * @author saito@google.com (Yaz Saito)
  *
+ *
+ * Move represents a move by a human player
  */
-// Struct that represents a move by a human player
 public class Move implements java.io.Serializable {
-  public Player player;  // UP or DOWN
+  // Player.UP or Player.DOWN
+  public Player player;
 
   // The piece to move. The value is negative if player==Player.DOWN.
   public int piece;
 
-  // The source and destination coordinates. Each value is in range [0,DIM).
+  // The source and destination coordinates. Each value is in range
+  // [0, Board.DIM).
   public int from_x, from_y, to_x, to_y;
 
-  // If promote==true, promote the piece. 
+  // If promote==true, promote the piece.
   //
-  // Note: this field is not set by BoardView.
-  // The EventListener impl in Shogi class runs a dialog if the move 
-  // allows for promotion, the Shogi class will run a dialog 
-  // and sets @v promote=true if the user indicates the wish.
+  // Note: this field is not set by BoardView.  The EventListener impl in
+  // Shogi class runs a dialog if the move allows for promotion, the Shogi
+  // class will run a dialog and sets @v promote=true if the user indicates
+  // the wish.
   //
-  // @invariant !isPromoted(piece) && <to_x,to_y> is in 
-  // the opponent's territory.
+  // @invariant if proto==true, then
+  //    !Board.isPromoted(piece) && <to_x,to_y> is in opponent's territory.
   public boolean promote;
 
   @Override public String toString() {
     return ("Piece: " + piece + " [" + from_x + "," + from_y + "]->[" +
-        to_x + "," + to_y + "](" + promote + ")"); 
+        to_x + "," + to_y + "](" + promote + ")");
   }
 }
