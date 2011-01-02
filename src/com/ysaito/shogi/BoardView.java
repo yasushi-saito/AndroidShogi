@@ -33,7 +33,8 @@ public class BoardView extends View implements View.OnTouchListener {
     mCurrentPlayer = Player.INVALID;
     mGameState = GameState.ACTIVE;
     mBoard = new Board();
-    mBoard.setPiece(4, 4, -Board.K_KEI);
+    mBoard.setPiece(3, 3, -Board.K_KEI);
+    mBoard.setPiece(5, 5, Board.K_KEI);
     initializeBitmaps();
     setOnTouchListener(this);
   }

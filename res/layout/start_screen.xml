@@ -14,13 +14,13 @@
 <Button android:id="@+id/new_game_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="New Game" />
+        android:text="@string/new_game" />
 <Button android:id="@+id/settings_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Settings" />
+        android:text="@string/settings" />
 <Button android:id="@+id/download_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Download Database" />
+        android:text="@string/download_data" />
 </LinearLayout>

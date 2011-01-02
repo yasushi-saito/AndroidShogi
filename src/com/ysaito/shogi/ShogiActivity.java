@@ -71,8 +71,8 @@ public class ShogiActivity extends Activity {
     }
     mStatusView = (GameStatusView)findViewById(R.id.gamestatusview);
     mStatusView.initialize(
-        PlayerName(player_black, computer_level),
-        PlayerName(player_white, computer_level));
+        playerName(player_black, computer_level),
+        playerName(player_white, computer_level));
     
     mBoardView = (BoardView)findViewById(R.id.boardview);
     mBoardView.initialize(mViewListener, mHumanPlayers);
@@ -102,9 +102,9 @@ public class ShogiActivity extends Activity {
   }
   
   
-  String PlayerName(String type, int level) {
-    if (type.equals("Human")) return type;
-    return "Com Lv" + level;
+  String playerName(String type, int level) {
+    if (type.equals("Human")) return getResources().getString(R.string.human);
+    return getResources().getStringArray(R.array.computer_level_names)[level];
   }
   
   @Override

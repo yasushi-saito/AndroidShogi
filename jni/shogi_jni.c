@@ -192,13 +192,13 @@ static void SetDifficulty(int difficulty,
   sec_limit    = total_think_time_secs;
   sec_limit_up = per_turn_think_time_secs;
 
-  if (difficulty == 1) {
+  if (difficulty == 0) {
     depth_limit = 1;
-  } else if (difficulty == 2) {
+  } else if (difficulty == 1) {
     depth_limit = 2;
-  } else if (difficulty == 3) {
+  } else if (difficulty == 2) {
     depth_limit = 4;
-  } else if (difficulty == 4) {
+  } else if (difficulty == 3) {
     depth_limit = 6;
   } else {
     depth_limit  = PLY_MAX;

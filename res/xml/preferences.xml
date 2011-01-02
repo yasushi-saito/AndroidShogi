@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+  xmlns:android="http://schemas.android.com/apk/res/android">
+  <ListPreference
+    android:title="@string/player_black"
+    android:key="player_black"
+    android:defaultValue="Human"
+    android:entries="@array/player_types"
+    android:entryValues="@array/player_type_values"/>
+  <ListPreference
+    android:title="@string/player_white"
+    android:key="player_white"
+    android:defaultValue="Computer"
+    android:entries="@array/player_types"
+    android:entryValues="@array/player_type_values"/>
+  <ListPreference
+    android:title="@string/computer_difficulty"
+    android:key="computer_difficulty"
+    android:defaultValue="1"
+    android:entries="@array/computer_levels"
+    android:entryValues="@array/computer_level_values"/>
+  
+</PreferenceScreen>
