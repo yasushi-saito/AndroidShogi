@@ -8,13 +8,17 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Paint.Align;
+import android.graphics.Paint.Style;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Toast;
 
 import com.ysaito.shogi.Board;
 
@@ -59,6 +63,7 @@ public class BoardView extends View implements View.OnTouchListener {
     mGameState = gameState;
     mCurrentPlayer = currentPlayer;
     mBoard = new Board(board);
+    mBoardInitialized = true;
     invalidate();
   }
 
@@ -180,15 +185,24 @@ public class BoardView extends View implements View.OnTouchListener {
 
     if (mMoveFrom != null) {
       Paint p = new Paint();
-      p.setColor(0x28000000);
+      //p.setColor(0x28000000);
+      p.setColor(0x28ff8c00);
       if (mMoveFrom.isOnBoard()) {
         ArrayList<Position> dests = possibleMoveTargets(
             mBoard.getPiece(mMoveFrom.getX(), mMoveFrom.getY()),
             mMoveFrom.getX(), mMoveFrom.getY());
+        
+        Paint cp = new Paint();
+        cp.setColor(0xc0ff8c00);
+        cp.setStyle(Style.FILL);
         for (Position dest: dests) {
           int sx = layout.screenX(dest.getX());
           int sy = layout.screenY(dest.getY());
-          canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
+          //canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
+          
+          sx += squareDim / 2;
+          sy += squareDim / 2;
+          canvas.drawCircle(sx, sy, 5, cp);
         }
       } else {
         int sx = layout.capturedScreenX(mMoveFrom.player(), mMoveFrom.capturedIndex());
@@ -201,7 +215,25 @@ public class BoardView extends View implements View.OnTouchListener {
       p.setColor(0x50000000);
       int sx = layout.screenX(mMoveTo.getX());
       int sy = layout.screenY(mMoveTo.getY());
-      canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
+      //canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
+
+      Paint cp = new Paint();
+      cp.setColor(0xc0ff4500);
+      sx += squareDim / 2;
+      sy += squareDim / 2;
+      canvas.drawCircle(sx, sy, 5, cp);
+      
+    }
+    if (!mBoardInitialized) {
+      if (mInitializingToast == null) {
+        mInitializingToast = Toast.makeText(getContext(), "Initializing",
+            Toast.LENGTH_LONG);
+      }
+      mInitializingToast.show();
+    } else {
+      if (mInitializingToast != null) {
+        mInitializingToast.cancel();
+      }
     }
   }
 
@@ -220,6 +252,8 @@ public class BoardView extends View implements View.OnTouchListener {
   Player mCurrentPlayer;   // Player currently holding the turn
   Board mBoard;            // Current state of the board
   String mErrorMessage;
+  boolean mBoardInitialized; 
+  Toast mInitializingToast;
   
   // Position represents a logical position of a piece.
   //
