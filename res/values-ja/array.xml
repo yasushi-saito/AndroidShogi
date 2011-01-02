@@ -12,7 +12,7 @@
     <item>レベル 3</item>
     <item>レベル 4 (強)</item>
   </string-array>
-  
+
   <string-array name="computer_level_names">
     <item>レベル0</item>
     <item>レベル1</item>
@@ -20,5 +20,14 @@
     <item>レベル3</item>
     <item>レベル4</item>
   </string-array>
-  
+
+  <string-array name="max_undos">
+    <item>待ったなし</item>
+    <item>1回まで</item>
+    <item>2回まで</item>
+    <item>3回まで</item>
+    <item>4回まで</item>
+    <item>無制限</item>
+  </string-array>
+
 </resources>

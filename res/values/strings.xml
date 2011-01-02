@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="draw">Draw</string>
+    <string name="white_won">White won</string>
+    <string name="black_won">Black won</string>
+    <string name="confirm_quit_game">Do you really want to quit the game?</string>
+    <string name="promote_piece">Promote piece?</string>
+    <string name="do_not_promote">Do not promote</string>
+    <string name="promote">Promote</string>
     <string name="app_name">Android Shogi</string>
     <string name="new_game">New Game</string>
     <string name="download_data">Download starting moves DB</string>
@@ -11,4 +18,5 @@
     <string name="computer_difficulty">Computer Difficulty</string>
     <string name="reset_preferences">Reset Preferences</string>
     <string name="undo">Undo</string>
+    <string name="max_undos">Allow Undo</string>
 </resources>

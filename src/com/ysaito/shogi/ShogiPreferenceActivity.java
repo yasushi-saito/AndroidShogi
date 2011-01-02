@@ -17,7 +17,7 @@ import android.widget.Toast;
  */
 
 public class ShogiPreferenceActivity extends PreferenceActivity {
-  static final String TAG = "ShogiPreference";
+  private static final String TAG = "ShogiPreference";
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -46,5 +46,4 @@ public class ShogiPreferenceActivity extends PreferenceActivity {
         return super.onOptionsItemSelected(item);
     }
   }
-  
 }

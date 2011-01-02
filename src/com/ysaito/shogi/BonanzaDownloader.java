@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -34,15 +35,15 @@ import java.util.zip.ZipFile;
  * 
  */
 public class BonanzaDownloader {
-  static final String[] REQUIRED_FILES = {
+  public static final String[] REQUIRED_FILES = {
     "book.bin", "fv.bin", "hash.bin"
   };
-  static final int DOWNLOADING = 1; 
-  static final int EXTRACTING = 2;
-  static final int SUCCESS = 3;
-  static final int ERROR = 4;
+  public static final int DOWNLOADING = 1; 
+  public static final int EXTRACTING = 2;
+  public static final int SUCCESS = 3;
+  public static final int ERROR = 4;
   
-  static class Status implements Serializable {
+  public static class Status implements Serializable {
     int state;  // one of the above constants
     String message;
     
@@ -54,26 +55,27 @@ public class BonanzaDownloader {
   public BonanzaDownloader(
       Handler handler, 
       File externalDir,
+      String sourceUrl,
       DownloadManager manager) {
     mHandler = handler;
     mExternalDir = externalDir;
     mDownloadManager = manager;
-    mThread = new DownloadThread();
-    Log.d(TAG, "Start downloading");
+    mThread = new DownloadThread(sourceUrl);
   }
   
   // Must be called once to start downloading
-  void start() {
+  public void start() {
     mThread.start();
   }
   
   // Must be called to stop the download thread.
-  void destroy() {
+  public void destroy() {
+    Log.d(TAG, "Destroy");
     mStopped = true;
   }
   
   // See if all the files required to run Bonanza are present in @p externalDir.
-  static boolean hasRequiredFiles(File externalDir) {
+  public static boolean hasRequiredFiles(File externalDir) {
     for (String basename: REQUIRED_FILES) {
       File file = new File(externalDir, basename);
       if (!file.exists()) return false;
@@ -84,20 +86,34 @@ public class BonanzaDownloader {
   // 
   // Implementation details
   //
-  static final String TAG = "ShogiDownload";
-  Handler mHandler;
-  File mExternalDir;
-  DownloadManager mDownloadManager;
-  DownloadThread mThread;
-  String mError;
-  boolean mStopped;
+  private static final String TAG = "ShogiDownload";
+  private Handler mHandler;
+  private File mExternalDir;
+  private DownloadManager mDownloadManager;
+  private DownloadThread mThread;
+  private String mError;
+  private boolean mStopped;
   
-  class DownloadThread extends Thread {
-    static final String mZipBasename = "shogi-data.zip";
+  private class DownloadThread extends Thread {
+    private Uri mSourceUri;
+    private String mZipBaseName;
+    
+    public DownloadThread(String sourceUri) {
+      mSourceUri = Uri.parse(sourceUri);
+    }
     
     @Override public void run() {
+      List<String> segments = mSourceUri.getPathSegments();
+      if (segments.size() == 0) {
+        sendMessage(ERROR, "No file specified in " + mSourceUri);
+        return;
+      }
+      mZipBaseName = segments.get(segments.size() - 1);
+        
       downloadFile();
-      if (mError == null) extractZipFiles();
+      if (mError == null) {
+        extractZipFiles();
+      }
       if (mError == null) {
         if (!hasRequiredFiles(mExternalDir)) {
           mError = "Failed to download required files to " + mExternalDir 
@@ -110,22 +126,18 @@ public class BonanzaDownloader {
       } else {
         sendMessage(ERROR, mError);
       }
-      Log.d(TAG, "Download thread exiting");
+      Log.d(TAG, "Download thread exiting : " + mError);
     }
     
-    void downloadFile() {
+    private void downloadFile() {
       // Arrange to download from XXXX to /sdcard/<app_dir>/shogi-data.zip
-      Uri.Builder uriBuilder = new Uri.Builder();
-      uriBuilder.scheme("http");
-      uriBuilder.authority("www.corp.google.com");
-      uriBuilder.path("/~saito/shogi-data.zip");
-      // uriBuilder.path("/~saito/foo.zip");
-      DownloadManager.Request req = new DownloadManager.Request(uriBuilder.build());
+      DownloadManager.Request req = new DownloadManager.Request(mSourceUri);
 
-      File dest = new File(mExternalDir, mZipBasename);
+      File dest = new File(mExternalDir, mZipBaseName);
       req.setDestinationUri(Uri.fromFile(dest));
-      Log.d(TAG, "Start downloading to " + dest.getAbsolutePath());
-        long downloadId = mDownloadManager.enqueue(req);
+      Log.d(TAG, "Start downloading " + mSourceUri.toString() +
+            "->" + dest.getAbsolutePath());
+      long downloadId = mDownloadManager.enqueue(req);
 
       DownloadManager.Query query = new DownloadManager.Query();
       query.setFilterById(downloadId);
@@ -168,7 +180,8 @@ public class BonanzaDownloader {
         } else if (status == DownloadManager.STATUS_FAILED) {
           if (!reason.equals(Integer.toString(DownloadManager.ERROR_FILE_ALREADY_EXISTS))) {
             // TODO(saito) show more detailed status
-            setError("Download failed after " + bytes + " bytes: " + reason);
+            setError("Download of " + mSourceUri.toString() +
+                " failed after " + bytes + " bytes: " + reason);
           }
           return;
         }
@@ -176,10 +189,10 @@ public class BonanzaDownloader {
       }
     }
 
-    void extractZipFiles() {
+    private void extractZipFiles() {
       ZipEntry e = null;
       try {
-        File zipPath = new File(mExternalDir, mZipBasename);
+        File zipPath = new File(mExternalDir, mZipBaseName);
         ZipFile zip = new ZipFile(zipPath);
         Enumeration<ZipEntry> entries = (Enumeration<ZipEntry>)zip.entries();
         while (entries.hasMoreElements()) {
@@ -194,7 +207,7 @@ public class BonanzaDownloader {
       }
     }
     
-    void extractZipFile(ZipFile zip, ZipEntry e) throws IOException {
+    private void extractZipFile(ZipFile zip, ZipEntry e) throws IOException {
       Log.d(TAG, "Found zip entry:" + e.toString());
       FileOutputStream out = null;
       InputStream in = null;
@@ -222,11 +235,11 @@ public class BonanzaDownloader {
     }
   }
   
-  void setError(String m) {
+  private void setError(String m) {
     if (mError == null) mError = m;  // take only the first message
   }
   
-  void sendMessage(int state, String message) {
+  private void sendMessage(int state, String message) {
     Message msg = mHandler.obtainMessage();
     Bundle b = new Bundle();
     Status s = new Status();

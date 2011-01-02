@@ -6,13 +6,25 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
 
+/**
+ * 
+ * An asynchronous interface for running Bonanza. 
+ * 
+ * Each public method in this methods, except abort(), is asynchronous. 
+ * It starts the request in a separate thread. The method itself returns
+ * immediately. When the request completes, the result is communicated
+ * via the Handler interface.
+ */
 public class BonanzaController {
-  static final String TAG = "BonanzaController"; 
-
+  /**
+   *  The result of each asynchronous request
+   */
   public static class Result implements java.io.Serializable {
+    // The new state of the board
     public final Board board = new Board();
     
-    // The last move made. Possible values are the following:
+    // The following three fields describe the last move made. 
+    // Possible combinations of values are:
     //
     // 1. all the values are null or 0. This happens when the last
     //    operation resulted in error.
@@ -27,8 +39,8 @@ public class BonanzaController {
     public int lastMoveCookie;  // cookie for lastMove. for future undos.
     public int undoMoves;       // number of moves to be rolled back
     
-    // The player that holds the next turn. May be Player.INVALID when the
-    // the game is over.
+    // The player that should play the next turn. May be Player.INVALID when the
+    // the gameState != ACTIVE.
     public Player nextPlayer; 
     
     public GameState gameState;
@@ -42,7 +54,7 @@ public class BonanzaController {
       return s;
     }
     
-    final void setState(
+    public final void setState(
         int jni_status, 
         BonanzaJNI.MoveResult m,
         Player curPlayer) {
@@ -92,19 +104,19 @@ public class BonanzaController {
     }
   }
 
-  // Config params
-  int mComputerDifficulty;
-  
-  Handler mOutputHandler;  // for reporting status to the caller
-  Handler mInputHandler;   // for sending command to the controller thread 
-  HandlerThread mThread;
+  private static final String TAG = "BonanzaController"; 
+  private int mComputerDifficulty;
+  private Handler mOutputHandler;  // for reporting status to the caller
+  private Handler mInputHandler;   // for sending commands to the controller thread 
+  private HandlerThread mThread;
 
-  int mInstanceId;
-  static final int C_INIT = 0;
-  static final int C_HUMAN_MOVE = 1;
-  static final int C_COMPUTER_MOVE = 2;
-  static final int C_UNDO = 3;
-  static final int C_DESTROY = 4;
+  private int mInstanceId;
+  
+  private static final int C_INIT = 0;
+  private static final int C_HUMAN_MOVE = 1;
+  private static final int C_COMPUTER_MOVE = 2;
+  private static final int C_UNDO = 3;
+  private static final int C_DESTROY = 4;
   
   public BonanzaController(Handler handler, int difficulty) {
     mOutputHandler = handler;
@@ -149,7 +161,7 @@ public class BonanzaController {
    * Stop the background thread that controls Bonanza. Must be called once before
    * abandonding this object.
    */
-  void destroy() {
+  public void destroy() {
     sendInputMessage(C_DESTROY, null, null, -1, -1);
   }
 
@@ -197,7 +209,7 @@ public class BonanzaController {
   //
   // Implementation details
   //
-  void sendInputMessage(
+  private void sendInputMessage(
       int command, 
       Player curPlayer, 
       Move move,
@@ -213,7 +225,7 @@ public class BonanzaController {
     mInputHandler.sendMessage(msg);
   }
 
-  void sendOutputMessage(Result result) {
+  private void sendOutputMessage(Result result) {
     Message msg = mOutputHandler.obtainMessage();
     Bundle b = new Bundle();
     b.putSerializable("result", result);
@@ -221,13 +233,7 @@ public class BonanzaController {
     mOutputHandler.sendMessage(msg);
   }
 
-  static Player nextPlayer(Player curPlayer) {
-    if (curPlayer == Player.BLACK) return Player.WHITE;
-    if (curPlayer == Player.WHITE) return Player.BLACK;
-    throw new AssertionError("Invalid player");
-  }
-
-  void doInit() {
+  private void doInit() {
     Result r = new Result();
     mInstanceId =BonanzaJNI.initialize(mComputerDifficulty, 60, 1, r.board);
     r.nextPlayer = Player.BLACK;
@@ -235,7 +241,7 @@ public class BonanzaController {
     sendOutputMessage(r);
   }
 
-  void doHumanMove(Player player, Move move) {
+  private void doHumanMove(Player player, Move move) {
     Result r = new Result();
     BonanzaJNI.MoveResult m = new BonanzaJNI.MoveResult();
     int iret = BonanzaJNI.humanMove(
@@ -245,7 +251,7 @@ public class BonanzaController {
     sendOutputMessage(r);
   }
 
-  void doComputerMove(Player player) {
+  private void doComputerMove(Player player) {
     Result r = new Result();
     BonanzaJNI.MoveResult m = new BonanzaJNI.MoveResult();
     int iret = BonanzaJNI.computerMove(mInstanceId, m, r.board);
@@ -253,7 +259,7 @@ public class BonanzaController {
     sendOutputMessage(r);
   }
 
-  void doUndo(Player player, int cookie1, int cookie2) {
+  private void doUndo(Player player, int cookie1, int cookie2) {
     Result r = new Result();
     Log.d(TAG, "Undo " + cookie1 + " " + cookie2);
     int iret = BonanzaJNI.undo(mInstanceId, cookie1, cookie2, r.board);
@@ -269,10 +275,8 @@ public class BonanzaController {
     sendOutputMessage(r);
   }   
   
-  
-  void doDestroy() {
+  private void doDestroy() {
     Log.d(TAG, "Destroy");
     mThread.quit();
   }
-
 }

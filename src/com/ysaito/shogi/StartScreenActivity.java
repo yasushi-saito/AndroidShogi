@@ -9,9 +9,12 @@ import android.app.DownloadManager;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -29,17 +32,14 @@ public class StartScreenActivity extends Activity {
   static final int DIALOG_CONFIRM_DOWNLOAD = 1234;
   static final int DIALOG_DOWNLOAD = 1235;
   File mExternalDir;
-
+  SharedPreferences mPrefs;
+  
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.start_screen);
-    
-    if (!installedShogiData()) {
-      // Create a dialog and ask the download manager to fetch the file.
-      // Block until download completes.
-      // showDialog(DOWNLOAD_DIALOG);
-    }
+
+    mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
     
     mExternalDir = getExternalFilesDir(null);
     Button b = (Button)findViewById(R.id.new_game_button);
@@ -113,10 +113,10 @@ public class StartScreenActivity extends Activity {
   ProgressDialog newDownloadDialog() {
     ProgressDialog d = new ProgressDialog(this);
     d.setCancelable(true);
-    d.setMessage("Downloading shogi-data.zip");
+    d.setMessage("Downloading " + mPrefs.getString("download_db_url", "unset"));
     d.setOnCancelListener(new DialogInterface.OnCancelListener() {
       public void onCancel(DialogInterface unused) {
-        mDownloadController.destroy();
+        if (mDownloadController != null) mDownloadController.destroy();
       }
     });
     return d;
@@ -125,7 +125,10 @@ public class StartScreenActivity extends Activity {
   void startDownload() {
     DownloadManager m = (DownloadManager)getSystemService(DOWNLOAD_SERVICE);
     mDownloadController = new BonanzaDownloader(
-        mDownloadHandler, mExternalDir, m);
+        mDownloadHandler, 
+        mExternalDir,
+        mPrefs.getString("download_db_url", "unset"),
+        m);
     mDownloadController.start();
     showDialog(DIALOG_DOWNLOAD);
   }
@@ -133,13 +136,16 @@ public class StartScreenActivity extends Activity {
   final Handler mDownloadHandler = new Handler() {
     @Override public void handleMessage(Message msg) {
       BonanzaDownloader.Status status = (BonanzaDownloader.Status)msg.getData().get("status");
-      if (mDownloadDialog != null && status.message != null) {
-        mDownloadDialog.setMessage(status.message);
-      }
-      if (status.state >= BonanzaDownloader.SUCCESS) {
-        if (mDownloadDialog != null) {
+      Log.d(TAG, "Recv status: " + status.toString());
+      if (mDownloadDialog != null) {
+        if (status.message != null) {
+          mDownloadDialog.setMessage(status.message);
+        }
+        if (status.state == BonanzaDownloader.SUCCESS) {
           mDownloadDialog.dismiss();
         }
+      }
+      if (status.state >= BonanzaDownloader.SUCCESS) {
         if (mDownloadController != null) {
           mDownloadController.destroy();
           mDownloadController = null;

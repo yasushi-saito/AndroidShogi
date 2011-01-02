@@ -343,11 +343,11 @@ jint Java_com_ysaito_shogi_BonanzaJNI_computerMove(
     if (move != 0) {
       const char *move_str = str_CSA_move( move );
       LOG_DEBUG("Comp: %x %s", move, move_str);
-      FillBoard("Computer", env, &tree, board);
       FillMoveResult(env, move_result, move, move_str);
     } else {
       // Computer likely have resigned
     }
+    FillBoard("Computer", env, &tree, board);
     status = GameStatusToReturnCode();
   }
   pthread_mutex_unlock(&g_lock);

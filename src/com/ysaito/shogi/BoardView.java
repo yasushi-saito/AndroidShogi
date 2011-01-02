@@ -403,7 +403,8 @@ public class BoardView extends View implements View.OnTouchListener {
 
   EventListener mListener;
   ArrayList<Player> mHumanPlayers;
-
+  boolean mAllowUndo;
+  
   void drawEmptyBoard(Canvas canvas, ScreenLayout layout) {
     // Fill the board square
     Rect boardRect = layout.getBoard();

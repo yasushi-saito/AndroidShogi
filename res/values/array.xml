@@ -17,7 +17,6 @@
     <item>Level 3</item>
     <item>Level 4 (difficult)</item>
   </string-array>
-  
   <string-array name="computer_level_names">
     <item>Lv 0</item>
     <item>Lv 1</item>
@@ -25,7 +24,6 @@
     <item>Lv 3</item>
     <item>Lv 4</item>
   </string-array>
-    
   <string-array name="computer_level_values">
     <item>0</item>
     <item>1</item>
@@ -33,4 +31,23 @@
     <item>3</item>
     <item>4</item>
   </string-array>  
+  
+  <string-array name="max_undos">
+    <item>Disallowed</item>
+    <item>1</item>
+    <item>2</item>
+    <item>3</item>
+    <item>4</item>
+    <item>Unlimited</item>    
+  </string-array>
+    
+  <string-array name="max_undo_values">
+    <item>0</item>
+    <item>1</item>
+    <item>2</item>
+    <item>3</item>
+    <item>4</item>
+    <item>99999</item>    
+  </string-array>  
+
 </resources>

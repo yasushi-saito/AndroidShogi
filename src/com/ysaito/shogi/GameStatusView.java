@@ -4,6 +4,7 @@ package com.ysaito.shogi;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -15,17 +16,43 @@ import java.util.ArrayList;
  *
  */
 public class GameStatusView extends LinearLayout {
-  Context mContext;
-  TextView mGameStatus;
-  TextView mBlackTime;
-  TextView mBlackStatus;
-  TextView mWhiteTime;
-  TextView mWhiteStatus;
-  String mBlackPlayerName;
-  String mWhitePlayerName;
+  class Timer {
+    public Timer(TextView v) { mView = v; mLastThinkTimeSeconds = -1; }
+    void update(long thinkTimeMs) {
+      long t = thinkTimeMs / 1000;  // convent millisecs -> seconds
+      if (mLastThinkTimeSeconds != t) {
+        mLastThinkTimeSeconds = t;
+        long seconds = t % 60;
+        t /= 60;
+        long minutes = t % 60;
+        long hours = t / 60;
+        mView.setText(String.format("%02d:%02d:%02d", hours, minutes, seconds));
+      }
+    }
+    TextView getView() { return mView; }
+    
+    private final TextView mView;
+    private long mLastThinkTimeSeconds;
+  }
   
-  int dpsToPixels(int v) {
+  private static final String TAG = "ShogiView";
+  private Context mContext;
+  private TextView mGameStatus;
+  private Timer mBlackTime;
+  private TextView mBlackStatus;
+  private Timer mWhiteTime;
+  private TextView mWhiteStatus;
+  private String mBlackPlayerName;
+  private String mWhitePlayerName;
+  
+  private int dpsToPixels(int v) {
     return (int)(mContext.getResources().getDisplayMetrics().density * v);
+  }
+  
+  private TextView newTextView(Context context) {
+    TextView v = new TextView(context);
+    v.setTextSize(dpsToPixels(10));
+    return v;
   }
   
   public GameStatusView(Context context, AttributeSet attrs) {
@@ -39,23 +66,23 @@ public class GameStatusView extends LinearLayout {
     lStatus.gravity = Gravity.TOP| Gravity.FILL_HORIZONTAL;
     lStatus.weight = 1;
     
-    mGameStatus = new TextView(context);
+    mGameStatus = newTextView(context);
     addView(mGameStatus, lStatus);
     
-    mBlackTime = new TextView(context);
+    mBlackTime = new Timer(newTextView(context));
     LinearLayout.LayoutParams lTime = new LinearLayout.LayoutParams(
         dpsToPixels(64),
         LayoutParams.WRAP_CONTENT);
     lTime.gravity = Gravity.TOP;
-    addView(mBlackTime, lTime);
+    addView(mBlackTime.getView(), lTime);
 
-    mBlackStatus = new TextView(context);
+    mBlackStatus = newTextView(context);
     addView(mBlackStatus, lStatus);
     
-    mWhiteTime = new TextView(context);
-    addView(mWhiteTime, lTime);
+    mWhiteTime = new Timer(newTextView(context));
+    addView(mWhiteTime.getView(), lTime);
     
-    mWhiteStatus = new TextView(context);
+    mWhiteStatus = newTextView(context);
     addView(mWhiteStatus, lStatus);
   }
   
@@ -97,14 +124,18 @@ public class GameStatusView extends LinearLayout {
     }
     if (gameState == GameState.ACTIVE) {
     } else if (gameState == GameState.BLACK_LOST) {
-      msg += "Black lost";
+      msg += R.string.white_won;
     } else if (gameState == GameState.WHITE_LOST) {
-      msg += "White lost";
+      msg += R.string.black_won;
     } else if (gameState == GameState.DRAW) {
-      msg += "Draw";
+      msg += R.string.draw;
     } else {
       throw new AssertionError(gameState.toString());
     }
     mGameStatus.setText(msg);
+  }
+  public void updateThinkTimes(long black, long white) {
+    mBlackTime.update(black);
+    mWhiteTime.update(white);
   }
 }

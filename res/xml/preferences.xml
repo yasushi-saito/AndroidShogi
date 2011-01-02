@@ -19,5 +19,17 @@
     android:defaultValue="1"
     android:entries="@array/computer_levels"
     android:entryValues="@array/computer_level_values"/>
-  
+  <ListPreference
+    android:title="@string/max_undos"
+    android:key="max_undos"
+    android:defaultValue="0"
+    android:entries="@array/max_undos"
+    android:entryValues="@array/max_undo_values"/>
+    />
+  <PreferenceCategory android:title="Advanced settings"/>
+  <EditTextPreference
+     android:key="download_db_url"
+     android:defaultValue="http://www.ysaito.com/downloads/shogi-data.zip"
+     android:title="Shogi DB source"
+     />
 </PreferenceScreen>
