@@ -10,26 +10,30 @@ import android.util.Log;
  * 
  * An asynchronous interface for running Bonanza. 
  * 
- * Each public method in this methods, except abort(), is asynchronous. 
+ * Each public method in this class, except abort(), is asynchronous. 
  * It starts the request in a separate thread. The method itself returns
  * immediately. When the request completes, the result is communicated
  * via the Handler interface.
  */
 public class BonanzaController {
   /**
-   *  The result of each asynchronous request
+   *  The result of each asynchronous request. Packed in the "result" part of 
+   *  the Message.getData() bundle.
    */
   public static class Result implements java.io.Serializable {
     // The new state of the board
-    public final Board board = new Board();
+    public Board board;
     
     // The following three fields describe the last move made. 
+    // lastMoveCookie is an opaque token summarizing lastMove. It is passed
+    // as a parameter to undo() if the caller wants to undo this move.
+    //
     // Possible combinations of values are:
     //
     // 1. all the values are null or 0. This happens when the last
-    //    operation resulted in error.
+    //    operation resulted in an error.
     //
-    // 2. lastMove!=null && lastMoveCookie > 0 && undoMoves == 0
+    // 2. lastMove!=null && lastMoveCookie > 0 && undoMoves == 0.
     //    this happens after successful completion of humanMove or 
     //    computerMove.
     //
@@ -54,12 +58,56 @@ public class BonanzaController {
       return s;
     }
     
+    static public Result fromJNI(
+        BonanzaJNI.Result jr,
+        Player curPlayer) {
+      Result r = new Result();
+      r.board = jr.board;
+      r.lastMove = (jr.move != null) ? Move.fromCsaString(jr.move) : null;
+      r.lastMoveCookie = jr.moveCookie;
+      r.errorMessage = jr.error;
+      
+      if (jr.status >= 0) {
+        r.nextPlayer = Player.opponentOf(curPlayer);
+        r.gameState = GameState.ACTIVE;
+      } else {
+        switch (jr.status) {
+          case BonanzaJNI.R_ILLEGAL_MOVE:
+            r.nextPlayer = curPlayer;
+            r.gameState = GameState.ACTIVE;
+            r.lastMove = null;
+            r.lastMoveCookie = -1;
+            break;
+          case BonanzaJNI.R_CHECKMATE:
+            r.nextPlayer = Player.INVALID;
+            r.gameState = (curPlayer == Player.BLACK) ?
+                GameState.WHITE_LOST : GameState.BLACK_LOST;
+            r.errorMessage = "Checkmate";
+            break;
+          case BonanzaJNI.R_RESIGNED:
+            r.nextPlayer = Player.INVALID;
+            r.gameState = (curPlayer == Player.BLACK) ?
+                GameState.BLACK_LOST : GameState.WHITE_LOST;
+            r.errorMessage = "Resigned";
+            break;
+          case BonanzaJNI.R_DRAW:
+            r.nextPlayer = Player.INVALID;
+            r.gameState = GameState.DRAW;
+            r.errorMessage = "Draw";
+            break;
+          default:
+            throw new AssertionError("Illegal jni_status: " + jr.status);
+        }
+      }
+      return r;
+    }
+    
     public final void setState(
         int jni_status, 
-        BonanzaJNI.MoveResult m,
+        BonanzaJNI.Result m,
         Player curPlayer) {
       lastMove = (m.move != null) ? Move.fromCsaString(m.move) : null;
-      lastMoveCookie = m.cookie;
+      lastMoveCookie = m.moveCookie;
       
       if (jni_status >= 0) {
         if (curPlayer == Player.WHITE) {
@@ -234,42 +282,39 @@ public class BonanzaController {
   }
 
   private void doInit() {
+    BonanzaJNI.Result jr = new BonanzaJNI.Result();
+    mInstanceId = BonanzaJNI.startGame(mComputerDifficulty, 60, 1, jr);
+    
     Result r = new Result();
-    mInstanceId =BonanzaJNI.initialize(mComputerDifficulty, 60, 1, r.board);
+    r.board = jr.board;
     r.nextPlayer = Player.BLACK;
     r.gameState = GameState.ACTIVE;
     sendOutputMessage(r);
   }
 
   private void doHumanMove(Player player, Move move) {
-    Result r = new Result();
-    BonanzaJNI.MoveResult m = new BonanzaJNI.MoveResult();
-    int iret = BonanzaJNI.humanMove(
-        mInstanceId, 
-        move.toCsaString(), m, r.board);
-    r.setState(iret, m, player);
-    sendOutputMessage(r);
+    BonanzaJNI.Result jr = new BonanzaJNI.Result();
+    BonanzaJNI.humanMove(mInstanceId, move.toCsaString(), jr);
+    sendOutputMessage(Result.fromJNI(jr, player));
   }
 
   private void doComputerMove(Player player) {
-    Result r = new Result();
-    BonanzaJNI.MoveResult m = new BonanzaJNI.MoveResult();
-    int iret = BonanzaJNI.computerMove(mInstanceId, m, r.board);
-    r.setState(iret, m, player);
-    sendOutputMessage(r);
+    BonanzaJNI.Result jr = new BonanzaJNI.Result();
+    BonanzaJNI.computerMove(mInstanceId, jr);
+    sendOutputMessage(Result.fromJNI(jr, player));
   }
 
   private void doUndo(Player player, int cookie1, int cookie2) {
-    Result r = new Result();
+    BonanzaJNI.Result jr = new BonanzaJNI.Result();
     Log.d(TAG, "Undo " + cookie1 + " " + cookie2);
-    int iret = BonanzaJNI.undo(mInstanceId, cookie1, cookie2, r.board);
+    int iret = BonanzaJNI.undo(mInstanceId, cookie1, cookie2, jr);
 
-    BonanzaJNI.MoveResult m = new BonanzaJNI.MoveResult();  // dummy
+    Result r;
     if (cookie2 < 0) {
-      r.setState(iret, m, player);
+      r = Result.fromJNI(jr, player);
       r.undoMoves = 1;
     } else {
-      r.setState(iret, m, Player.opponentOf(player));
+      r = Result.fromJNI(jr, Player.opponentOf(player));
       r.undoMoves = 2;
     }
     sendOutputMessage(r);

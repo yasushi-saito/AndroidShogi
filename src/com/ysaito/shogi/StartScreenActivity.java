@@ -10,6 +10,7 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -20,6 +21,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import java.io.File;
 
@@ -34,6 +36,10 @@ public class StartScreenActivity extends Activity {
   File mExternalDir;
   SharedPreferences mPrefs;
   
+  static {  
+    System.loadLibrary("bonanza-jni");  
+  }
+
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -62,6 +68,7 @@ public class StartScreenActivity extends Activity {
         }
        }
     });
+    initializeBonanzaInBackground();
   }
   
   @Override
@@ -172,10 +179,35 @@ public class StartScreenActivity extends Activity {
   }
   
   void newGame() {
-    startActivity(new Intent(this, ShogiActivity.class));
+    if (!BonanzaDownloader.hasRequiredFiles(mExternalDir)) {
+      Toast.makeText(
+          getBaseContext(),
+          "Please load the shogi database files first",
+          Toast.LENGTH_LONG).show();
+    } else {
+      startActivity(new Intent(this, GameActivity.class));
+    }
   }
   
-  void settings() {
+  private void settings() {
     startActivity(new Intent(this, ShogiPreferenceActivity.class));
+  }
+  
+  
+  private class BonanzaInitializeThread extends Thread {
+    @Override public void run() {
+      BonanzaJNI.initialize(mExternalDir.getAbsolutePath());
+    }
+  }
+  
+  private void initializeBonanzaInBackground() {
+    if (!BonanzaDownloader.hasRequiredFiles(mExternalDir)) {
+      Toast.makeText(
+          getBaseContext(),
+          "Please load the shogi database files first",
+          Toast.LENGTH_LONG).show();
+      return;
+    }
+    new BonanzaInitializeThread().start();
   }
 }

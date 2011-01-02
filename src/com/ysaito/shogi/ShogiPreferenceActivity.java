@@ -9,13 +9,12 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.widget.Toast;
 
 /**
  * @author saito@google.com (Your Name Here)
  *
+ * Preference activity
  */
-
 public class ShogiPreferenceActivity extends PreferenceActivity {
   private static final String TAG = "ShogiPreference";
   
@@ -34,13 +33,11 @@ public class ShogiPreferenceActivity extends PreferenceActivity {
   
   @Override
   public boolean onOptionsItemSelected(MenuItem item) {
-    Log.d(TAG, "Options menu");
     switch (item.getItemId()) {
       case R.id.reset_preferences:
         Log.d(TAG, "Reset");
         PreferenceManager.getDefaultSharedPreferences(getBaseContext())
           .edit().clear().commit();
-        Toast.makeText(getBaseContext(), "Reset preferences to the default", Toast.LENGTH_SHORT);
         return true;
       default:    
         return super.onOptionsItemSelected(item);

@@ -43,6 +43,9 @@ public class BonanzaDownloader {
   public static final int SUCCESS = 3;
   public static final int ERROR = 4;
   
+  /** Status reported by the downloader. It is packed in the "status" value of
+   * Message.getData()
+   */
   public static class Status implements Serializable {
     int state;  // one of the above constants
     String message;
@@ -52,6 +55,13 @@ public class BonanzaDownloader {
     }
   }
   
+  /**
+   * @param handler Used to report download status to the caller
+   * @param externalDir The directory to store the downloaded file.
+   * The basename of the file will be the same as the one in the sourceUrl.
+   * @param sourceUrl The location of the file.
+   * @param manager The system-wide download manager.
+   */
   public BonanzaDownloader(
       Handler handler, 
       File externalDir,
@@ -63,18 +73,24 @@ public class BonanzaDownloader {
     mThread = new DownloadThread(sourceUrl);
   }
   
-  // Must be called once to start downloading
+  /**
+   * Must be called once to start downloading
+   */
   public void start() {
     mThread.start();
   }
   
-  // Must be called to stop the download thread.
+  /**
+   * Must be called to stop the download thread.
+   */
   public void destroy() {
     Log.d(TAG, "Destroy");
-    mStopped = true;
+    mDestroyed = true;
   }
   
-  // See if all the files required to run Bonanza are present in @p externalDir.
+  /**
+   * See if all the files required to run Bonanza are present in externalDir.
+   */
   public static boolean hasRequiredFiles(File externalDir) {
     for (String basename: REQUIRED_FILES) {
       File file = new File(externalDir, basename);
@@ -92,7 +108,7 @@ public class BonanzaDownloader {
   private DownloadManager mDownloadManager;
   private DownloadThread mThread;
   private String mError;
-  private boolean mStopped;
+  private boolean mDestroyed;
   
   private class DownloadThread extends Thread {
     private Uri mSourceUri;
@@ -130,7 +146,6 @@ public class BonanzaDownloader {
     }
     
     private void downloadFile() {
-      // Arrange to download from XXXX to /sdcard/<app_dir>/shogi-data.zip
       DownloadManager.Request req = new DownloadManager.Request(mSourceUri);
 
       File dest = new File(mExternalDir, mZipBaseName);
@@ -170,7 +185,7 @@ public class BonanzaDownloader {
           cursor.close();
         }
         
-        if (mStopped) {
+        if (mDestroyed) {
           setError("Cancelled by user");
           mDownloadManager.remove(downloadId);
           return;

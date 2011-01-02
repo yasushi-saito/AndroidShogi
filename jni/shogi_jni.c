@@ -15,10 +15,12 @@
 #define R_RESIGNED -3
 #define R_DRAW -4
 #define R_INSTANCE_DELETED -5
+#define R_INITIALIZATION_ERROR -6
 
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static int g_instance_id = 0;
-static int g_ini_called = 0;
+static int g_initialized = 0;
+static char* g_initialization_error = NULL;
 
 static char* Basename(const char* path, char* buf, int buf_size) {
   const char* r = strrchr(path, '/');
@@ -159,6 +161,52 @@ static void FillMoveResult(JNIEnv* env,
   FillIntField(env, move, move_class, move_result, "cookie");
 }
 
+static void FillResult(const char* label,
+                       JNIEnv* env,
+                       int iret,
+                       const char* error,
+                       const char* move_str,
+                       int move_cookie,
+                       tree_t* ptree,
+                       jobject result) {
+  jclass result_class = (*env)->GetObjectClass(env, result);
+
+  FillIntField(env, iret, result_class, result, "status");
+  if (error != NULL) {
+    jfieldID fid = (*env)->GetFieldID(env, result_class,
+                                      "error", "Ljava/lang/String;");
+    (*env)->SetObjectField(env, result, fid, (*env)->NewStringUTF(env, error));
+  }
+
+  // Fill move_str and move_cookie
+  if (move_str != NULL) {
+    jfieldID fid = (*env)->GetFieldID(env, result_class,
+                                      "move", "Ljava/lang/String;");
+    (*env)->SetObjectField(env, result, fid,
+                           (*env)->NewStringUTF(env, move_str));
+  }
+  FillIntField(env, move_cookie, result_class, result, "moveCookie");
+
+  // Fill the board
+  if (ptree != NULL) {
+    jfieldID fid = (*env)->GetFieldID(env, result_class,
+                                      "board", "Lcom/ysaito/shogi/Board;");
+    jobject board = (*env)->GetObjectField(env, result, fid);
+    jclass board_class = (*env)->GetObjectClass(env, board);
+    fid = (*env)->GetFieldID(env, board_class, "mSquares", "[I");
+    jintArray jarray = (jintArray)((*env)->GetObjectField(env, board, fid));
+    jint tmp[nsquare];
+    for (int i = 0; i < nsquare; ++i) {
+      tmp[i] = BOARD[i];
+    }
+    (*env)->SetIntArrayRegion(env,  jarray, 0, nsquare, tmp);
+    fid = (*env)->GetFieldID(env, board_class, "mCapturedBlack", "I");
+    (*env)->SetIntField(env, board, fid, ptree->posi.hand_black);
+    fid = (*env)->GetFieldID(env, board_class, "mCapturedWhite", "I");
+    (*env)->SetIntField(env, board, fid, ptree->posi.hand_white);
+  }
+}
+
 static void RunCommand(const char* command) {
   LOG_DEBUG("Run %s", command);
   strcpy(str_cmdline, command);
@@ -221,28 +269,43 @@ static int GameStatusToReturnCode() {
   return R_OK;
 }
 
-jint Java_com_ysaito_shogi_BonanzaJNI_initialize(
+void Java_com_ysaito_shogi_BonanzaJNI_initialize(
+    JNIEnv *env,
+    jclass unused_bonanza_class,
+    jstring storage_dir) {
+  pthread_mutex_lock(&g_lock);
+  if (!g_initialized) {
+    if (ini(&tree) < 0) {
+      asprintf(&g_initialization_error,
+               "Failed to initialize Bonanza: %s", str_error);
+    }
+    g_initialized = 1;
+    LOG_DEBUG("Initialized Bonanza");
+  }
+  pthread_mutex_unlock(&g_lock);
+}
+
+jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint difficulty,
     jint total_think_time_secs,
     jint per_turn_think_time_secs,
-    jobject board) {
+    jobject result) {
+  int instance_id = -1;
   pthread_mutex_lock(&g_lock);
-  int instance_id = ++g_instance_id;
-
-  LOG_DEBUG("Initializing Bonanza: d=%d t=%d p=%d",
-            difficulty, total_think_time_secs, per_turn_think_time_secs);
-  if (!g_ini_called) {
-    if (ini(&tree) < 0) {
-      LOG_FATAL("Failed to initialize Bonanza: %s", str_error);
-    }
-    g_ini_called = 1;
-  }
-
-  if (ini_game(&tree, &min_posi_no_handicap, flag_history, NULL, NULL) < 0) {
-    LOG_FATAL("Failed to initialize game: %s", str_error);
+  CHECK2(g_initialized, "Bonanza not yet initialized");
+  if (g_initialization_error != NULL) {
+    FillResult("Init", env,
+               R_INITIALIZATION_ERROR, g_initialization_error,
+               NULL, 0, NULL, result);
   } else {
+    instance_id = ++g_instance_id;
+    LOG_DEBUG("Starting game: d=%d t=%d p=%d",
+              difficulty, total_think_time_secs, per_turn_think_time_secs);
+    if (ini_game(&tree, &min_posi_no_handicap, flag_history, NULL, NULL) < 0) {
+      LOG_FATAL("Failed to initialize game: %s", str_error);
+    }
     LOG_DEBUG("Initialized Bonanza successfully");
 
     // Disable background thinking; we can't send a interrupt Bonanza
@@ -253,63 +316,80 @@ jint Java_com_ysaito_shogi_BonanzaJNI_initialize(
     SetDifficulty(difficulty,
                   total_think_time_secs,
                   per_turn_think_time_secs);
-    FillBoard("Init", env, &tree, board);
+    FillResult("Init", env, R_OK, NULL, NULL, 0, &tree, result);
   }
   pthread_mutex_unlock(&g_lock);
   return instance_id;
 }
 
-jint Java_com_ysaito_shogi_BonanzaJNI_humanMove(
+static int AnotherInstanceStarted(JNIEnv* env,
+                                  int instance_id,
+                                  jobject result) {
+  if (instance_id != g_instance_id) {
+    FillResult("Human", env,
+               R_INSTANCE_DELETED,
+               "Another game already started",
+               NULL, 0, NULL, result);
+    return 1;
+  }
+  return 0;
+}
+
+void Java_com_ysaito_shogi_BonanzaJNI_humanMove(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint instance_id,
     jstring jmove_str,
-    jobject move_result,
-    jobject board) {
+    jobject result) {
   pthread_mutex_lock(&g_lock);
-  if (instance_id != g_instance_id) {
+  if (AnotherInstanceStarted(env, instance_id, result)) {
     pthread_mutex_unlock(&g_lock);
-    return R_INSTANCE_DELETED;
+    return;
   }
 
-  MoveBuf move_str;
-  unsigned int move;
+  MoveBuf move_str_buf;
+  char* move_str = NULL;
+  unsigned int move = 0;
   int status = R_OK;
-  int r = ParseCsaMove(env, jmove_str, &move, move_str);
+  const char* error = NULL;
+  int r = ParseCsaMove(env, jmove_str, &move, move_str_buf);
   if (r < 0) {
     LOG_DEBUG("Failed to parse move: %s: %s", move_str, str_error);
     status = R_ILLEGAL_MOVE;
+    error = str_error;
   } else {
     r = make_move_root(&tree, move,
                        (flag_history | flag_time | flag_rep
                         | flag_detect_hang
                         | flag_rejections));
     if (r < 0) {
-      LOG_DEBUG("Failed to make move: %s: %s", move_str, str_error);
-      FillBoard("Human", env, &tree, board);
+      LOG_DEBUG("Failed to make move: %s: %s", move_str_buf, str_error);
+      move_str = NULL;
+      move = 0;
       status = R_ILLEGAL_MOVE;
+      error = str_error;
     } else {
-      LOG_DEBUG("Human: %s", move_str);
-      FillMoveResult(env, move_result, move, move_str);
+      LOG_DEBUG("Human: %s", move_str_buf);
+      move_str = move_str_buf;
       status = GameStatusToReturnCode();
+      error = NULL;
     }
   }
-  FillBoard("Human", env, &tree, board);
+  FillResult("Human", env, status, error, move_str, move, &tree, result);
   pthread_mutex_unlock(&g_lock);
-  return status;
 }
 
-jint Java_com_ysaito_shogi_BonanzaJNI_undo(
+void Java_com_ysaito_shogi_BonanzaJNI_undo(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint instance_id,
     jint undo_cookie1,
     jint undo_cookie2,
-    jobject board) {
+    jobject result) {
   pthread_mutex_lock(&g_lock);
-  if (instance_id != g_instance_id) {
+  if (AnotherInstanceStarted(env, instance_id, result)) {
     pthread_mutex_unlock(&g_lock);
-    return R_INSTANCE_DELETED;
+    return;
   }
 
   MoveBuf move_str;
@@ -320,38 +400,36 @@ jint Java_com_ysaito_shogi_BonanzaJNI_undo(
     unmake_move_root(&tree, undo_cookie2);
   }
   LOG_DEBUG("Undo: %x %x", undo_cookie1, undo_cookie2);
-  FillBoard("Human", env, &tree, board);
+  FillResult("Undo", env, R_OK, NULL, NULL, 0, &tree, result);
   pthread_mutex_unlock(&g_lock);
-  return R_OK;
 }
 
-jint Java_com_ysaito_shogi_BonanzaJNI_computerMove(
+void Java_com_ysaito_shogi_BonanzaJNI_computerMove(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint instance_id,
-    jobject move_result,
-    jobject board) {
+    jobject result) {
   int status = R_OK;
   pthread_mutex_lock(&g_lock);
-  if (instance_id != g_instance_id) {
-    status = R_INSTANCE_DELETED;
-  } else {
-    __android_log_print(ANDROID_LOG_DEBUG, DEBUG_TAG, "ComputerMove");
-    CHECK2_GE(com_turn_start(&tree, 0), 0, "error: %s", str_error);
-
-    unsigned int move = last_pv_save.a[1];
-    if (move != 0) {
-      const char *move_str = str_CSA_move( move );
-      LOG_DEBUG("Comp: %x %s", move, move_str);
-      FillMoveResult(env, move_result, move, move_str);
-    } else {
-      // Computer likely have resigned
-    }
-    FillBoard("Computer", env, &tree, board);
-    status = GameStatusToReturnCode();
+  if (AnotherInstanceStarted(env, instance_id, result)) {
+    pthread_mutex_unlock(&g_lock);
+    return;
   }
+
+  __android_log_print(ANDROID_LOG_DEBUG, DEBUG_TAG, "ComputerMove");
+  CHECK2_GE(com_turn_start(&tree, 0), 0, "error: %s", str_error);
+
+  unsigned int move = last_pv_save.a[1];
+  const char* move_str = NULL;
+  if (move != 0) {
+    move_str = str_CSA_move( move );
+    LOG_DEBUG("Comp: %x %s", move, move_str);
+  } else {
+    // Computer likely have resigned
+  }
+  status = GameStatusToReturnCode();
+  FillResult("Computer", env, status, NULL, move_str, move, &tree, result);
   pthread_mutex_unlock(&g_lock);
-  return status;
 }
 
 void Java_com_ysaito_shogi_BonanzaJNI_abort(

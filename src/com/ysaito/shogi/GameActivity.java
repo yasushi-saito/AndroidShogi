@@ -22,7 +22,7 @@ import com.ysaito.shogi.BonanzaController;
 /**
  * The main activity that controls game play
  */
-public class ShogiActivity extends Activity {
+public class GameActivity extends Activity {
   private static final String TAG = "Shogi"; 
 
   private static final int DIALOG_PROMOTE = 1235;
@@ -33,6 +33,11 @@ public class ShogiActivity extends Activity {
   // List of players played by humans. The list size is usually one, when one side is 
   // played by Human and the other side by the computer.
   private ArrayList<Player> mHumanPlayers;
+  
+  // Number of undos remaining.
+  //
+  // TODO(saito) This works only when there's only one human player in the game.
+  // Make this field per-player attribute.
   private int mUndosRemaining;
   
   // View components
@@ -57,10 +62,6 @@ public class ShogiActivity extends Activity {
   private final ArrayList<Move> mMoves = new ArrayList<Move>();
   private final ArrayList<Integer> mMoveCookies = new ArrayList<Integer>();
   
-  static {  
-    System.loadLibrary("bonanza-jni");  
-  }
-
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);

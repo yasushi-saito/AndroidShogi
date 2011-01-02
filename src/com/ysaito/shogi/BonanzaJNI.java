@@ -15,44 +15,59 @@ public class BonanzaJNI {
   public static final int R_RESIGNED = -3;
   // Sennichite
   public static final int R_DRAW = -4;
+  
   // Another instance of the game started
   public static final int R_INSTANCE_DELETED = -5;
   
-  static public final class MoveResult {
+  public static final int R_INITIALIZATION_ERROR = -6;
+  
+  static public final class Result {
+    public Result() { board = new Board(); }
+    
+    // One of R_XXX constants
+    public int status;
+    
+    // Error message, if any.
+    public String error;
+    
+    // The new state of the board. 
+    public final Board board;
+    
     // The description of the move in CSA format.
-    String move;
+    public String move;
     
     // A cookie used to undo the move in the future. In practice, the value
     // in the result of calling interpret_CSA_move(csaMove).
-    int cookie;
+    public int moveCookie;
   }
+  
+  static public native void initialize(
+      String externalStorageDir);
   
   /** 
    * Initialize the C module. 
    * 
    * @return An instance ID
    * @param difficulty 1==weak, 5==strong
-   * @param board (output)  filled with the initial board configuration.
+   * @param result (output)  filled with the initial board configuration.
    */
-  static public native int initialize(
+  static public native int startGame(
       int difficulty,
       int total_think_time_secs,    
       int per_turn_think_time_secs,
-      Board board);
+      Result result);
   
   /**
    *  Inform Bonanza that the human player made a move.
    *   
    * @param move CSA-format string, such as "7776FU".
-   * @param board (output)
-   * @param moveResult (output)
+   * @param result (output)
    * @return One of R_* constants
    */
-  static public native int humanMove(
+  static public native void humanMove(
       int instanceId,
       String move,
-      MoveResult moveResult,
-      Board board);
+      Result result);
 
   /**
    * Have the computer compute the next move. 
@@ -63,8 +78,7 @@ public class BonanzaJNI {
    */
   static public native int computerMove(
       int instanceId,
-      MoveResult moveResult,
-      Board board);
+      Result result);
   
   /**
    * Undo up to two past moves. 
@@ -79,7 +93,7 @@ public class BonanzaJNI {
   static public native int undo(
       int instanceId,
       int cookie1, int cookie2,
-      Board board);
+      Result result);
   
   // Abort the current game. This method can be called from any thread.
   // If another thread is running HumanMove or ComputerMove, it will see

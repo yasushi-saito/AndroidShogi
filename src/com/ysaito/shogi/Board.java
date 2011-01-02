@@ -12,6 +12,8 @@ public class Board implements java.io.Serializable {
   // Encoding of mSquares[]. A piecebelonging to P_UP (resp. P_DOWN) is 
   // positive (resp. negative).
   // The absolute value defines the type of the piece. It is one of the following.
+  //
+  // Caution: These definitions are shared with Bonanza. Don't change!
   public static final int K_EMPTY = 0;  // placeholder for an unoccupied square
   public static final int K_FU = 1;
   public static final int K_KYO = 2;
@@ -28,6 +30,8 @@ public class Board implements java.io.Serializable {
   public static final int K_UMA = 14;
   public static final int K_RYU = 15;
   public static final int NUM_TYPES = 16;
+  
+  // CSA format string for each piece.
   static String[] csaPieceNames = {
     null, "FU", "KY", "KE", "GI", "KI", "KA", "HI", "OU", 
           "TO", "NY", "NK", "NG", null, "UM", "RY"

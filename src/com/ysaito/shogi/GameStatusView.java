@@ -4,7 +4,6 @@ package com.ysaito.shogi;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -12,8 +11,8 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 /**
- * @author saito@google.com (Your Name Here)
- *
+ * Widget for displaying game status, such as elapsed time per player and 
+ * last moves.
  */
 public class GameStatusView extends LinearLayout {
   class Timer {
@@ -35,7 +34,6 @@ public class GameStatusView extends LinearLayout {
     private long mLastThinkTimeSeconds;
   }
   
-  private static final String TAG = "ShogiView";
   private Context mContext;
   private TextView mGameStatus;
   private Timer mBlackTime;
@@ -124,11 +122,11 @@ public class GameStatusView extends LinearLayout {
     }
     if (gameState == GameState.ACTIVE) {
     } else if (gameState == GameState.BLACK_LOST) {
-      msg += R.string.white_won;
+      msg += getResources().getString(R.string.white_won);
     } else if (gameState == GameState.WHITE_LOST) {
-      msg += R.string.black_won;
+      msg += getResources().getString(R.string.black_won);
     } else if (gameState == GameState.DRAW) {
-      msg += R.string.draw;
+      msg += getResources().getString(R.string.draw);
     } else {
       throw new AssertionError(gameState.toString());
     }
