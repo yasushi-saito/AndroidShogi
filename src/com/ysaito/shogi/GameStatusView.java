@@ -71,7 +71,8 @@ public class GameStatusView extends LinearLayout {
   public void update(
       GameState gameState,
       ArrayList<Move> moves,
-      Player currentPlayer) {
+      Player currentPlayer,
+      String errorMessage) {
     if (currentPlayer == Player.WHITE) {
       mWhiteStatus.setBackgroundColor(0xffeeeeee);
       mWhiteStatus.setTextColor(0xff000000);

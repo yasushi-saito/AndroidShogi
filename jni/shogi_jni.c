@@ -146,10 +146,41 @@ static void FillBoard(const char* label,
   (*env)->SetIntField(env, board, fid, ptree->posi.hand_white);
 }
 
+static void FillMoveResult(JNIEnv* env,
+                           jobject move_result,
+                           int move,
+                           const char* move_str) {
+  jclass move_class = (*env)->GetObjectClass(env, move_result);
+  jfieldID fid = (*env)->GetFieldID(env, move_class,
+                                    "move", "Ljava/lang/String;");
+  (*env)->SetObjectField(env, move_result, fid,
+                         (*env)->NewStringUTF(env, move_str));
+
+  FillIntField(env, move, move_class, move_result, "cookie");
+}
+
 static void RunCommand(const char* command) {
   LOG_DEBUG("Run %s", command);
   strcpy(str_cmdline, command);
-  CHECK_GE(procedure(&tree), 0);
+  CHECK2_GE(procedure(&tree), 0, "error: %s", str_error);
+}
+
+typedef char MoveBuf[12];
+static int ParseCsaMove(JNIEnv* env,
+                        jstring jmove_str,
+                        unsigned int* move,
+                        MoveBuf move_str) {
+  const char* tmp = (*env)->GetStringUTFChars(env, jmove_str, NULL);
+  CHECK(tmp != NULL);
+  CHECK2(strlen(tmp) < sizeof(MoveBuf) - 1, "move: %s", tmp);
+  strcpy(move_str, tmp);
+
+  int r = interpret_CSA_move(&tree, move, move_str);
+  if (r < 0) {
+    LOG_DEBUG("Failed to parse move: %s: %s", move_str, str_error);
+  }
+  (*env)->ReleaseStringUTFChars(env, jmove_str, tmp);
+  return r;
 }
 
 static void SetDifficulty(int difficulty,
@@ -190,7 +221,7 @@ static int GameStatusToReturnCode() {
   return R_OK;
 }
 
-jint Java_com_ysaito_shogi_BonanzaJNI_Initialize(
+jint Java_com_ysaito_shogi_BonanzaJNI_initialize(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint difficulty,
@@ -228,11 +259,12 @@ jint Java_com_ysaito_shogi_BonanzaJNI_Initialize(
   return instance_id;
 }
 
-jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
+jint Java_com_ysaito_shogi_BonanzaJNI_humanMove(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint instance_id,
-    jstring move_str,
+    jstring jmove_str,
+    jobject move_result,
     jobject board) {
   pthread_mutex_lock(&g_lock);
   if (instance_id != g_instance_id) {
@@ -240,13 +272,12 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
     return R_INSTANCE_DELETED;
   }
 
-  const char* tmp = (*env)->GetStringUTFChars(env, move_str, NULL);
-  CHECK(tmp != NULL);
-  int status = R_OK;
+  MoveBuf move_str;
   unsigned int move;
-  int r = interpret_CSA_move(&tree, &move, tmp);
+  int status = R_OK;
+  int r = ParseCsaMove(env, jmove_str, &move, move_str);
   if (r < 0) {
-    LOG_DEBUG("Failed to parse move: %s: %s", tmp, str_error);
+    LOG_DEBUG("Failed to parse move: %s: %s", move_str, str_error);
     status = R_ILLEGAL_MOVE;
   } else {
     r = make_move_root(&tree, move,
@@ -254,53 +285,76 @@ jint Java_com_ysaito_shogi_BonanzaJNI_HumanMove(
                         | flag_detect_hang
                         | flag_rejections));
     if (r < 0) {
-      LOG_DEBUG("Failed to make move: %s: %s", tmp, str_error);
+      LOG_DEBUG("Failed to make move: %s: %s", move_str, str_error);
       FillBoard("Human", env, &tree, board);
       status = R_ILLEGAL_MOVE;
     } else {
-      unsigned int move = last_pv.a[1];
-      const char *str_move = str_CSA_move( move );
-      LOG_DEBUG("Human: %x %s", move, str_move);
+      LOG_DEBUG("Human: %s", move_str);
+      FillMoveResult(env, move_result, move, move_str);
       status = GameStatusToReturnCode();
     }
   }
-  (*env)->ReleaseStringUTFChars(env, move_str, tmp);
   FillBoard("Human", env, &tree, board);
   pthread_mutex_unlock(&g_lock);
   return status;
 }
 
-jint Java_com_ysaito_shogi_BonanzaJNI_ComputerMove(
+jint Java_com_ysaito_shogi_BonanzaJNI_undo(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint instance_id,
-    jobject board,
-    jobject dest_move) {
+    jint undo_cookie1,
+    jint undo_cookie2,
+    jobject board) {
+  pthread_mutex_lock(&g_lock);
+  if (instance_id != g_instance_id) {
+    pthread_mutex_unlock(&g_lock);
+    return R_INSTANCE_DELETED;
+  }
+
+  MoveBuf move_str;
+  unsigned int move;
+  CHECK2_GE(undo_cookie1, 1, "Cookie: %x", undo_cookie1);
+  unmake_move_root(&tree, undo_cookie1);
+  if (undo_cookie2 >= 0) {
+    unmake_move_root(&tree, undo_cookie2);
+  }
+  LOG_DEBUG("Undo: %x %x", undo_cookie1, undo_cookie2);
+  FillBoard("Human", env, &tree, board);
+  pthread_mutex_unlock(&g_lock);
+  return R_OK;
+}
+
+jint Java_com_ysaito_shogi_BonanzaJNI_computerMove(
+    JNIEnv *env,
+    jclass unused_bonanza_class,
+    jint instance_id,
+    jobject move_result,
+    jobject board) {
   int status = R_OK;
   pthread_mutex_lock(&g_lock);
   if (instance_id != g_instance_id) {
     status = R_INSTANCE_DELETED;
   } else {
     __android_log_print(ANDROID_LOG_DEBUG, DEBUG_TAG, "ComputerMove");
-    CHECK_GE(com_turn_start(&tree, 0), 0);
+    CHECK2_GE(com_turn_start(&tree, 0), 0, "error: %s", str_error);
 
     unsigned int move = last_pv_save.a[1];
-    const char *str_move = str_CSA_move( move );
-    LOG_DEBUG("Comp: %x %s", move, str_move);
-    FillBoard("Computer", env, &tree, board);
-
-    jclass move_class = (*env)->GetObjectClass(env, dest_move);
-    jfieldID fid = (*env)->GetFieldID(env, move_class,
-                                      "move", "Ljava/lang/String;");
-    (*env)->SetObjectField(env, dest_move, fid,
-                           (*env)->NewStringUTF(env, str_move));
+    if (move != 0) {
+      const char *move_str = str_CSA_move( move );
+      LOG_DEBUG("Comp: %x %s", move, move_str);
+      FillBoard("Computer", env, &tree, board);
+      FillMoveResult(env, move_result, move, move_str);
+    } else {
+      // Computer likely have resigned
+    }
     status = GameStatusToReturnCode();
   }
   pthread_mutex_unlock(&g_lock);
   return status;
 }
 
-void Java_com_ysaito_shogi_BonanzaJNI_Abort(
+void Java_com_ysaito_shogi_BonanzaJNI_abort(
     JNIEnv *env,
     jclass unused_bonanza_class) {
   LOG_DEBUG("Aborting the game");

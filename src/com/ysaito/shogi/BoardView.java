@@ -19,9 +19,11 @@ import android.view.View;
 import com.ysaito.shogi.Board;
 
 public class BoardView extends View implements View.OnTouchListener {
-  // Interface for communicating user moves to the owner of this view.
-  // onHumanMove is called when a human player moves a piece, or drops a
-  // captured piece.
+  /**
+   * Interface for communicating user moves to the owner of this view.
+   * onHumanMove is called when a human player moves a piece, or drops a
+   * captured piece.
+   */ 
   public interface EventListener {
     void onHumanMove(Player player, Move move);
   }
@@ -31,37 +33,33 @@ public class BoardView extends View implements View.OnTouchListener {
     mCurrentPlayer = Player.INVALID;
     mGameState = GameState.ACTIVE;
     mBoard = new Board();
-    mBoard.setPiece(4, 4, -Board.K_GIN);
+    mBoard.setPiece(4, 4, -Board.K_KEI);
     initializeBitmaps();
     setOnTouchListener(this);
   }
 
-  // Called once during object construction.
+  /**
+   *  Called once during object construction.
+   */
   public final void initialize(
       EventListener listener,
-      GameStatusView statusView,
       ArrayList<Player> humanPlayers) {
     mListener = listener;
-    
-    // TODO(saito) remove mStatusView
-    mStatusView = statusView;
     mHumanPlayers = new ArrayList<Player>(humanPlayers);
   }
 
-  // Update the state of the board as well as players' turn.
-  public final void setState(
+  /**
+   *  Update the state of the board as well as players' turn.
+   */
+  public final void update(
       GameState gameState,
       Board board,
-      Player currentPlayer,
-      String errorMessage) {
+      Player currentPlayer) {
     mGameState = gameState;
     mCurrentPlayer = currentPlayer;
     mBoard = new Board(board);
-    mErrorMessage = errorMessage;
     invalidate();
   }
-
-  public final GameState gameState() { return mGameState; }
 
   @Override public boolean onTouch(View v, MotionEvent event) {
     if (!isHumanPlayer(mCurrentPlayer)) return false;
@@ -204,8 +202,6 @@ public class BoardView extends View implements View.OnTouchListener {
       int sy = layout.screenY(mMoveTo.getY());
       canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
     }
-
-    // mStatusView.update(mCurrentPlayer, mMoves, mGameState);
   }
 
   //
@@ -405,7 +401,6 @@ public class BoardView extends View implements View.OnTouchListener {
   Position mMoveTo;
 
   EventListener mListener;
-  GameStatusView mStatusView;
   ArrayList<Player> mHumanPlayers;
 
   void drawEmptyBoard(Canvas canvas, ScreenLayout layout) {

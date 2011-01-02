@@ -11,11 +11,29 @@ public class BonanzaController {
 
   public static class Result implements java.io.Serializable {
     public final Board board = new Board();
-    public Move lastMove;
+    
+    // The last move made. Possible values are the following:
+    //
+    // 1. all the values are null or 0. This happens when the last
+    //    operation resulted in error.
+    //
+    // 2. lastMove!=null && lastMoveCookie > 0 && undoMoves == 0
+    //    this happens after successful completion of humanMove or 
+    //    computerMove.
+    //
+    // 3. lastMove==null && lastMoveCookie == 0 && undoMoves > 0
+    //    this happens after successful completion of undo1 or undo2. 
+    public Move lastMove;       // the move made by the request.
+    public int lastMoveCookie;  // cookie for lastMove. for future undos.
+    public int undoMoves;       // number of moves to be rolled back
+    
+    // The player that holds the next turn. May be Player.INVALID when the
+    // the game is over.
     public Player nextPlayer; 
+    
     public GameState gameState;
     public String errorMessage;
-
+    
     @Override
     public String toString() {
       String s = "state=" + gameState.toString() + 
@@ -24,7 +42,13 @@ public class BonanzaController {
       return s;
     }
     
-    final void setState(int jni_status, Move m, Player curPlayer) {
+    final void setState(
+        int jni_status, 
+        BonanzaJNI.MoveResult m,
+        Player curPlayer) {
+      lastMove = (m.move != null) ? Move.fromCsaString(m.move) : null;
+      lastMoveCookie = m.cookie;
+      
       if (jni_status >= 0) {
         if (curPlayer == Player.WHITE) {
           nextPlayer = Player.BLACK;
@@ -33,34 +57,31 @@ public class BonanzaController {
         } else {
           throw new AssertionError("Invalid player");
         }
-        lastMove = m;
         gameState = GameState.ACTIVE;
         errorMessage = null;
       } else {
         switch (jni_status) {
-          case BonanzaJNI.ILLEGAL_MOVE:
+          case BonanzaJNI.R_ILLEGAL_MOVE:
             nextPlayer = curPlayer;
             gameState = GameState.ACTIVE;
             lastMove = null;
+            lastMoveCookie = -1;
             errorMessage = "Illegal move";
             break;
-          case BonanzaJNI.CHECKMATE:
+          case BonanzaJNI.R_CHECKMATE:
             nextPlayer = Player.INVALID;
-            lastMove = m;
             gameState = (curPlayer == Player.BLACK) ?
                 GameState.WHITE_LOST : GameState.BLACK_LOST;
             errorMessage = "Checkmate";
             break;
-          case BonanzaJNI.RESIGNED:
+          case BonanzaJNI.R_RESIGNED:
             nextPlayer = Player.INVALID;
-            lastMove = m;            
             gameState = (curPlayer == Player.BLACK) ?
                 GameState.BLACK_LOST : GameState.WHITE_LOST;
             errorMessage = "Resigned";
             break;
-          case BonanzaJNI.DRAW:
+          case BonanzaJNI.R_DRAW:
             nextPlayer = Player.INVALID;
-            lastMove = m;
             gameState = GameState.DRAW;
             errorMessage = "Draw";
             break;
@@ -79,6 +100,11 @@ public class BonanzaController {
   HandlerThread mThread;
 
   int mInstanceId;
+  static final int C_INIT = 0;
+  static final int C_HUMAN_MOVE = 1;
+  static final int C_COMPUTER_MOVE = 2;
+  static final int C_UNDO = 3;
+  static final int C_DESTROY = 4;
   
   public BonanzaController(Handler handler, int difficulty) {
     mOutputHandler = handler;
@@ -89,60 +115,100 @@ public class BonanzaController {
     mInputHandler = new Handler(mThread.getLooper()) {
       @Override
       public void handleMessage(Message msg) {
-        String command = msg.getData().getString("command");
-        if (command == "init") {
-          doInit();
-        } else if (command == "humanMove") {
-          doHumanMove(
-              (Move)msg.getData().get("move"),
-              (Player)msg.getData().get("player"));
-        } else if (command == "computerMove") {
-          doComputerMove((Player)msg.getData().get("player"));
-        } else if (command == "destroy") {
-          doDestroy();
-        } else {
-          throw new AssertionError("Invalid command: " + command);
+        int command = msg.getData().getInt("command");
+        switch (command) {
+          case C_INIT:
+            doInit();
+            break;
+          case C_HUMAN_MOVE:
+            doHumanMove(
+                (Player)msg.getData().get("player"),
+                (Move)msg.getData().get("move"));
+            break;  
+          case C_COMPUTER_MOVE:
+            doComputerMove((Player)msg.getData().get("player"));
+            break;
+          case C_UNDO:
+            doUndo(
+                (Player)msg.getData().get("player"),
+                msg.getData().getInt("cookie1"),
+                msg.getData().getInt("cookie2"));
+            break;
+          case C_DESTROY:
+            doDestroy();
+            break; 
+          default:
+            throw new AssertionError("Invalid command: " + command);
         }
       }
     };
-    sendInputMessage("init", null, null);
+    sendInputMessage(C_INIT, null, null, -1, -1);
   }
   
-  // Stop the background thread that controls Bonanza. Must be called once before
-  // abandonding this object.
+  /** 
+   * Stop the background thread that controls Bonanza. Must be called once before
+   * abandonding this object.
+   */
   void destroy() {
-    sendInputMessage("destroy", null, null);
+    sendInputMessage(C_DESTROY, null, null, -1, -1);
   }
 
-  // Tell Bonanza that the human player has made @p move. Bonanza will
-  // asynchronously ack through the mOutputHandler.
-  //
-  // @p player is the player that has made the @p move. It is used only to
-  // report back Result.nextPlayer.
-  //
-  // @invariant player == move.player
+  /** 
+   * Tell Bonanza that the human player has made @p move. Bonanza will
+   * asynchronously ack through the mOutputHandler.
+   *
+   * @param player is the player that has made the @p move. It is used only to
+   *  report back Result.nextPlayer.
+   */   
   public void humanMove(Player player, Move move) {
-    sendInputMessage("humanMove", player, move);
+    sendInputMessage(C_HUMAN_MOVE, player, move, -1, -1);
   }
   
-  // Ask Bonanza to make a move. Bonanza will asynchronously report its move
-  // through the mOutputHandler.
-  //
-  // @p player is the identity of the computer player. It is used only to 
-  // report back Result.nextPlayer.
+  /** 
+   * Ask Bonanza to make a move. Bonanza will asynchronously report its move
+   * through the mOutputHandler.
+   * 
+   * @param player the identity of the computer player. It is used only to 
+   * report back Result.nextPlayer.
+   */
   public void computerMove(Player player) {
-    sendInputMessage("computerMove", player, null);
+    sendInputMessage(C_COMPUTER_MOVE, player, null, -1, -1);
   }
 
+  /**
+   * Undo the last move. 
+   * @param player the player who made the last move.
+   * @param cookie The last move made in the game.
+   */
+  public void undo1(Player player, int cookie) {
+    sendInputMessage(C_UNDO, player, null, cookie, -1);
+  }
+  
+  /**
+   * Undo the last two moves.
+   * @param player the player who made the move cookie2.
+   * @param cookie1 the last move made in the game.
+   * @param cookie2 the penultimate move made in the game.
+   */
+  public void undo2(Player player, int cookie1, int cookie2) {
+    sendInputMessage(C_UNDO, player, null, cookie1, cookie2);
+  }
+  
   //
   // Implementation details
   //
-  void sendInputMessage(String command, Player curPlayer, Move move) {
+  void sendInputMessage(
+      int command, 
+      Player curPlayer, 
+      Move move,
+      int cookie1, int cookie2) {
     Message msg = mInputHandler.obtainMessage();
     Bundle b = new Bundle();
-    b.putString("command", command);
-    b.putSerializable("move",  move);
-    b.putSerializable("player", curPlayer);
+    b.putInt("command", command);
+    if (move != null) b.putSerializable("move",  move);
+    if (curPlayer != null) b.putSerializable("player", curPlayer);
+    if (cookie1 >= 0) b.putInt("cookie1", cookie1);
+    if (cookie2 >= 0) b.putInt("cookie2", cookie2);    
     msg.setData(b);
     mInputHandler.sendMessage(msg);
   }
@@ -163,27 +229,46 @@ public class BonanzaController {
 
   void doInit() {
     Result r = new Result();
-    mInstanceId =BonanzaJNI.Initialize(mComputerDifficulty, 60, 1, r.board);
+    mInstanceId =BonanzaJNI.initialize(mComputerDifficulty, 60, 1, r.board);
     r.nextPlayer = Player.BLACK;
     r.gameState = GameState.ACTIVE;
     sendOutputMessage(r);
   }
 
-  void doHumanMove(Move move, Player player) {
+  void doHumanMove(Player player, Move move) {
     Result r = new Result();
-    int iret = BonanzaJNI.HumanMove(mInstanceId, move.toCsaString(),  r.board);
-    r.setState(iret, move, player);
+    BonanzaJNI.MoveResult m = new BonanzaJNI.MoveResult();
+    int iret = BonanzaJNI.humanMove(
+        mInstanceId, 
+        move.toCsaString(), m, r.board);
+    r.setState(iret, m, player);
     sendOutputMessage(r);
   }
 
   void doComputerMove(Player player) {
     Result r = new Result();
-    BonanzaJNI.ComputerMoveResult move = new BonanzaJNI.ComputerMoveResult();
-    int iret = BonanzaJNI.ComputerMove(mInstanceId, r.board, move);
-    r.setState(iret, Move.fromCsaString(move.move), player);
-    Log.d(TAG, "CMOVE: " + move.move);
+    BonanzaJNI.MoveResult m = new BonanzaJNI.MoveResult();
+    int iret = BonanzaJNI.computerMove(mInstanceId, m, r.board);
+    r.setState(iret, m, player);
     sendOutputMessage(r);
   }
+
+  void doUndo(Player player, int cookie1, int cookie2) {
+    Result r = new Result();
+    Log.d(TAG, "Undo " + cookie1 + " " + cookie2);
+    int iret = BonanzaJNI.undo(mInstanceId, cookie1, cookie2, r.board);
+
+    BonanzaJNI.MoveResult m = new BonanzaJNI.MoveResult();  // dummy
+    if (cookie2 < 0) {
+      r.setState(iret, m, player);
+      r.undoMoves = 1;
+    } else {
+      r.setState(iret, m, Player.opponentOf(player));
+      r.undoMoves = 2;
+    }
+    sendOutputMessage(r);
+  }   
+  
   
   void doDestroy() {
     Log.d(TAG, "Destroy");

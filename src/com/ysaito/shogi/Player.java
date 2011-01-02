@@ -11,5 +11,11 @@ public enum Player {
   // bottom and moves up. "WHITE" is "gote" in japanese.
   INVALID,
   BLACK,
-  WHITE,
+  WHITE;
+  
+  public final static Player opponentOf(Player p) {
+    if (p == BLACK) return WHITE;
+    if (p == WHITE) return BLACK;
+    throw new AssertionError("Invalid player: " + p.toString());
+  }
 }

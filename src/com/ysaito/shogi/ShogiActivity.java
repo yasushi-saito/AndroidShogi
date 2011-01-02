@@ -12,11 +12,15 @@ import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.widget.Toast;
+
 import com.ysaito.shogi.BonanzaController;
 
 public class ShogiActivity extends Activity {
   static final String TAG = "Shogi"; 
-  String mMenu;
 
   static final int DIALOG_PROMOTE = 1235;
   static final int DIALOG_CONFIRM_QUIT = 1236;
@@ -26,7 +30,13 @@ public class ShogiActivity extends Activity {
   BoardView mBoardView;
   GameStatusView mStatusView;
   
-  ArrayList<Move> mMoves;  // History of moves made by both players
+  Board mBoard;
+  Player mNextPlayer;
+  GameState mGameState;
+  
+  // History of moves made by both players
+  final ArrayList<Move> mMoves = new ArrayList<Move>();
+  final ArrayList<Integer> mMoveCookies = new ArrayList<Integer>();
   
   // List of players played by humans. The list size is usually one, when one side is 
   // played by Human and the other side by the computer.
@@ -39,9 +49,8 @@ public class ShogiActivity extends Activity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    setContentView(R.layout.main);
+    setContentView(R.layout.game);
     
-    mMoves = new ArrayList<Move>();
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
         getBaseContext());
     String player_black = prefs.getString("player_black", "Human");
@@ -66,17 +75,36 @@ public class ShogiActivity extends Activity {
         PlayerName(player_white, computer_level));
     
     mBoardView = (BoardView)findViewById(R.id.boardview);
-    mBoardView.initialize(mViewListener, mStatusView, mHumanPlayers);
+    mBoardView.initialize(mViewListener, mHumanPlayers);
     
     mController = new BonanzaController(mControllerHandler, computer_level);
     // mController will call back via mControllerHandler when Bonanza is 
     // initialized. mControllerHandler will cause mBoardView to start accepting
     // user inputs.
   }
+
+  @Override
+  public boolean onCreateOptionsMenu(Menu menu) {
+    MenuInflater inflater = getMenuInflater();
+    inflater.inflate(R.menu.game_menu, menu);
+    return true;
+  }
+  
+  @Override
+  public boolean onOptionsItemSelected(MenuItem item) {
+    switch (item.getItemId()) {
+      case R.id.undo:
+        undo();
+        return true;
+      default:    
+        return super.onOptionsItemSelected(item);
+    }
+  }
+  
   
   String PlayerName(String type, int level) {
     if (type.equals("Human")) return type;
-    return "Computer Lv" + level;
+    return "Com Lv" + level;
   }
   
   @Override
@@ -88,7 +116,7 @@ public class ShogiActivity extends Activity {
 
   @Override
   public void onBackPressed() { 
-    if (mBoardView.gameState() == GameState.ACTIVE) {
+    if (mGameState == GameState.ACTIVE) {
       showDialog(DIALOG_CONFIRM_QUIT);
     } else {
       super.onBackPressed();
@@ -117,15 +145,43 @@ public class ShogiActivity extends Activity {
   }
   
   //
+  // Undo
+  //
+  void undo() {
+    if (!isHumanPlayer(mNextPlayer)) {
+      Toast.makeText(getBaseContext(), "Computer is thinking", 
+          Toast.LENGTH_SHORT).show();
+    } else {
+      Toast.makeText(getBaseContext(), "Undo",
+          Toast.LENGTH_SHORT).show();
+    }
+    if (mMoveCookies.size() < 2) return;
+    int lastMove = mMoveCookies.get(mMoveCookies.size() - 1);
+    int penultimateMove = mMoveCookies.get(mMoveCookies.size() - 2);
+    mController.undo2(mNextPlayer, lastMove, penultimateMove);
+  }
+  //
   // Handling results from the Bonanza controller thread
   //
   final Handler mControllerHandler = new Handler() {
     @Override public void handleMessage(Message msg) {
       BonanzaController.Result r = (BonanzaController.Result)(
           msg.getData().get("result"));
-      mBoardView.setState(r.gameState, r.board, r.nextPlayer, r.errorMessage);
-      if (r.lastMove != null) mMoves.add(r.lastMove);
-      mStatusView.update(r.gameState, mMoves, r.nextPlayer);
+      mGameState = r.gameState;
+      mBoard = r.board;
+      mNextPlayer = r.nextPlayer;
+      if (r.lastMove != null) {
+        mMoves.add(r.lastMove);
+        mMoveCookies.add(r.lastMoveCookie);
+      } 
+      for (int i = 0; i < r.undoMoves; ++i) {
+        assert r.lastMove == null;
+        mMoves.remove(mMoves.size() - 1);
+        mMoveCookies.remove(mMoveCookies.size() - 1);
+      }
+      
+      mBoardView.update(r.gameState, r.board, r.nextPlayer);
+      mStatusView.update(r.gameState, mMoves, r.nextPlayer, r.errorMessage);
       
       if (isComputerPlayer(r.nextPlayer)) {
         mController.computerMove(r.nextPlayer);
@@ -136,14 +192,17 @@ public class ShogiActivity extends Activity {
   //
   // Handling of move requests from BoardView
   //
-  Player mLastPlayer;  // state kept during the run of promotion dialog
-  Move mLastMove;    
+  
+  // state kept during the run of promotion dialog
+  Player mSavedPlayerForPromotion;
+  Move mSavedMoveForPromotion;    
   
   final BoardView.EventListener mViewListener = new BoardView.EventListener() {
     public void onHumanMove(Player player, Move move) {
+      mNextPlayer = Player.INVALID;  
       if (MoveAllowsForPromotion(player, move)) {
-        mLastPlayer = player;
-        mLastMove = move;
+        mSavedPlayerForPromotion = player;
+        mSavedMoveForPromotion = move;
         showDialog(DIALOG_PROMOTE);
       } else {
         mController.humanMove(player, move);
@@ -158,6 +217,8 @@ public class ShogiActivity extends Activity {
     b.setOnCancelListener(
         new DialogInterface.OnCancelListener() {
           public void onCancel(DialogInterface unused) {
+            mNextPlayer = mSavedPlayerForPromotion;
+            mBoardView.update(mGameState, mBoard, mNextPlayer);
           }
         });
     b.setItems(
@@ -165,10 +226,10 @@ public class ShogiActivity extends Activity {
         new DialogInterface.OnClickListener() {
           public void onClick(DialogInterface d, int item) {
             if (item == 0) {
-              mLastMove.piece = Board.promote(mLastMove.piece);
+              mSavedMoveForPromotion.piece = Board.promote(mSavedMoveForPromotion.piece);
             }
-            mController.humanMove(mLastPlayer, mLastMove);
-            mLastMove = null;
+            mController.humanMove(mSavedPlayerForPromotion, mSavedMoveForPromotion);
+            mSavedMoveForPromotion = null;
           }
         });
     return b.create();
@@ -176,6 +237,10 @@ public class ShogiActivity extends Activity {
   
   static final boolean MoveAllowsForPromotion(Player player, Move move) {
     if (Board.isPromoted(move.piece)) return false;  // already promoted
+    
+    final int type = Board.type(move.piece);
+    if (type == Board.K_KIN || type == Board.K_OU) return false;
+    
     if (move.fromX < 0) return false;  // dropping a captured piece
     if (player == Player.WHITE && move.toY < 6) return false;
     if (player == Player.BLACK && move.toY >= 3) return false;
