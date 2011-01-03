@@ -32,8 +32,8 @@ public class StartScreenActivity extends Activity {
   static final String TAG = "ShogiStart";
   static final int DIALOG_CONFIRM_DOWNLOAD = 1234;
   static final int DIALOG_DOWNLOAD = 1235;
-  File mExternalDir;
-  SharedPreferences mPrefs;
+  private File mExternalDir;
+  private SharedPreferences mPrefs;
   
   static {  
     System.loadLibrary("bonanza-jni");  
@@ -94,10 +94,10 @@ public class StartScreenActivity extends Activity {
   //
   // Data download
   //
-  ProgressDialog mDownloadDialog;
-  BonanzaDownloader mDownloadController;
+  private ProgressDialog mDownloadDialog;
+  private BonanzaDownloader mDownloadController;
   
-  AlertDialog newConfirmDownloadDialog() {
+  private AlertDialog newConfirmDownloadDialog() {
     AlertDialog.Builder b = new AlertDialog.Builder(this);
     b.setTitle("Files already downloaded. Download again?");
     b.setCancelable(true);
@@ -120,7 +120,7 @@ public class StartScreenActivity extends Activity {
     String dflt = getResources().getString(R.string.default_download_source_url);
     return mPrefs.getString("download_source_url", dflt);
   }
-  ProgressDialog newDownloadDialog() {
+  private ProgressDialog newDownloadDialog() {
     ProgressDialog d = new ProgressDialog(this);
     d.setCancelable(true);
     d.setMessage(String.format("Downloading %s", dbSourceUrl()));
@@ -132,7 +132,7 @@ public class StartScreenActivity extends Activity {
     return d;
   }
   
-  void startDownload() {
+  private void startDownload() {
     DownloadManager m = (DownloadManager)getSystemService(DOWNLOAD_SERVICE);
     mDownloadController = new BonanzaDownloader(
         mDownloadHandler, 
@@ -143,7 +143,7 @@ public class StartScreenActivity extends Activity {
     showDialog(DIALOG_DOWNLOAD);
   }
   
-  final Handler mDownloadHandler = new Handler() {
+  private final Handler mDownloadHandler = new Handler() {
     @Override public void handleMessage(Message msg) {
       BonanzaDownloader.Status status = (BonanzaDownloader.Status)msg.getData().get("status");
       Log.d(TAG, "Recv status: " + status.toString());
@@ -164,8 +164,9 @@ public class StartScreenActivity extends Activity {
       }
     }
   };
+  
   // Download Bonanza data files
-  boolean installedShogiData() {
+  private boolean installedShogiData() {
     return false;
   }
 
@@ -182,7 +183,7 @@ public class StartScreenActivity extends Activity {
     }
   }
   
-  void newGame() {
+  private void newGame() {
     if (!BonanzaDownloader.hasRequiredFiles(mExternalDir)) {
       Toast.makeText(
           getBaseContext(),

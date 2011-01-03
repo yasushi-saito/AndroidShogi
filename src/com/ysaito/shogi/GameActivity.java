@@ -291,7 +291,7 @@ public class GameActivity extends Activity {
     }
   };
   
-  AlertDialog createPromoteDialog() {
+  private AlertDialog createPromoteDialog() {
     AlertDialog.Builder b = new AlertDialog.Builder(this);
     b.setTitle(R.string.promote_piece);
     b.setCancelable(true);
