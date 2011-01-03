@@ -19,4 +19,5 @@
     <string name="reset_preferences">設定リセット</string>
     <string name="undo">待った</string>
     <string name="max_undos">待った</string>
+    <string name="piece_style">駒</string>
 </resources>

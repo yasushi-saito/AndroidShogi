@@ -234,7 +234,12 @@ static int ParseCsaMove(JNIEnv* env,
 static void SetDifficulty(int difficulty,
                           int total_think_time_secs,
                           int per_turn_think_time_secs) {
+  // Disable background thinking. I don't know how to stop it in timely
+  // fashion.
   RunCommand("ponder off");
+
+  // Don't let the computer resign until it's really desperate.
+  RunCommand("resign 999999");
 
   node_limit   = UINT64_MAX;
   sec_limit    = total_think_time_secs;

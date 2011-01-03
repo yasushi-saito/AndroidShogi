@@ -19,5 +19,6 @@
     <string name="reset_preferences">Reset Preferences</string>
     <string name="undo">Undo</string>
     <string name="max_undos">Allow Undo</string>
-    <string name="default_download_source_url">http://www.ysaito.com/downloads/shogi-data.zip</string>    
+    <string name="piece_style">Piece Style</string>
+    <string name="default_download_source_url">http://www.ysaito.com/downloads/shogi-data.zip</string>
 </resources>

@@ -4,12 +4,12 @@
     <item>Human</item>
     <item>Computer</item>
   </string-array>
-  
+
   <string-array name="player_type_values">
     <item>Human</item>
     <item>Computer</item>
   </string-array>
-    
+
   <string-array name="computer_levels">
     <item>Level 0 (easy)</item>
     <item>Level 1</item>
@@ -30,24 +30,34 @@
     <item>2</item>
     <item>3</item>
     <item>4</item>
-  </string-array>  
-  
+  </string-array>
+
   <string-array name="max_undos">
     <item>Disallowed</item>
     <item>1</item>
     <item>2</item>
     <item>3</item>
     <item>4</item>
-    <item>Unlimited</item>    
+    <item>Unlimited</item>
   </string-array>
-    
+
   <string-array name="max_undo_values">
     <item>0</item>
     <item>1</item>
     <item>2</item>
     <item>3</item>
     <item>4</item>
-    <item>99999</item>    
-  </string-array>  
+    <item>99999</item>
+  </string-array>
+
+  <string-array name="piece_style">
+    <item>Kinki</item>
+    <item>Kinki (simple)</item>
+  </string-array>
+
+  <string-array name="piece_style_values">
+    <item>kinki</item>
+    <item>kinki_simple</item>
+  </string-array>
 
 </resources>

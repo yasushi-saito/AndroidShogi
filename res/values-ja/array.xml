@@ -30,4 +30,8 @@
     <item>無制限</item>
   </string-array>
 
+  <string-array name="piece_style">
+    <item>錦旗</item>
+    <item>錦旗(一字)</item>
+  </string-array>
 </resources>

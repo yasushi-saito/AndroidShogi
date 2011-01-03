@@ -2,6 +2,7 @@ package com.ysaito.shogi;
 import java.util.ArrayList;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -10,9 +11,9 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
+import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -37,7 +38,7 @@ public class BoardView extends View implements View.OnTouchListener {
     mBoard = new Board();
     mBoard.setPiece(3, 3, Board.K_KEI);
     mBoard.setPiece(5, 5, Board.K_KEI);
-    initializeBitmaps();
+    initializeBitmaps(context);
     setOnTouchListener(this);
   }
 
@@ -89,7 +90,6 @@ public class BoardView extends View implements View.OnTouchListener {
         Board  board, Player player, int searchType) {
       int px = mLayout.boardX(mSx);
       int py = mLayout.boardY(mSy);
-      Log.d(TAG, String.format("NN: %d %d", px, py));
       for (int i = -1; i <= 1; ++i) {
         for (int j = -1; j <= 1; ++j) {
           int x = px + i;
@@ -147,7 +147,7 @@ public class BoardView extends View implements View.OnTouchListener {
     NearestSquareFinder finder = new NearestSquareFinder(layout, event.getX(), event.getY());
     
     if (action == MotionEvent.ACTION_DOWN) {
-      mMoveFrom =null ;
+      mMoveFrom = null;
       
       // Start of touch operation
       finder.findNearestSquareOnBoard(mBoard, mCurrentPlayer, T_PLAYERS_PIECE);
@@ -237,20 +237,7 @@ public class BoardView extends View implements View.OnTouchListener {
       for (int x = 0; x < Board.DIM; ++x) {
         int v = mBoard.getPiece(x, y);
         if (v == 0) continue;
-        int t = Board.type(v);
-
-        Bitmap bm;
-        if (Board.player(v) == Player.WHITE) {
-          bm = mWhiteBitmaps[t];
-        } else {
-          bm = mBlackBitmaps[t];
-        }
-        BitmapDrawable b = new BitmapDrawable(getResources(), bm);
-
-        float sx = layout.screenX(x);
-        float sy = layout.screenY(y);
-        b.setBounds((int)sx, (int)sy, (int)(sx + squareDim), (int)(sy + squareDim));
-        b.draw(canvas);
+        drawPiece(canvas, layout, v, layout.screenX(x), layout.screenY(y), 255);
       }
     }
 
@@ -262,10 +249,8 @@ public class BoardView extends View implements View.OnTouchListener {
     }
 
     if (mMoveFrom != null) {
-      Paint p = new Paint();
-      //p.setColor(0x28000000);
-      p.setColor(0x28ff8c00);
       if (mMoveFrom.isOnBoard()) {
+        // Draw orange dots in each possible destination
         ArrayList<Position> dests = possibleMoveTargets(
             mBoard.getPiece(mMoveFrom.getX(), mMoveFrom.getY()),
             mMoveFrom.getX(), mMoveFrom.getY());
@@ -282,23 +267,22 @@ public class BoardView extends View implements View.OnTouchListener {
           canvas.drawCircle(sx, sy, 5, cp);
         }
       } else {
-        CapturedPiece cp = mMoveFrom.capturedPiece();
-        canvas.drawRect(new RectF(cp.sx, cp.sy, cp.sx + squareDim, cp.sy + squareDim), p);
+        // Dropping a captured piece. Nothing to do
       }
     }
     if (mMoveTo != null) {
-      Paint p = new Paint();
-      p.setColor(0x50000000);
-      float sx = layout.screenX(mMoveTo.getX());
-      float sy = layout.screenY(mMoveTo.getY());
-      //canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
-
-      Paint cp = new Paint();
-      cp.setColor(0xc0ff4500);
-      sx += squareDim / 2;
-      sy += squareDim / 2;
-      canvas.drawCircle(sx, sy, 5, cp);
-      
+      // Move the piece to be moved with 25% transparency.
+      int pieceToMove = -1;
+      if (mMoveFrom.isOnBoard()) {
+        pieceToMove = mBoard.getPiece(mMoveFrom.getX(), mMoveFrom.getY());
+      } else {
+        pieceToMove = mMoveFrom.capturedPiece().piece;
+        if (mCurrentPlayer == Player.WHITE) pieceToMove = -pieceToMove;
+      }
+      drawPiece(canvas, layout, pieceToMove,
+          layout.screenX(mMoveTo.getX()),
+          layout.screenY(mMoveTo.getY()),
+          192);
     }
     if (!mBoardInitialized) {
       if (mInitializingToast == null) {
@@ -577,31 +561,38 @@ public class BoardView extends View implements View.OnTouchListener {
   
   private void drawCapturedPieces(Canvas canvas, ScreenLayout layout, Player player) {
     ArrayList<CapturedPiece> pieces = listCapturedPieces(layout, player);
-    Bitmap[] bitmaps = (player == Player.BLACK ? mBlackBitmaps : mWhiteBitmaps);
     for (int i = 0; i < pieces.size(); ++i) {
       CapturedPiece p = pieces.get(i);
-      drawCapturedPiece(canvas, layout, bitmaps[p.piece], p.n, p.sx, p.sy);
+      int piece = (player == Player.BLACK ? p.piece : -p.piece);
+      drawCapturedPiece(canvas, layout, piece, p.n, p.sx, p.sy);
     }
   }
 
-  private void drawPiece(Canvas canvas, ScreenLayout layout, Bitmap bm, float sx, float sy) {
+  private void drawPiece(
+      Canvas canvas, ScreenLayout layout, 
+      int piece,
+      float sx, float sy, int alpha) {
+    Bitmap[] bitmaps = (Board.player(piece) == Player.BLACK) ? 
+        mBlackBitmaps : mWhiteBitmaps;
+    Bitmap bm = bitmaps[Board.type(piece)];
     BitmapDrawable b = new BitmapDrawable(getResources(), bm);
     b.setBounds((int)sx, (int)sy, 
         (int)(sx + layout.squareDim()), (int)(sy + layout.squareDim()));
+    b.setAlpha(alpha);
     b.draw(canvas);
   }
 
   private void drawCapturedPiece(Canvas canvas, 
       ScreenLayout layout,
-      Bitmap bm, int num_pieces, float sx, float sy) {
-    drawPiece(canvas, layout, bm, sx, sy);
-    if (num_pieces >= 1) {
+      int piece, int n, float sx, float sy) {
+    drawPiece(canvas, layout, piece, sx, sy, 255);
+    if (n > 1) {
       int fontSize = 14;
       Paint p = new Paint();
       p.setTextSize(fontSize);
       p.setColor(0xffeeeeee);
       p.setTypeface(Typeface.DEFAULT_BOLD);
-      canvas.drawText(Integer.toString(num_pieces),
+      canvas.drawText(Integer.toString(n),
           sx + layout.squareDim() - fontSize / 4,
           sy + layout.squareDim() - fontSize / 2,
           p);
@@ -613,14 +604,17 @@ public class BoardView extends View implements View.OnTouchListener {
   }
 
   // Load bitmaps for pieces. Called once when the process starts
-  void initializeBitmaps() {
+  void initializeBitmaps(Context context) {
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+    String prefix = prefs.getString("piece_style", "kinki_simple");
+    
     Resources r = getResources();
     mBlackBitmaps = new Bitmap[Board.NUM_TYPES];
     mWhiteBitmaps = new Bitmap[Board.NUM_TYPES];
     String koma_names[] = {
         null,
         "fu", "kyo", "kei", "gin", "kin", "kaku", "hi", "ou",
-        "nari_fu", "nari_kyo", "nari_kei", "nari_gin", null, "nari_kaku", "nari_hi"
+        "to", "nari_kyo", "nari_kei", "nari_gin", null, "uma", "ryu"
     };
 
     Matrix flip = new Matrix();
@@ -628,7 +622,7 @@ public class BoardView extends View implements View.OnTouchListener {
 
     for (int i = 1; i < Board.NUM_TYPES; ++i) {
       if (koma_names[i] == null) continue;
-      int id = r.getIdentifier("@com.ysaito.shogi:drawable/kinki_" + koma_names[i], null, null);
+      int id = r.getIdentifier(String.format("@com.ysaito.shogi:drawable/%s_%s", prefix, koma_names[i]), null, null);
       mBlackBitmaps[i] = BitmapFactory.decodeResource(r, id);
       mWhiteBitmaps[i] = Bitmap.createBitmap(mBlackBitmaps[i], 0, 0,
           mBlackBitmaps[i].getWidth(), mBlackBitmaps[i].getHeight(),
@@ -734,6 +728,7 @@ public class BoardView extends View implements View.OnTouchListener {
       case Board.K_TO:
       case Board.K_NARI_KYO:
       case Board.K_NARI_KEI:
+      case Board.K_NARI_GIN:        
         state.tryMove(-1, -1);
         state.tryMove(0, -1);
         state.tryMove(1, -1);
