@@ -168,9 +168,10 @@ public class BonanzaDownloader {
 
         int status = -1;
         long bytes = -1;
-        String reason;
-        if (true) {
-          Cursor cursor = mDownloadManager.query(query);
+        String reason = null;
+
+        Cursor cursor = mDownloadManager.query(query);
+        if (cursor != null) {
           int idStatus = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
           cursor.moveToFirst();
           status = cursor.getInt(idStatus);

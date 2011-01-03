@@ -178,7 +178,7 @@ public class GameActivity extends Activity {
   // Periodic status update
   //
   private Runnable mTimerHandler = new Runnable() {
-    @Override public void run() { 
+    public void run() { 
       long now = System.currentTimeMillis();
       long totalBlack = mBlackThinkTimeMs;
       long totalWhite = mWhiteThinkTimeMs;

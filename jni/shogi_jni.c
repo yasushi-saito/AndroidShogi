@@ -358,9 +358,13 @@ jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
     jint per_turn_think_time_secs,
     jobject result) {
   int instance_id = -1;
+
   pthread_mutex_lock(&g_lock);
-  CHECK2(g_initialized, "Bonanza not yet initialized");
-  if (g_initialization_error != NULL) {
+  if (!g_initialized) {
+    FillResult("Init", env,
+               R_INITIALIZATION_ERROR, "Bonanza not yet initialized",
+               NULL, 0, NULL, result);
+  } else if (g_initialization_error != NULL) {
     FillResult("Init", env,
                R_INITIALIZATION_ERROR, g_initialization_error,
                NULL, 0, NULL, result);

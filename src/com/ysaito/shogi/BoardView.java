@@ -137,7 +137,7 @@ public class BoardView extends View implements View.OnTouchListener {
     private int mType;
   }
   
-  @Override public boolean onTouch(View v, MotionEvent event) {
+  public boolean onTouch(View v, MotionEvent event) {
     if (!isHumanPlayer(mCurrentPlayer)) return false;
 
     ScreenLayout layout = getScreenLayout();
@@ -225,9 +225,7 @@ public class BoardView extends View implements View.OnTouchListener {
   //
   @Override public void onDraw(Canvas canvas) {
     if (mBoard == null) return;
-    int DIM = Board.DIM;
     ScreenLayout layout = getScreenLayout();
-    Rect boardRect = layout.getBoard();
     int squareDim = layout.squareDim();
 
     drawEmptyBoard(canvas, layout);

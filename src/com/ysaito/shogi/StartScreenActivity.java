@@ -49,17 +49,17 @@ public class StartScreenActivity extends Activity {
     mExternalDir = getExternalFilesDir(null);
     Button b = (Button)findViewById(R.id.new_game_button);
     b.setOnClickListener(new Button.OnClickListener() {
-      @Override public void onClick(View v) { newGame(); }
+      public void onClick(View v) { newGame(); }
     });
 
     b = (Button)findViewById(R.id.settings_button);
     b.setOnClickListener(new Button.OnClickListener() {
-      @Override public void onClick(View v) { settings(); }
+      public void onClick(View v) { settings(); }
     });
     
     b = (Button)findViewById(R.id.download_button);
     b.setOnClickListener(new Button.OnClickListener() {
-      @Override public void onClick(View v) { 
+      public void onClick(View v) { 
         if (BonanzaDownloader.hasRequiredFiles(mExternalDir)) {
           showDialog(DIALOG_CONFIRM_DOWNLOAD);
         } else {
@@ -160,6 +160,7 @@ public class StartScreenActivity extends Activity {
           mDownloadController.destroy();
           mDownloadController = null;
         }
+        initializeBonanzaInBackground();
       }
     }
   };
