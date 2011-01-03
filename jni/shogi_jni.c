@@ -292,6 +292,7 @@ void Java_com_ysaito_shogi_BonanzaJNI_initialize(
 jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
     JNIEnv *env,
     jclass unused_bonanza_class,
+    jint resume_instance_id,
     jint difficulty,
     jint total_think_time_secs,
     jint per_turn_think_time_secs,
@@ -303,6 +304,9 @@ jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
     FillResult("Init", env,
                R_INITIALIZATION_ERROR, g_initialization_error,
                NULL, 0, NULL, result);
+  } else if (resume_instance_id != 0 && resume_instance_id == g_instance_id) {
+    LOG_DEBUG("Resuming game %d", g_instance_id);
+    instance_id = resume_instance_id;
   } else {
     instance_id = ++g_instance_id;
     LOG_DEBUG("Starting game: d=%d t=%d p=%d",
@@ -320,8 +324,8 @@ jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
     SetDifficulty(difficulty,
                   total_think_time_secs,
                   per_turn_think_time_secs);
-    FillResult("Init", env, R_OK, NULL, NULL, 0, &tree, result);
   }
+  FillResult("Init", env, R_OK, NULL, NULL, 0, &tree, result);
   pthread_mutex_unlock(&g_lock);
   return instance_id;
 }

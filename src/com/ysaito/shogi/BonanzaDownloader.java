@@ -209,7 +209,7 @@ public class BonanzaDownloader {
       try {
         File zipPath = new File(mExternalDir, mZipBaseName);
         ZipFile zip = new ZipFile(zipPath);
-        Enumeration<ZipEntry> entries = (Enumeration<ZipEntry>)zip.entries();
+        Enumeration<? extends ZipEntry> entries = zip.entries();
         while (entries.hasMoreElements()) {
           e = entries.nextElement();
           extractZipFile(zip, e);

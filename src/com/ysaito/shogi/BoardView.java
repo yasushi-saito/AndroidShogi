@@ -34,7 +34,6 @@ public class BoardView extends View implements View.OnTouchListener {
   public BoardView(Context context, AttributeSet attrs) {
     super(context, attrs);
     mCurrentPlayer = Player.INVALID;
-    mGameState = GameState.ACTIVE;
     mBoard = new Board();
     mBoard.setPiece(3, 3, Board.K_KEI);
     mBoard.setPiece(5, 5, Board.K_KEI);
@@ -59,7 +58,6 @@ public class BoardView extends View implements View.OnTouchListener {
       GameState gameState,
       Board board,
       Player currentPlayer) {
-    mGameState = gameState;
     mCurrentPlayer = currentPlayer;
     mBoard = new Board(board);
     mBoardInitialized = true;
@@ -87,7 +85,8 @@ public class BoardView extends View implements View.OnTouchListener {
       mType = S_INVALID;
     }
     
-    public void findNearestSquareOnBoard(Board  board, Player player, int searchType) {
+    public void findNearestSquareOnBoard(
+        Board  board, Player player, int searchType) {
       int px = mLayout.boardX(mSx);
       int py = mLayout.boardY(mSy);
       Log.d(TAG, String.format("NN: %d %d", px, py));
@@ -145,8 +144,7 @@ public class BoardView extends View implements View.OnTouchListener {
     int squareDim = layout.squareDim();
     int action = event.getAction();
 
-    NearestSquareFinder finder = new NearestSquareFinder(
-        layout, event.getX(), event.getY());
+    NearestSquareFinder finder = new NearestSquareFinder(layout, event.getX(), event.getY());
     
     if (action == MotionEvent.ACTION_DOWN) {
       mMoveFrom =null ;
@@ -326,7 +324,6 @@ public class BoardView extends View implements View.OnTouchListener {
   private Bitmap mBlackBitmaps[];
   private Bitmap mWhiteBitmaps[];
 
-  private GameState mGameState;
   private Player mCurrentPlayer;   // Player currently holding the turn
   private Board mBoard;            // Current state of the board
   private boolean mBoardInitialized; 

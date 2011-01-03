@@ -41,17 +41,30 @@ public class BonanzaJNI {
     public int moveCookie;
   }
   
+  /**
+   * Initialize the C module. This should be called once on process startup.
+   * Repeated calls are idempotent. Any error in this method will be reported
+   * via subsequent startGame calls.
+   * 
+   * @param externalStorageDir The SD card directory that stores the Bonanza
+   * fv.bin, hash.bin, book.bin files.
+   */
   static public native void initialize(
       String externalStorageDir);
   
   /** 
-   * Initialize the C module. 
+   * Start or resume a game.
    * 
-   * @return An instance ID
+   * @param resumeInstanceId if != 0, resume the game specified by this value.
+   * If this game is not active any more, start a new game.
    * @param difficulty 1==weak, 5==strong
    * @param result (output)  filled with the initial board configuration.
+   * @return The game's instance ID. When the game has resumed 
+   * resumeInstanceId, the method return its value. Otherwise it returns a newly
+   * allocated integer that's different from any prior ID (the scope is this process).
    */
   static public native int startGame(
+      int resumeInstanceId,
       int difficulty,
       int total_think_time_secs,    
       int per_turn_think_time_secs,
@@ -62,7 +75,6 @@ public class BonanzaJNI {
    *   
    * @param move CSA-format string, such as "7776FU".
    * @param result (output)
-   * @return One of R_* constants
    */
   static public native void humanMove(
       int instanceId,
@@ -73,7 +85,6 @@ public class BonanzaJNI {
    * Have the computer compute the next move. 
 
    * @param result (output) store the move made by the computer
-   * @return One of R_* constants
    */
   static public native void computerMove(
       int instanceId,

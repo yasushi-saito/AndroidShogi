@@ -99,6 +99,7 @@ public class GameActivity extends Activity {
     
     mUndosRemaining= Integer.parseInt(prefs.getString("max_undos", "0"));
     mController = new BonanzaController(mEventHandler, computer_level);
+    mController.start(savedInstanceState);
     schedulePeriodicTimer();
     // mController will call back via mControllerHandler when Bonanza is 
     // initialized. mControllerHandler will cause mBoardView to start accepting
@@ -112,6 +113,10 @@ public class GameActivity extends Activity {
     mMenu = menu;
     updateUndoMenu();
     return true;
+  }
+  
+  @Override public void onSaveInstanceState(Bundle bundle) {
+    mController.saveInstanceState(bundle);
   }
   
   @Override

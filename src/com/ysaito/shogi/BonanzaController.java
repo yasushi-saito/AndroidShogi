@@ -16,6 +16,123 @@ import android.util.Log;
  * via the Handler interface.
  */
 public class BonanzaController {
+  private static final String TAG = "BonanzaController"; 
+  private int mComputerDifficulty;
+  private Handler mOutputHandler;  // for reporting status to the caller
+  private Handler mInputHandler;   // for sending commands to the controller thread 
+  private HandlerThread mThread;
+
+  private int mInstanceId;
+  
+  private static final int C_START = 0;
+  private static final int C_HUMAN_MOVE = 1;
+  private static final int C_COMPUTER_MOVE = 2;
+  private static final int C_UNDO = 3;
+  private static final int C_DESTROY = 4;
+  
+  public BonanzaController(Handler handler, int difficulty) {
+    mOutputHandler = handler;
+    mComputerDifficulty = difficulty;
+    mInstanceId = -1;
+    mThread = new HandlerThread("BonanzaController");
+    mThread.start();
+    mInputHandler = new Handler(mThread.getLooper()) {
+      @Override
+      public void handleMessage(Message msg) {
+        int command = msg.getData().getInt("command");
+        switch (command) {
+          case C_START:
+            doInit(msg.getData().getInt("resume_instance_id"));
+            break;
+          case C_HUMAN_MOVE:
+            doHumanMove(
+                (Player)msg.getData().get("player"),
+                (Move)msg.getData().get("move"));
+            break;  
+          case C_COMPUTER_MOVE:
+            doComputerMove((Player)msg.getData().get("player"));
+            break;
+          case C_UNDO:
+            doUndo(
+                (Player)msg.getData().get("player"),
+                msg.getData().getInt("cookie1"),
+                msg.getData().getInt("cookie2"));
+            break;
+          case C_DESTROY:
+            doDestroy();
+            break; 
+          default:
+            throw new AssertionError("Invalid command: " + command);
+        }
+      }
+    };
+  }
+
+  public void saveInstanceState(Bundle bundle) {
+    if (mInstanceId != 0) {
+      bundle.putInt("bonanza_instance_id", mInstanceId);
+    }
+  }
+  
+  private final int NO_INSTANCE_ID = 0;
+    
+  public void start(Bundle bundle) {
+    int instanceId = 0;
+    if (bundle != null) {
+      instanceId = bundle.getInt("bonanza_instance_id", 0);
+    }
+    sendInputMessage(C_START, instanceId, null, null, -1, -1);
+  }
+
+  /** 
+   * Stop the background thread that controls Bonanza. Must be called once before
+   * abandonding this object.
+   */
+  public void destroy() {
+    sendInputMessage(C_DESTROY, NO_INSTANCE_ID, null, null, -1, -1);
+  }
+
+  /** 
+   * Tell Bonanza that the human player has made @p move. Bonanza will
+   * asynchronously ack through the mOutputHandler.
+   *
+   * @param player is the player that has made the @p move. It is used only to
+   *  report back Result.nextPlayer.
+   */   
+  public void humanMove(Player player, Move move) {
+    sendInputMessage(C_HUMAN_MOVE, NO_INSTANCE_ID, player, move, -1, -1);
+  }
+  
+  /** 
+   * Ask Bonanza to make a move. Bonanza will asynchronously report its move
+   * through the mOutputHandler.
+   * 
+   * @param player the identity of the computer player. It is used only to 
+   * report back Result.nextPlayer.
+   */
+  public void computerMove(Player player) {
+    sendInputMessage(C_COMPUTER_MOVE, NO_INSTANCE_ID, player, null, -1, -1);
+  }
+
+  /**
+   * Undo the last move. 
+   * @param player the player who made the last move.
+   * @param cookie The last move made in the game.
+   */
+  public void undo1(Player player, int cookie) {
+    sendInputMessage(C_UNDO, NO_INSTANCE_ID, player, null, cookie, -1);
+  }
+  
+  /**
+   * Undo the last two moves.
+   * @param player the player who made the move cookie2.
+   * @param cookie1 the last move made in the game.
+   * @param cookie2 the penultimate move made in the game.
+   */
+  public void undo2(Player player, int cookie1, int cookie2) {
+    sendInputMessage(C_UNDO, NO_INSTANCE_ID, player, null, cookie1, cookie2);
+  }
+  
   /**
    *  The result of each asynchronous request. Packed in the "result" part of 
    *  the Message.getData() bundle.
@@ -101,170 +218,21 @@ public class BonanzaController {
       }
       return r;
     }
-    
-    public final void setState(
-        int jni_status, 
-        BonanzaJNI.Result m,
-        Player curPlayer) {
-      lastMove = (m.move != null) ? Move.fromCsaString(m.move) : null;
-      lastMoveCookie = m.moveCookie;
-      
-      if (jni_status >= 0) {
-        if (curPlayer == Player.WHITE) {
-          nextPlayer = Player.BLACK;
-        } else if (curPlayer == Player.BLACK) {
-          nextPlayer = Player.WHITE;
-        } else {
-          throw new AssertionError("Invalid player");
-        }
-        gameState = GameState.ACTIVE;
-        errorMessage = null;
-      } else {
-        switch (jni_status) {
-          case BonanzaJNI.R_ILLEGAL_MOVE:
-            nextPlayer = curPlayer;
-            gameState = GameState.ACTIVE;
-            lastMove = null;
-            lastMoveCookie = -1;
-            errorMessage = "Illegal move";
-            break;
-          case BonanzaJNI.R_CHECKMATE:
-            nextPlayer = Player.INVALID;
-            gameState = (curPlayer == Player.BLACK) ?
-                GameState.WHITE_LOST : GameState.BLACK_LOST;
-            errorMessage = "Checkmate";
-            break;
-          case BonanzaJNI.R_RESIGNED:
-            nextPlayer = Player.INVALID;
-            gameState = (curPlayer == Player.BLACK) ?
-                GameState.BLACK_LOST : GameState.WHITE_LOST;
-            errorMessage = "Resigned";
-            break;
-          case BonanzaJNI.R_DRAW:
-            nextPlayer = Player.INVALID;
-            gameState = GameState.DRAW;
-            errorMessage = "Draw";
-            break;
-          default:
-            throw new AssertionError("Illegal jni_status: " + jni_status);
-        }
-      }
-    }
   }
 
-  private static final String TAG = "BonanzaController"; 
-  private int mComputerDifficulty;
-  private Handler mOutputHandler;  // for reporting status to the caller
-  private Handler mInputHandler;   // for sending commands to the controller thread 
-  private HandlerThread mThread;
-
-  private int mInstanceId;
-  
-  private static final int C_INIT = 0;
-  private static final int C_HUMAN_MOVE = 1;
-  private static final int C_COMPUTER_MOVE = 2;
-  private static final int C_UNDO = 3;
-  private static final int C_DESTROY = 4;
-  
-  public BonanzaController(Handler handler, int difficulty) {
-    mOutputHandler = handler;
-    mComputerDifficulty = difficulty;
-    mInstanceId = -1;
-    mThread = new HandlerThread("BonanzaController");
-    mThread.start();
-    mInputHandler = new Handler(mThread.getLooper()) {
-      @Override
-      public void handleMessage(Message msg) {
-        int command = msg.getData().getInt("command");
-        switch (command) {
-          case C_INIT:
-            doInit();
-            break;
-          case C_HUMAN_MOVE:
-            doHumanMove(
-                (Player)msg.getData().get("player"),
-                (Move)msg.getData().get("move"));
-            break;  
-          case C_COMPUTER_MOVE:
-            doComputerMove((Player)msg.getData().get("player"));
-            break;
-          case C_UNDO:
-            doUndo(
-                (Player)msg.getData().get("player"),
-                msg.getData().getInt("cookie1"),
-                msg.getData().getInt("cookie2"));
-            break;
-          case C_DESTROY:
-            doDestroy();
-            break; 
-          default:
-            throw new AssertionError("Invalid command: " + command);
-        }
-      }
-    };
-    sendInputMessage(C_INIT, null, null, -1, -1);
-  }
-  
-  /** 
-   * Stop the background thread that controls Bonanza. Must be called once before
-   * abandonding this object.
-   */
-  public void destroy() {
-    sendInputMessage(C_DESTROY, null, null, -1, -1);
-  }
-
-  /** 
-   * Tell Bonanza that the human player has made @p move. Bonanza will
-   * asynchronously ack through the mOutputHandler.
-   *
-   * @param player is the player that has made the @p move. It is used only to
-   *  report back Result.nextPlayer.
-   */   
-  public void humanMove(Player player, Move move) {
-    sendInputMessage(C_HUMAN_MOVE, player, move, -1, -1);
-  }
-  
-  /** 
-   * Ask Bonanza to make a move. Bonanza will asynchronously report its move
-   * through the mOutputHandler.
-   * 
-   * @param player the identity of the computer player. It is used only to 
-   * report back Result.nextPlayer.
-   */
-  public void computerMove(Player player) {
-    sendInputMessage(C_COMPUTER_MOVE, player, null, -1, -1);
-  }
-
-  /**
-   * Undo the last move. 
-   * @param player the player who made the last move.
-   * @param cookie The last move made in the game.
-   */
-  public void undo1(Player player, int cookie) {
-    sendInputMessage(C_UNDO, player, null, cookie, -1);
-  }
-  
-  /**
-   * Undo the last two moves.
-   * @param player the player who made the move cookie2.
-   * @param cookie1 the last move made in the game.
-   * @param cookie2 the penultimate move made in the game.
-   */
-  public void undo2(Player player, int cookie1, int cookie2) {
-    sendInputMessage(C_UNDO, player, null, cookie1, cookie2);
-  }
-  
   //
   // Implementation details
   //
   private void sendInputMessage(
       int command, 
+      int resumeInstanceId,
       Player curPlayer, 
       Move move,
       int cookie1, int cookie2) {
     Message msg = mInputHandler.obtainMessage();
     Bundle b = new Bundle();
     b.putInt("command", command);
+    if (resumeInstanceId != 0) b.putInt("resume_instance_id", resumeInstanceId);
     if (move != null) b.putSerializable("move",  move);
     if (curPlayer != null) b.putSerializable("player", curPlayer);
     if (cookie1 >= 0) b.putInt("cookie1", cookie1);
@@ -281,9 +249,10 @@ public class BonanzaController {
     mOutputHandler.sendMessage(msg);
   }
 
-  private void doInit() {
+  private void doInit(int resumeInstanceId) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
-    mInstanceId = BonanzaJNI.startGame(mComputerDifficulty, 60, 1, jr);
+    mInstanceId = BonanzaJNI.startGame(
+        resumeInstanceId, mComputerDifficulty, 60, 1, jr);
     if (jr.status != BonanzaJNI.R_OK) {
       throw new AssertionError(String.format("startGame failed: %d %s", jr.status, jr.error));
     }
