@@ -2,6 +2,8 @@
 
 package com.ysaito.shogi;
 
+import android.util.Log;
+
 /**
  * @author saito@google.com (Yaz Saito)
  *
@@ -37,9 +39,10 @@ public class Move implements java.io.Serializable {
     }
     int cToX = 9 - toX;
     int cToY = toY + 1;
+    int p = piece >= 0 ? piece : -piece;
     return String.format("%d%d%d%d%s", 
         cFromX, cFromY, cToX, cToY,
-        Board.csaPieceNames[piece]);
+        Board.csaPieceNames[p]);
   }
   
   public static Move fromCsaString(String csa) {

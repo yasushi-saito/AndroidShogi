@@ -11,13 +11,13 @@
     <string name="new_game">新規対局</string>
     <string name="download_data">データベースダウンロード</string>
     <string name="settings">設定</string>
-    <string name="player_black">先手</string>
-    <string name="player_white">後手</string>
+    <string name="player_types">対局者</string>
     <string name="human">人</string>
     <string name="computer">コンピュータ</string>
     <string name="computer_difficulty">コンピュータ難易度</string>
     <string name="reset_preferences">設定リセット</string>
     <string name="undo">待った</string>
     <string name="max_undos">待った</string>
-    <string name="piece_style">駒</string>
+    <string name="piece_style">駒の種類</string>
+    <string name="handicap">駒落ち</string>
 </resources>

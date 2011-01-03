@@ -17,6 +17,20 @@
 #define R_INSTANCE_DELETED -5
 #define R_INITIALIZATION_ERROR -6
 
+// Handicap settings. A positive (negative) value means that the black
+// (resp. white) player will remove the specified pieces from the initial
+// board configuration.
+//
+// CAUTION: these values must match R.array.handicap_type_values
+#define H_NONE 0
+#define H_KYO  1  // left kyo
+#define H_KAKU 2
+#define H_HI 3
+#define H_HI_KYO 4  // hi + left kyo
+#define H_HI_KAKU 5
+#define H_HI_KAKU_KYO 6
+#define H_HI_KAKU_KEI_KYO 7
+
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static int g_instance_id = 0;
 static int g_initialized = 0;
@@ -260,6 +274,46 @@ static void SetDifficulty(int difficulty,
             node_limit, depth_limit, sec_limit, sec_limit_up);
 }
 
+static void ClearBoard(int x, int y, min_posi_t* pos) {
+  pos->asquare[x + y * nfile] = 0;
+}
+
+static void GenerateInitialBoardConfiguration(int handicap, min_posi_t* pos) {
+  *pos = min_posi_no_handicap;
+
+  switch (handicap) {
+    case H_NONE:
+      break;
+    case H_KYO:
+      ClearBoard(0, 8, pos);
+      break;
+    case H_KAKU:
+      ClearBoard(1, 7, pos);
+      break;
+    case H_HI:
+      ClearBoard(7, 7, pos);
+      break;
+    case H_HI_KYO:
+      ClearBoard(0, 8, pos);
+      ClearBoard(7, 7, pos);
+      break;
+    case H_HI_KAKU_KEI_KYO:
+      ClearBoard(1, 8, pos);
+      ClearBoard(7, 8, pos);
+      // FALLTHROUGH
+    case H_HI_KAKU_KYO:
+      ClearBoard(0, 8, pos);
+      ClearBoard(8, 8, pos);
+      // FALLTHROUGH
+    case H_HI_KAKU:
+      ClearBoard(1, 7, pos);
+      ClearBoard(7, 7, pos);
+      break;
+    default:
+      LOG_DEBUG("Unknown handicap config: %d", handicap);
+  }
+}
+
 static int GameStatusToReturnCode() {
   CHECK2((game_status & flag_quit) == 0, "status: %x", game_status);
   if (game_status & flag_mated) {
@@ -298,6 +352,7 @@ jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint resume_instance_id,
+    jint handicap,
     jint difficulty,
     jint total_think_time_secs,
     jint per_turn_think_time_secs,
@@ -314,9 +369,12 @@ jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
     instance_id = resume_instance_id;
   } else {
     instance_id = ++g_instance_id;
-    LOG_DEBUG("Starting game: d=%d t=%d p=%d",
-              difficulty, total_think_time_secs, per_turn_think_time_secs);
-    if (ini_game(&tree, &min_posi_no_handicap, flag_history, NULL, NULL) < 0) {
+    LOG_DEBUG("Starting game: h=%d, d=%d t=%d p=%d",
+              handicap, difficulty,
+              total_think_time_secs, per_turn_think_time_secs);
+    min_posi_t initial_pos;
+    GenerateInitialBoardConfiguration(handicap, &initial_pos);
+    if (ini_game(&tree, &initial_pos, flag_history, NULL, NULL) < 0) {
       LOG_FATAL("Failed to initialize game: %s", str_error);
     }
     LOG_DEBUG("Initialized Bonanza successfully");

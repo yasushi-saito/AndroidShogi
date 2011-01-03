@@ -16,8 +16,9 @@ import android.util.Log;
  * via the Handler interface.
  */
 public class BonanzaController {
-  private static final String TAG = "BonanzaController"; 
-  private int mComputerDifficulty;
+  private static final String TAG = "BonanzaController";
+  private final int mHandicap;
+  private final int mComputerDifficulty;
   private Handler mOutputHandler;  // for reporting status to the caller
   private Handler mInputHandler;   // for sending commands to the controller thread 
   private HandlerThread mThread;
@@ -30,8 +31,9 @@ public class BonanzaController {
   private static final int C_UNDO = 3;
   private static final int C_DESTROY = 4;
   
-  public BonanzaController(Handler handler, int difficulty) {
+  public BonanzaController(Handler handler, int handicap, int difficulty) {
     mOutputHandler = handler;
+    mHandicap = handicap;
     mComputerDifficulty = difficulty;
     mInstanceId = -1;
     mThread = new HandlerThread("BonanzaController");
@@ -42,7 +44,7 @@ public class BonanzaController {
         int command = msg.getData().getInt("command");
         switch (command) {
           case C_START:
-            doInit(msg.getData().getInt("resume_instance_id"));
+            doStart(msg.getData().getInt("resume_instance_id"));
             break;
           case C_HUMAN_MOVE:
             doHumanMove(
@@ -249,10 +251,10 @@ public class BonanzaController {
     mOutputHandler.sendMessage(msg);
   }
 
-  private void doInit(int resumeInstanceId) {
+  private void doStart(int resumeInstanceId) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     mInstanceId = BonanzaJNI.startGame(
-        resumeInstanceId, mComputerDifficulty, 60, 1, jr);
+        resumeInstanceId, mHandicap, mComputerDifficulty, 60, 1, jr);
     if (jr.status != BonanzaJNI.R_OK) {
       throw new AssertionError(String.format("startGame failed: %d %s", jr.status, jr.error));
     }

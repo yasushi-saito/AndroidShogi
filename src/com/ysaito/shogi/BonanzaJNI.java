@@ -19,6 +19,7 @@ public class BonanzaJNI {
   // Another instance of the game started
   public static final int R_INSTANCE_DELETED = -5;
   
+  // Initialization error (e.g., required DB files not found).
   public static final int R_INITIALIZATION_ERROR = -6;
   
   static public final class Result {
@@ -57,6 +58,8 @@ public class BonanzaJNI {
    * 
    * @param resumeInstanceId if != 0, resume the game specified by this value.
    * If this game is not active any more, start a new game.
+   * @param handicap The value of R.array.handicap_type_values. FGor example
+   *  if handicap==1, then the black player will remove left kyo.
    * @param difficulty 1==weak, 5==strong
    * @param result (output)  filled with the initial board configuration.
    * @return The game's instance ID. When the game has resumed 
@@ -65,6 +68,7 @@ public class BonanzaJNI {
    */
   static public native int startGame(
       int resumeInstanceId,
+      int handicap,
       int difficulty,
       int total_think_time_secs,    
       int per_turn_think_time_secs,

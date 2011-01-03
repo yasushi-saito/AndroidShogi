@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string-array name="player_types">
-    <item>Human</item>
-    <item>Computer</item>
+    <item>Black: Human, White: Computer</item>
+    <item>Black: Computer, White: Human</item>
+    <item>Black: Human, White: Human</item>
+    <item>Black: Computer, White: Computer</item>
   </string-array>
 
   <string-array name="player_type_values">
-    <item>Human</item>
-    <item>Computer</item>
+    <item>HC</item>
+    <item>CH</item>
+    <item>HH</item>
+    <item>CC</item>
   </string-array>
 
   <string-array name="computer_levels">
@@ -30,6 +34,28 @@
     <item>2</item>
     <item>3</item>
     <item>4</item>
+  </string-array>
+
+  <string-array name="handicap_types">
+    <item>None</item>
+    <item>Left Kyo (Lance)</item>
+    <item>Kaku (Bishop)</item>
+    <item>Hi (Rook)</item>
+    <item>HiKyo (Rook+Left Lance)</item>
+    <item>HiKaku (Rook+Bishop)</item>
+    <item>4 pieces (Rook+Bishop+Both Lances)</item>
+    <item>6 pieces (Rook+Bishop+Both Lances and Knights)</item>
+  </string-array>
+
+  <string-array name="handicap_type_values">
+    <item>0</item>
+    <item>1</item>
+    <item>2</item>
+    <item>3</item>
+    <item>4</item>
+    <item>5</item>
+    <item>6</item>
+    <item>7</item>
   </string-array>
 
   <string-array name="max_undos">

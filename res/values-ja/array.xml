@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string-array name="player_types">
-    <item>人</item>
-    <item>コンピュータ</item>
+    <item>先:人 後:計算機</item>
+    <item>先:計算機 後:人</item>
+    <item>先:人 後:人</item>
+    <item>先:計算機 後:計算機</item>
   </string-array>
 
   <string-array name="computer_levels">
@@ -19,6 +21,17 @@
     <item>レベル2</item>
     <item>レベル3</item>
     <item>レベル4</item>
+  </string-array>
+
+  <string-array name="handicap_types">
+    <item>平手</item>
+    <item>左香落</item>
+    <item>角落</item>
+    <item>飛落</item>
+    <item>飛香落</item>
+    <item>飛角落</item>
+    <item>四枚落</item>
+    <item>六枚落</item>
   </string-array>
 
   <string-array name="max_undos">

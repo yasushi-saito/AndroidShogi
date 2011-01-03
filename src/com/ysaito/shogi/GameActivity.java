@@ -73,32 +73,32 @@ public class GameActivity extends Activity {
     
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
         getBaseContext());
-    String player_black = prefs.getString("player_black", "Human");
-    String player_white = prefs.getString("player_white", "Computer");
-    int computer_level = Integer.parseInt(
-        prefs.getString("computer_difficulty", "1"));
-    Log.d(TAG, "onCreate black=" + player_black + " white=" + player_white);
+    String player_types = prefs.getString("player_types", "HC");
+    Log.d(TAG, "onCreate " + player_types);
 
     mHumanPlayers = new ArrayList<Player>();
-    // mHumanPlayers.add(Player.BLACK);
-    if (true) {
-      if (player_black.equals("Human")) {
-        mHumanPlayers.add(Player.BLACK);
-      }
-      if (player_white.equals("Human")) {
-        mHumanPlayers.add(Player.WHITE);      
-      }
+    if (player_types.charAt(0) == 'H') {
+      mHumanPlayers.add(Player.BLACK);
     }
+    if (player_types.charAt(1) == 'H') {
+      mHumanPlayers.add(Player.WHITE);      
+    }
+
+    int computer_level = Integer.parseInt(
+        prefs.getString("computer_difficulty", "1"));
+    int handicap = Integer.parseInt(prefs.getString("handicap", "0"));
+    
     mStatusView = (GameStatusView)findViewById(R.id.gamestatusview);
     mStatusView.initialize(
-        playerName(player_black, computer_level),
-        playerName(player_white, computer_level));
+        playerName(player_types.charAt(0), computer_level),
+        playerName(player_types.charAt(1), computer_level));
     
     mBoardView = (BoardView)findViewById(R.id.boardview);
     mBoardView.initialize(mViewListener, mHumanPlayers);
     
     mUndosRemaining= Integer.parseInt(prefs.getString("max_undos", "0"));
-    mController = new BonanzaController(mEventHandler, computer_level);
+    
+    mController = new BonanzaController(mEventHandler, handicap, computer_level);
     mController.start(savedInstanceState);
     schedulePeriodicTimer();
     // mController will call back via mControllerHandler when Bonanza is 
@@ -131,8 +131,8 @@ public class GameActivity extends Activity {
   }
   
   
-  private String playerName(String type, int level) {
-    if (type.equals("Human")) return getResources().getString(R.string.human);
+  private String playerName(char type, int level) {
+    if (type == 'H') return getResources().getString(R.string.human);
     return getResources().getStringArray(R.array.computer_level_names)[level];
   }
   

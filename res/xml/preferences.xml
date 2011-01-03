@@ -2,15 +2,9 @@
 <PreferenceScreen
   xmlns:android="http://schemas.android.com/apk/res/android">
   <ListPreference
-    android:title="@string/player_black"
-    android:key="player_black"
-    android:defaultValue="Human"
-    android:entries="@array/player_types"
-    android:entryValues="@array/player_type_values"/>
-  <ListPreference
-    android:title="@string/player_white"
-    android:key="player_white"
-    android:defaultValue="Computer"
+    android:title="@string/player_types"
+    android:key="player_types"
+    android:defaultValue="HC"
     android:entries="@array/player_types"
     android:entryValues="@array/player_type_values"/>
   <ListPreference
@@ -19,6 +13,12 @@
     android:defaultValue="1"
     android:entries="@array/computer_levels"
     android:entryValues="@array/computer_level_values"/>
+  <ListPreference
+    android:title="@string/handicap"
+    android:key="handicap"
+    android:defaultValue="0"
+    android:entries="@array/handicap_types"
+    android:entryValues="@array/handicap_type_values"/>
   <ListPreference
     android:title="@string/max_undos"
     android:key="max_undos"
