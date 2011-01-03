@@ -2,12 +2,12 @@ package com.ysaito.shogi;
 
 import java.util.Arrays;
 
+/**
+ * Store the state of a Shogi board.
+ */
 public class Board implements java.io.Serializable {
   // X and Y dimensions of a board
   public static final int DIM = 9; 
-
-  // Total # of squares in a board
-  public static final int NUM_SQUARES = DIM * DIM;
 
   // Encoding of mSquares[]. A piecebelonging to P_UP (resp. P_DOWN) is 
   // positive (resp. negative).
@@ -84,7 +84,7 @@ public class Board implements java.io.Serializable {
   public static final int numCapturedHi(int c) { return (c >> 19); }
 
   public Board() {
-    mSquares = new int[NUM_SQUARES];  // initialized to zero
+    mSquares = new int[DIM * DIM];  // initialized to zero
   }
 
   public Board(Board src) {

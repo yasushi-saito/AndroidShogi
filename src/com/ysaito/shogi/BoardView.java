@@ -340,19 +340,19 @@ public class BoardView extends View implements View.OnTouchListener {
       throw new AssertionError("hashCode not implemented");
     }
 
-    boolean isOnBoard() { return mCapturedPiece == null; }
+    public boolean isOnBoard() { return mCapturedPiece == null; }
 
-    int getX() {
+    public int getX() {
       if (!isOnBoard()) throw new AssertionError("blah");
       return mX;
     }
 
-    int getY() {
+    public int getY() {
       if (!isOnBoard()) throw new AssertionError("blah");
       return mY;
     }
 
-    CapturedPiece capturedPiece() {
+    private CapturedPiece capturedPiece() {
       if (isOnBoard()) throw new AssertionError("blah");
       return mCapturedPiece;
     }
@@ -443,12 +443,12 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
 
-    boolean mPortrait;    // is the screen in portrait mode?
-    int mWidth, mHeight;  // screen pixel size
-    int mSquareDim; // pixel size of each square in the board
-    Rect mBoard;   // display the board status
-    Rect mCapturedBlack;  // display pieces captured by black player
-    Rect mCapturedWhite;  // display pieces captured by white player
+    private boolean mPortrait;    // is the screen in portrait mode?
+    private int mWidth, mHeight;  // screen pixel size
+    private int mSquareDim; // pixel size of each square in the board
+    private Rect mBoard;   // display the board status
+    private Rect mCapturedBlack;  // display pieces captured by black player
+    private Rect mCapturedWhite;  // display pieces captured by white player
   }
   private ScreenLayout mCachedLayout;
 
@@ -463,7 +463,7 @@ public class BoardView extends View implements View.OnTouchListener {
   private EventListener mListener;
   private ArrayList<Player> mHumanPlayers;
   
-  void drawEmptyBoard(Canvas canvas, ScreenLayout layout) {
+  private void drawEmptyBoard(Canvas canvas, ScreenLayout layout) {
     // Fill the board square
     Rect boardRect = layout.getBoard();
     Paint p = new Paint();
@@ -599,12 +599,12 @@ public class BoardView extends View implements View.OnTouchListener {
     }
   }
 
-  boolean isHumanPlayer(Player p) {
+  private boolean isHumanPlayer(Player p) {
     return mHumanPlayers.contains(p);
   }
 
   // Load bitmaps for pieces. Called once when the process starts
-  void initializeBitmaps(Context context) {
+  private void initializeBitmaps(Context context) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
     String prefix = prefs.getString("piece_style", "kinki_simple");
     
@@ -632,7 +632,7 @@ public class BoardView extends View implements View.OnTouchListener {
   }
 
   // Helper class for listing possible positions a piece can move to
-  class MoveTargetsLister {
+  private class MoveTargetsLister {
     // <cur_x, cur_y> is the current board position of the piece.
     // Both are in range [0, Board.DIM).
     public MoveTargetsLister(Player player, int cur_x, int cur_y) {
@@ -667,7 +667,7 @@ public class BoardView extends View implements View.OnTouchListener {
     public ArrayList<Position> getTargets() { return mTargets; }
 
 
-    boolean tryMoveTo(int x, int y) {
+    private boolean tryMoveTo(int x, int y) {
       // Disallow moving outside the board
       if (x < 0 || x >= Board.DIM || y < 0 || y >= Board.DIM) {
         return false;
@@ -688,11 +688,11 @@ public class BoardView extends View implements View.OnTouchListener {
       return true;
     }
 
-    final ArrayList<Position> mTargets = new ArrayList<Position>();
-    Player mPlayer;
-    int mCurX;
-    int mCurY;
-    boolean mSeenOpponentPiece;
+    private final ArrayList<Position> mTargets = new ArrayList<Position>();
+    private Player mPlayer;
+    private int mCurX;
+    private int mCurY;
+    private boolean mSeenOpponentPiece;
   }
 
   // Generate the list of board positions that a piece at <cur_x, cur_y> can
@@ -778,7 +778,7 @@ public class BoardView extends View implements View.OnTouchListener {
     return state.getTargets();
   }
 
-  ScreenLayout getScreenLayout() {
+  private ScreenLayout getScreenLayout() {
     if (mCachedLayout != null &&
         mCachedLayout.getScreenWidth() == getWidth() &&
         mCachedLayout.getScreenHeight() == getHeight()) {

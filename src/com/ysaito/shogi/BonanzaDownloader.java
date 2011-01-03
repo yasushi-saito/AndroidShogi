@@ -231,7 +231,7 @@ public class BonanzaDownloader {
         File outPath = new File(mExternalDir, e.getName());
         out = new FileOutputStream(outPath);
         in = zip.getInputStream(e);
-        byte[] buf = new byte[8192];
+        byte[] buf = new byte[65536];
         int n;
         long cumulative = 0;
         long lastReported = 0;

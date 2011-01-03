@@ -18,7 +18,7 @@ import java.util.ArrayList;
 public class GameStatusView extends LinearLayout {
   class Timer {
     public Timer(TextView v) { mView = v; mLastThinkTimeSeconds = -1; }
-    void update(long thinkTimeMs) {
+    public void update(long thinkTimeMs) {
       long t = thinkTimeMs / 1000;  // convent millisecs -> seconds
       if (mLastThinkTimeSeconds != t) {
         mLastThinkTimeSeconds = t;
@@ -29,7 +29,7 @@ public class GameStatusView extends LinearLayout {
         mView.setText(String.format("%02d:%02d:%02d", hours, minutes, seconds));
       }
     }
-    TextView getView() { return mView; }
+    public TextView getView() { return mView; }
     
     private final TextView mView;
     private long mLastThinkTimeSeconds;
