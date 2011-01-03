@@ -28,8 +28,8 @@
     />
   <PreferenceCategory android:title="Advanced settings"/>
   <EditTextPreference
-     android:key="download_db_url"
-     android:defaultValue="http://www.ysaito.com/downloads/shogi-data.zip"
+     android:key="download_source_url"
+     android:defaultValue="@string/default_download_source_url"
      android:title="Shogi DB source"
      />
 </PreferenceScreen>

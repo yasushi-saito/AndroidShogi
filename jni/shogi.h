@@ -230,8 +230,8 @@ extern unsigned char ailast_one[512];
 
 #define Flip(turn)          ((turn)^1)
 #define Inv(sq)             (nsquare-1-sq)
-#define PcOnSq(k,i)         large_object->pc_on_sq[k][(i)*((i)+3)/2]
-#define PcPcOnSq(k,i,j)     large_object->pc_on_sq[k][(i)*((i)+1)/2+(j)]
+#define PcOnSq(k,i)         (*p_pc_on_sq)[k][(i)*((i)+3)/2]
+#define PcPcOnSq(k,i,j)     (*p_pc_on_sq)[k][(i)*((i)+1)/2+(j)]
 
 /*
   xxxxxxxx xxxxxxxx xxx11111  pawn
@@ -888,12 +888,13 @@ extern int irecord_game;
 extern short p_value[31];
 
 typedef struct {
-  short pc_on_sq[nsquare][fe_end*(fe_end+1)/2];
-  short kkp[nsquare][nsquare][kkp_end];
   uint64_t ehash_tbl[ EHASH_MASK + 1 ];
   unsigned char hash_rejections_parent[ REJEC_MASK+1 ];
   rejections_t hash_rejections[ REJEC_MASK+1 ];
 } large_object_t;
+
+short (*p_pc_on_sq)[nsquare][fe_end*(fe_end+1)/2];
+short (*p_kkp)[nsquare][nsquare][kkp_end];
 
 extern large_object_t* large_object;
 extern rand_work_t rand_work;

@@ -110,7 +110,7 @@ evaluate( tree_t * restrict ptree, int ply, int turn )
 	  sum -= PcPcOnSq( sq_wk, k1, l1 );
 	}
     }
-  
+
   score += sum;
   score /= FV_SCALE;
 
@@ -220,7 +220,7 @@ make_list( const tree_t * restrict ptree, int * restrict pscore,
   list1[12] = f_hand_rook   + I2HandRook(HAND_W);
   list1[13] = e_hand_rook   + I2HandRook(HAND_B);
 
-#define KKP large_object->kkp
+#define KKP (*p_kkp)
   score += KKP[sq_bk0][sq_wk0][ kkp_hand_pawn   + I2HandPawn(HAND_B) ];
   score += KKP[sq_bk0][sq_wk0][ kkp_hand_lance  + I2HandLance(HAND_B) ];
   score += KKP[sq_bk0][sq_wk0][ kkp_hand_knight + I2HandKnight(HAND_B) ];

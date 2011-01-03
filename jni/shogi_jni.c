@@ -21,7 +21,7 @@ static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static int g_instance_id = 0;
 static int g_initialized = 0;
 static char* g_initialization_error = NULL;
-
+char* g_storage_dir = NULL;
 static char* Basename(const char* path, char* buf, int buf_size) {
   const char* r = strrchr(path, '/');
   if (r == NULL) r = path;
@@ -275,12 +275,16 @@ void Java_com_ysaito_shogi_BonanzaJNI_initialize(
     jstring storage_dir) {
   pthread_mutex_lock(&g_lock);
   if (!g_initialized) {
+    const char* tmp = (*env)->GetStringUTFChars(env, storage_dir, NULL);
+    g_storage_dir = strdup(tmp);
+    (*env)->ReleaseStringUTFChars(env, storage_dir, tmp);
+    LOG_DEBUG("Start initializing Bonanza, dir=%s", g_storage_dir);
     if (ini(&tree) < 0) {
       asprintf(&g_initialization_error,
                "Failed to initialize Bonanza: %s", str_error);
     }
     g_initialized = 1;
-    LOG_DEBUG("Initialized Bonanza");
+    LOG_DEBUG("Initialized Bonanza, dir=%s", g_storage_dir);
   }
   pthread_mutex_unlock(&g_lock);
 }

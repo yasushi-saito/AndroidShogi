@@ -72,11 +72,10 @@ public class BonanzaJNI {
   /**
    * Have the computer compute the next move. 
 
-   * @param moveResult (output) store the move made by the computer
-   * @param board (output) the state of the board after the move. 
+   * @param result (output) store the move made by the computer
    * @return One of R_* constants
    */
-  static public native int computerMove(
+  static public native void computerMove(
       int instanceId,
       Result result);
   
@@ -87,10 +86,9 @@ public class BonanzaJNI {
    * past moves. cookie1 must be the last move made in the game (either computer or 
    * human). If cookie2 > 0, it must be the penultimate move in the game.
    *
-   * @param board (output)
-   * @return Either R_OK or R_INSTANCE_DESTROYED
+   * @param result (output)
    */
-  static public native int undo(
+  static public native void undo(
       int instanceId,
       int cookie1, int cookie2,
       Result result);

@@ -1,4 +1,8 @@
+#include <errno.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 #include <limits.h>
+#include "shogi_jni.h"
 #include <stdio.h>
 #include <stdlib.h>
 #if ! defined(_WIN32)
@@ -31,29 +35,32 @@ load_fv( void )
   size_t size;
   int iret;
 
-  pf = file_open( str_fv, "r" );
-  if ( pf == NULL ) { return -2; }
+  pf = file_open(str_fv, "r");
+  if (pf == NULL) {
+    snprintf(str_message, SIZE_MESSAGE, "%s: open: %s",
+             str_fv, strerror(errno));
+    str_error = str_message;
+    LOG_DEBUG("%s", str_message);
+    return -2;
+  }
+  int fd = fileno(pf);
+  int pc_on_sq_size = nsquare * pos_n;
+  int kkp_size = nsquare * nsquare * kkp_end;
 
-  size = nsquare * pos_n;
-  int n;
-  if ( (n = fread( large_object->pc_on_sq, sizeof(short), size, pf )) != size )
-    {
-      snprintf( str_message, SIZE_MESSAGE, "%s (pc_on_sq): %d <-> %d", 
-		str_fv, n, size);
-      str_error = str_message;
-      return -2;
-    }
+  char* ptr = (mmap(NULL, (pc_on_sq_size + kkp_size) * sizeof(short),
+                    PROT_READ, MAP_SHARED, fd, 0));
+  if (ptr == MAP_FAILED) {
+    snprintf(str_message, SIZE_MESSAGE, "%s: mmap: %s",
+             str_fv, strerror(errno));
+    str_error = str_message;
+    LOG_DEBUG("%s", str_message);
+    return -2;
+  }
 
-  size = nsquare * nsquare * kkp_end;
-  if ( (n = fread( large_object->kkp, sizeof(short), size, pf )) != size )
-    {
-      snprintf( str_message, SIZE_MESSAGE, "%s (kkp): %d <-> %d", 
-		str_fv, n, size);
-      return -2;
-    }
+  p_pc_on_sq = (short*)ptr;
+  p_kkp = (short*)ptr + pc_on_sq_size;
 
-  iret = file_close( pf );
-  if ( iret < 0 ) { return iret; }
+  fclose(pf);
 
 #if 0
 #  define X0 -10000
@@ -160,7 +167,7 @@ ini( tree_t * restrict ptree )
   sec_limit_depth       = UINT_MAX;
   depth_limit           = PLY_MAX;
   log2_ntrans_table     = 20;
-  
+
   pf_book               = NULL;
   pf_hash               = NULL;
 
@@ -222,7 +229,7 @@ ini( tree_t * restrict ptree )
       ailast_one[i]  = (unsigned char)last_one00(i);
     }
 #endif
-  
+
   for ( i = 0; i < HASH_REG_HIST_LEN; i++ )
     {
       history_book_learn[i].move_responsible = 0;
@@ -419,7 +426,7 @@ ini_tables( void )
 				      G1, G2, G3, G4, G5, G6, G7, G8, G9,
 				      H1, H2, H3, H4, H5, H6, H7, H8, H9,
 				      I1, I2, I3, I4, I5, I6, I7, I8, I9 };
-  
+
   const unsigned char aini_rl45[] = { A9, B1, C2, D3, E4, F5, G6, H7, I8,
 				      A8, B9, C1, D2, E3, F4, G5, H6, I7,
 				      A7, B8, C9, D1, E2, F3, G4, H5, I6,
@@ -429,7 +436,7 @@ ini_tables( void )
 				      A3, B4, C5, D6, E7, F8, G9, H1, I2,
 				      A2, B3, C4, D5, E6, F7, G8, H9, I1,
 				      A1, B2, C3, D4, E5, F6, G7, H8, I9 };
-  
+
   const unsigned char aini_rr45[] = { I8, I7, I6, I5, I4, I3, I2, I1, I9,
 				      H7, H6, H5, H4, H3, H2, H1, H9, H8,
 				      G6, G5, G4, G3, G2, G1, G9, G8, G7,
@@ -742,7 +749,7 @@ ini_attack_tables( void )
 	      set_attacks( irank+i, ifile, &bb );
 	      if ( (pcs<<1) & (1 << (8-irank-i)) ) { break; }
 	    }
-	  abb_file_attacks[irank*nfile+ifile][pcs] = bb; 
+	  abb_file_attacks[irank*nfile+ifile][pcs] = bb;
 	}
 
   for ( irank = 0; irank < nrank; irank++ )
@@ -760,7 +767,7 @@ ini_attack_tables( void )
 	      set_attacks( irank, ifile+i, &bb );
 	      if ( (pcs<<1) & (1 << (8-ifile-i)) ) { break; }
 	    }
-	  ai_rook_attacks_r0[irank*nfile+ifile][pcs] = bb.p[irank/3]; 
+	  ai_rook_attacks_r0[irank*nfile+ifile][pcs] = bb.p[irank/3];
 	}
 
   for ( irank = 0; irank < nrank; irank++ )
@@ -780,7 +787,7 @@ ini_attack_tables( void )
 		  set_attacks( irank+i, ifile+i, &bb );
 		  if ( (pcs<<1) & (1 << (8-ifile-i)) ) { break; }
 		}
-	    }  
+	    }
 	  else {
 	    for ( i = -1; irank+i >= 0; i-- )
 	      {
@@ -793,7 +800,7 @@ ini_attack_tables( void )
 		if ( (pcs<<1) & (1 << (8-ifile-i)) ) { break; }
 	      }
 	  }
-	  abb_bishop_attacks_rl45[irank*nfile+ifile][pcs] = bb; 
+	  abb_bishop_attacks_rl45[irank*nfile+ifile][pcs] = bb;
 	}
 
   for ( irank = 0; irank < nrank; irank++ )
@@ -813,7 +820,7 @@ ini_attack_tables( void )
 		  set_attacks( irank-i, ifile+i, &bb );
 		  if ( (pcs<<1) & (1 << (irank-i)) ) { break; }
 		}
-	    }  
+	    }
 	  else {
 	    for ( i = -1; ifile+i >= 0; i-- )
 	      {
@@ -826,7 +833,7 @@ ini_attack_tables( void )
 		if ( (pcs<<1) & (1 << (irank-i)) ) { break; }
 	      }
 	  }
-	  abb_bishop_attacks_rr45[irank*nfile+ifile][pcs] = bb; 
+	  abb_bishop_attacks_rr45[irank*nfile+ifile][pcs] = bb;
 	}
 
   for ( i = 0; i < nsquare; i++ )
@@ -836,7 +843,7 @@ ini_attack_tables( void )
       aslide[i].irl90 = (unsigned char)(2-(i%nfile)/3);
       aslide[i].srl90 = (unsigned char)(((i%nfile)%3)*9+1);
     }
-  
+
   for ( irank = 0; irank < nrank; irank++ )
     for ( ifile = 0; ifile < nfile; ifile++ )
       {
@@ -889,7 +896,7 @@ static bitboard_t
 bb_set_mask( int isquare )
 {
   bitboard_t bb;
-  
+
   if ( isquare > 53 )
     {
       bb.p[0] = bb.p[1] = 0;

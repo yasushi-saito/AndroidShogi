@@ -284,7 +284,9 @@ public class BonanzaController {
   private void doInit() {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     mInstanceId = BonanzaJNI.startGame(mComputerDifficulty, 60, 1, jr);
-    
+    if (jr.status != BonanzaJNI.R_OK) {
+      throw new AssertionError(String.format("startGame failed: %d %s", jr.status, jr.error));
+    }
     Result r = new Result();
     r.board = jr.board;
     r.nextPlayer = Player.BLACK;
@@ -295,20 +297,34 @@ public class BonanzaController {
   private void doHumanMove(Player player, Move move) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     BonanzaJNI.humanMove(mInstanceId, move.toCsaString(), jr);
+    if (jr.status == BonanzaJNI.R_INSTANCE_DELETED) {
+      Log.d(TAG, "Instance deleted");
+      mThread.quit();
+      return;
+    }
     sendOutputMessage(Result.fromJNI(jr, player));
   }
 
   private void doComputerMove(Player player) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     BonanzaJNI.computerMove(mInstanceId, jr);
+    if (jr.status == BonanzaJNI.R_INSTANCE_DELETED) {
+      Log.d(TAG, "Instance deleted");
+      mThread.quit();
+      return;
+    }
     sendOutputMessage(Result.fromJNI(jr, player));
   }
 
   private void doUndo(Player player, int cookie1, int cookie2) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     Log.d(TAG, "Undo " + cookie1 + " " + cookie2);
-    int iret = BonanzaJNI.undo(mInstanceId, cookie1, cookie2, jr);
-
+    BonanzaJNI.undo(mInstanceId, cookie1, cookie2, jr);
+    if (jr.status == BonanzaJNI.R_INSTANCE_DELETED) {
+      Log.d(TAG, "Instance deleted");
+      mThread.quit();
+      return;
+    }
     Result r;
     if (cookie2 < 0) {
       r = Result.fromJNI(jr, player);

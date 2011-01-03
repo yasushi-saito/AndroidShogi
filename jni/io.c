@@ -158,6 +158,7 @@ out_error( const char *format, ... )
 
 }
 
+extern const char* g_storage_dir;
 
 FILE *
 file_open( const char *str_file, const char *str_mode )
@@ -165,11 +166,12 @@ file_open( const char *str_file, const char *str_mode )
   FILE *pf;
 
   char abs_path[1024];
-  snprintf(abs_path, sizeof(abs_path), "/sdcard/shogi/%s", str_file);
+  snprintf(abs_path, sizeof(abs_path), "%s/%s", g_storage_dir, str_file);
 
   pf = fopen( abs_path, str_mode );
   if ( pf == NULL )
     {
+      LOG_DEBUG("Open error %s: %s", abs_path, strerror(errno));
       snprintf( str_message, SIZE_MESSAGE,
 		"%s, %s", str_fopen_error, abs_path );
       str_error = str_message;

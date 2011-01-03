@@ -117,10 +117,14 @@ public class StartScreenActivity extends Activity {
     return b.create();
   }
   
+  private String dbSourceUrl() {
+    String dflt = getResources().getString(R.string.default_download_source_url);
+    return mPrefs.getString("download_source_url", dflt);
+  }
   ProgressDialog newDownloadDialog() {
     ProgressDialog d = new ProgressDialog(this);
     d.setCancelable(true);
-    d.setMessage("Downloading " + mPrefs.getString("download_db_url", "unset"));
+    d.setMessage(String.format("Downloading %s", dbSourceUrl()));
     d.setOnCancelListener(new DialogInterface.OnCancelListener() {
       public void onCancel(DialogInterface unused) {
         if (mDownloadController != null) mDownloadController.destroy();
@@ -134,7 +138,7 @@ public class StartScreenActivity extends Activity {
     mDownloadController = new BonanzaDownloader(
         mDownloadHandler, 
         mExternalDir,
-        mPrefs.getString("download_db_url", "unset"),
+        dbSourceUrl(),
         m);
     mDownloadController.start();
     showDialog(DIALOG_DOWNLOAD);
@@ -182,7 +186,7 @@ public class StartScreenActivity extends Activity {
     if (!BonanzaDownloader.hasRequiredFiles(mExternalDir)) {
       Toast.makeText(
           getBaseContext(),
-          "Please load the shogi database files first",
+          "Please download the shogi database files first",
           Toast.LENGTH_LONG).show();
     } else {
       startActivity(new Intent(this, GameActivity.class));
@@ -204,7 +208,7 @@ public class StartScreenActivity extends Activity {
     if (!BonanzaDownloader.hasRequiredFiles(mExternalDir)) {
       Toast.makeText(
           getBaseContext(),
-          "Please load the shogi database files first",
+          "Please download the shogi database files first",
           Toast.LENGTH_LONG).show();
       return;
     }

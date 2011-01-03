@@ -7,6 +7,7 @@ import android.util.AttributeSet;
 import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -120,15 +121,20 @@ public class GameStatusView extends LinearLayout {
       Move m = moves.get(moves.size() - 1);
       msg = m.toCsaString() + " ";
     }
+    String endGameMessage = null;
     if (gameState == GameState.ACTIVE) {
     } else if (gameState == GameState.BLACK_LOST) {
-      msg += getResources().getString(R.string.white_won);
+      endGameMessage = getResources().getString(R.string.white_won); 
     } else if (gameState == GameState.WHITE_LOST) {
-      msg += getResources().getString(R.string.black_won);
+      endGameMessage = getResources().getString(R.string.black_won);       
     } else if (gameState == GameState.DRAW) {
-      msg += getResources().getString(R.string.draw);
+      endGameMessage = getResources().getString(R.string.draw);             
     } else {
       throw new AssertionError(gameState.toString());
+    }
+    if (endGameMessage != null) {
+      Toast.makeText(getContext(), endGameMessage, Toast.LENGTH_LONG).show();
+      msg += endGameMessage;
     }
     mGameStatus.setText(msg);
   }

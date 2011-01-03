@@ -8,7 +8,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.Paint.Align;
 import android.graphics.Paint.Style;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -67,6 +66,78 @@ public class BoardView extends View implements View.OnTouchListener {
     invalidate();
   }
 
+  //
+  // onTouch processing
+  //
+  private static final int T_EMPTY_SQUARE = 1;
+  private static final int T_PLAYERS_PIECE = 2;
+  private static final int S_INVALID = 0;
+  private static final int S_PIECE = 1;
+  private static final int S_CAPTURED = 2;
+  private static final int S_MOVE_DESTINATION = 3;
+  
+  static private class NearestSquareFinder {
+    public NearestSquareFinder(ScreenLayout layout, float sx, float sy) {
+      mLayout = layout;
+      mSx = sx;
+      mSy = sy;
+      
+      mMinDistance = 9999;
+      mPx = mPy = -1;
+      mType = S_INVALID;
+    }
+    
+    public void findNearestSquareOnBoard(Board  board, Player player, int searchType) {
+      int px = mLayout.boardX(mSx);
+      int py = mLayout.boardY(mSy);
+      Log.d(TAG, String.format("NN: %d %d", px, py));
+      for (int i = -1; i <= 1; ++i) {
+        for (int j = -1; j <= 1; ++j) {
+          int x = px + i;
+          int y = py + j;
+          if (x >= 0 && x < Board.DIM && y >= 0 && y < Board.DIM) {
+            int piece = board.getPiece(x, y);
+            switch (searchType) {
+              case T_EMPTY_SQUARE: 
+                if (piece != 0) continue;
+                break;  
+              case T_PLAYERS_PIECE:
+                if (Board.player(piece) != player) continue;
+                break;
+            }
+            tryScreenPosition(mLayout.screenX(x), mLayout.screenY(y), x, y, S_PIECE);
+          }
+        }
+      }
+    }
+
+    private void tryScreenPosition(float sx, float sy, 
+        int px, int py, int type) {
+      float centerX = sx + mLayout.squareDim() / 2;
+      float centerY = sy + mLayout.squareDim() / 2;      
+      double distance = Math.hypot(centerX- mSx, centerY - mSy);
+      if (distance < mMinDistance && distance < mLayout.squareDim()) {
+        mMinDistance = distance;
+        mPx = px;
+        mPy = py;
+        mType = type;
+      }
+    }
+    
+    public int nearestType() { return mType; }
+    public int nearestX() { return mPx; }
+    public int nearestY() { return mPy; }
+    
+    private ScreenLayout mLayout;
+    private float mSx;
+    private float mSy;
+    
+    private double mMinDistance;
+    private int mPx;
+    private int mPy;
+    private int mType;
+  }
+  
   @Override public boolean onTouch(View v, MotionEvent event) {
     if (!isHumanPlayer(mCurrentPlayer)) return false;
 
@@ -74,25 +145,27 @@ public class BoardView extends View implements View.OnTouchListener {
     int squareDim = layout.squareDim();
     int action = event.getAction();
 
+    NearestSquareFinder finder = new NearestSquareFinder(
+        layout, event.getX(), event.getY());
+    
     if (action == MotionEvent.ACTION_DOWN) {
+      mMoveFrom =null ;
+      
       // Start of touch operation
-      int px = layout.boardX((int)event.getX());
-      int py = layout.boardY((int)event.getY());
-      if (px >= 0 && py >= 0) {
-        // Moving a piece on the board
-        int piece = mBoard.getPiece(px, py);
-        if (Board.player(piece) != mCurrentPlayer) {
-          // Tried to move a piece not owned by the player
-          return false;
-        }
-        mMoveFrom = new Position(px, py);
-      } else {
+      finder.findNearestSquareOnBoard(mBoard, mCurrentPlayer, T_PLAYERS_PIECE);
+      
+      ArrayList<CapturedPiece> captured = listCapturedPieces(layout, mCurrentPlayer);
+      for (int i = 0; i < captured.size(); ++i) {
+        CapturedPiece cp = captured.get(i);
+        finder.tryScreenPosition(cp.sx, cp.sy, i, -1, S_CAPTURED);
+      }
+      if (finder.nearestType() == S_PIECE) {
+        mMoveFrom = new Position(finder.nearestX(), finder.nearestY());
+      } else if (finder.nearestType() == S_CAPTURED) {
         // Dropping a captured piece
-        int pindex = layout.capturedPieceIndex(
-            mCurrentPlayer, (int)event.getX(), (int)event.getY());
-        int piece = getCapturedPiece(mBoard, mCurrentPlayer, pindex);
-        if (piece <= 0) return false;
-        mMoveFrom = new Position(mCurrentPlayer, pindex);
+        mMoveFrom = new Position(captured.get(finder.nearestX()));
+      } else {
+        return false;
       }
       invalidate();
       return true;
@@ -101,13 +174,21 @@ public class BoardView extends View implements View.OnTouchListener {
     if (mMoveFrom != null) {
       Position to = null;
       if (mMoveFrom.isOnBoard()) {
-        to = findSnapSquare(layout, mMoveFrom.getX(), mMoveFrom.getY(),
-            event.getX(), event.getY());
+        ArrayList<Position> dests = possibleMoveTargets(
+            mBoard.getPiece(mMoveFrom.getX(), mMoveFrom.getY()),
+            mMoveFrom.getX(), mMoveFrom.getY());
+        for (Position d: dests) {
+          finder.tryScreenPosition(
+              layout.screenX(d.getX()), layout.screenY(d.getY()),
+              d.getX(), d.getY(), S_MOVE_DESTINATION);               
+        }
+        if (finder.nearestType() == S_MOVE_DESTINATION) {
+          to = new Position(finder.nearestX(), finder.nearestY());
+        }
       } else {
-        int px = layout.boardX((int)event.getX());
-        int py = layout.boardY((int)event.getY());
-        if (px >= 0 && py >= 0 && mBoard.getPiece(px, py) == 0) {
-          to = new Position(px, py);
+        finder.findNearestSquareOnBoard(mBoard, mCurrentPlayer, T_EMPTY_SQUARE);
+        if (finder.nearestType() == S_PIECE) {
+          to = new Position(finder.nearestX(), finder.nearestY());
         }
       }
       // If "to" is different from the currently selected square, redraw
@@ -128,8 +209,7 @@ public class BoardView extends View implements View.OnTouchListener {
           move.fromX = mMoveFrom.getX();
           move.fromY = mMoveFrom.getY();
         } else {
-          move.piece = getCapturedPiece(
-              mBoard, mCurrentPlayer, mMoveFrom.capturedIndex());
+          move.piece = mMoveFrom.capturedPiece().piece;
           move.fromX = move.fromY = -1;
         }
         mListener.onHumanMove(mCurrentPlayer, move);
@@ -169,18 +249,18 @@ public class BoardView extends View implements View.OnTouchListener {
         }
         BitmapDrawable b = new BitmapDrawable(getResources(), bm);
 
-        int sx = layout.screenX(x);
-        int sy = layout.screenY(y);
-        b.setBounds(sx, sy, sx + squareDim, sy + squareDim);
+        float sx = layout.screenX(x);
+        float sy = layout.screenY(y);
+        b.setBounds((int)sx, (int)sy, (int)(sx + squareDim), (int)(sy + squareDim));
         b.draw(canvas);
       }
     }
 
     if (mBoard.mCapturedBlack != 0) {
-      drawCapturedPieces(canvas, layout, Player.BLACK, mBoard.mCapturedBlack);
+      drawCapturedPieces(canvas, layout, Player.BLACK);
     }
     if (mBoard.mCapturedWhite!= 0) {
-      drawCapturedPieces(canvas, layout, Player.WHITE, mBoard.mCapturedWhite);
+      drawCapturedPieces(canvas, layout, Player.WHITE);
     }
 
     if (mMoveFrom != null) {
@@ -196,25 +276,23 @@ public class BoardView extends View implements View.OnTouchListener {
         cp.setColor(0xc0ff8c00);
         cp.setStyle(Style.FILL);
         for (Position dest: dests) {
-          int sx = layout.screenX(dest.getX());
-          int sy = layout.screenY(dest.getY());
-          //canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
-          
-          sx += squareDim / 2;
-          sy += squareDim / 2;
+          float sx = layout.screenX(dest.getX());
+          float sy = layout.screenY(dest.getY());
+
+          sx += squareDim / 2.0f;
+          sy += squareDim / 2.0f;
           canvas.drawCircle(sx, sy, 5, cp);
         }
       } else {
-        int sx = layout.capturedScreenX(mMoveFrom.player(), mMoveFrom.capturedIndex());
-        int sy = layout.capturedScreenY(mMoveFrom.player(), mMoveFrom.capturedIndex());
-        canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
+        CapturedPiece cp = mMoveFrom.capturedPiece();
+        canvas.drawRect(new RectF(cp.sx, cp.sy, cp.sx + squareDim, cp.sy + squareDim), p);
       }
     }
     if (mMoveTo != null) {
       Paint p = new Paint();
       p.setColor(0x50000000);
-      int sx = layout.screenX(mMoveTo.getX());
-      int sy = layout.screenY(mMoveTo.getY());
+      float sx = layout.screenX(mMoveTo.getX());
+      float sy = layout.screenY(mMoveTo.getY());
       //canvas.drawRect(new Rect(sx, sy, sx + squareDim, sy + squareDim), p);
 
       Paint cp = new Paint();
@@ -241,38 +319,36 @@ public class BoardView extends View implements View.OnTouchListener {
   // Implementation details
   //
 
-  static final String TAG = "BoardView";
+  private static final String TAG = "BoardView";
 
   // Bitmap for all the pieces. mWhiteBitmaps[i] is the same as
   // mBlackBitmapsmaps[i], except upside down.
-  Bitmap mBlackBitmaps[];
-  Bitmap mWhiteBitmaps[];
+  private Bitmap mBlackBitmaps[];
+  private Bitmap mWhiteBitmaps[];
 
-  GameState mGameState;
-  Player mCurrentPlayer;   // Player currently holding the turn
-  Board mBoard;            // Current state of the board
-  String mErrorMessage;
-  boolean mBoardInitialized; 
-  Toast mInitializingToast;
+  private GameState mGameState;
+  private Player mCurrentPlayer;   // Player currently holding the turn
+  private Board mBoard;            // Current state of the board
+  private boolean mBoardInitialized; 
+  private Toast mInitializingToast;
   
   // Position represents a logical position of a piece.
   //
   // @invariant (0,0) <= (x,y) < (9,9).
-  static class Position {
+  private static class Position {
     // Point to a coordinate on the board
     public Position(int x, int y) { mX = x; mY = y; }
 
     // Point to a captured piece
-    public Position(Player player, int index) {
-      mPlayer = player;
-      mCapturedIndex = index;
+    public Position(CapturedPiece p) {
+      mCapturedPiece = p;
     }
 
     @Override public boolean equals(Object o) {
       if (o instanceof Position) {
         Position p = (Position)o;
-        return p.mPlayer == mPlayer &&
-               p.mCapturedIndex == mCapturedIndex &&
+        return ((p.mCapturedPiece == null && mCapturedPiece == null) ||
+                (p.mCapturedPiece != null && p.mCapturedPiece.equals(mCapturedPiece))) &&
                p.mX == mX &&
                p.mY == mY;
       }
@@ -280,10 +356,10 @@ public class BoardView extends View implements View.OnTouchListener {
     }
 
     @Override public int hashCode() {
-      return mX + mY + ((mPlayer != null) ? mPlayer.hashCode() : 0) + mCapturedIndex;
+      throw new AssertionError("hashCode not implemented");
     }
 
-    boolean isOnBoard() { return mPlayer == null; }
+    boolean isOnBoard() { return mCapturedPiece == null; }
 
     int getX() {
       if (!isOnBoard()) throw new AssertionError("blah");
@@ -295,28 +371,21 @@ public class BoardView extends View implements View.OnTouchListener {
       return mY;
     }
 
-    Player player() {
+    CapturedPiece capturedPiece() {
       if (isOnBoard()) throw new AssertionError("blah");
-      return mPlayer;
+      return mCapturedPiece;
     }
 
-    int capturedIndex() {
-      if (isOnBoard()) throw new AssertionError("blah");
-      return mCapturedIndex;
-    }
-
-    // player and captured_index are set iff the Position describes
-    // a captured piece
-    Player mPlayer;
-    int mCapturedIndex;
+    // Set iff the Position describes a captured piece
+    private CapturedPiece mCapturedPiece;
 
     // mX and mY are set iff the Position describes a coordinate on the board.
-    int mX;
-    int mY;
+    private int mX;
+    private int mY;
   }
 
   // A class describing the pixel-level layout of this view.
-  static class ScreenLayout {
+  private static class ScreenLayout {
     public ScreenLayout(int width, int height) {
       mWidth = width;
       mHeight = height;
@@ -330,7 +399,6 @@ public class BoardView extends View implements View.OnTouchListener {
         mCapturedWhite= new Rect(0, 0, dim, dim/ 10);
         mCapturedBlack = new Rect(0, dim * 11 / 10, dim, dim * 12 / 10);
         mBoard = new Rect(0, dim/ 10, dim, dim * 11 / 10);
-        mStatus = new Rect(0, dim * 12 / 10, width, height);
       } else {
         // Captured pieces are shown at the left & right of the board
         mPortrait = false;
@@ -338,7 +406,6 @@ public class BoardView extends View implements View.OnTouchListener {
         mCapturedWhite = new Rect(0, 0, dim / 10, dim);
         mCapturedBlack = new Rect(dim * 11 / 10, 0, dim * 12/ 10, dim);
         mBoard = new Rect(dim / 10, 0, dim * 11 / 10, dim);
-        mStatus = new Rect(dim * 12 / 10, 0, width, height);
       }
       mSquareDim = dim / Board.DIM;
     }
@@ -349,43 +416,35 @@ public class BoardView extends View implements View.OnTouchListener {
     public int squareDim() { return mSquareDim; }
     public Rect getBoard() { return mBoard; }
 
-    // Convert X screen coord to board position. Return -1 on error.
-    public int boardX(int sx) {
-      int px = (sx - mBoard.left) / mSquareDim;
-      if (px < 0 || px >= Board.DIM) px = -1;
+    // Convert X screen coord to board position. May return a position
+    // outside the range [0,Board.DIM).
+    public int boardX(float sx) {
+      int px = (int)((sx - mBoard.left) / mSquareDim);
       return px;
     }
 
-    // Convert Y screen coord to board position. Return -1 on error.
-    public int boardY(int sy) {
-      int py = (sy - mBoard.top) / mSquareDim;
-      if (py < 0 || py >= Board.DIM) py = -1;
+    // Convert X screen coord to board position. May return a position
+    // outside the range [0,Board.DIM).
+    public int boardY(float sy) {
+      int py = (int)((sy - mBoard.top) / mSquareDim);
       return py;
     }
 
     // Convert X board position to the position of the left edge on the screen.
-    public int screenX(int px) {
+    public float screenX(int px) {
       return mBoard.left + mBoard.width() * px / Board.DIM;
     }
 
     // Convert board Y position to the position of the top edge on the screen.
-    public int screenY(int py) {
+    public float screenY(int py) {
       return mBoard.top + mBoard.height() * py / Board.DIM;
-    }
-
-    // Compute the distance from board position <px, py> to screen location
-    // <event_x, event_y>.
-    float screenDistance(int px, int py, float event_x, float event_y) {
-      int sx = screenX(px) + mSquareDim / 2;
-      int sy = screenY(py) + mSquareDim / 2;
-      return Math.abs(sx - event_x) + Math.abs(sy - event_y);
     }
 
     // Return the screen location for displaying a captured piece.
     //
     // @p index an integer 0, 1, 2, ... that specifies the position of the
     // piece in captured list.
-    int capturedScreenX(Player player, int index) {
+    private int capturedScreenX(Player player, int index) {
       Rect r = (player == Player.BLACK ? mCapturedBlack : mCapturedWhite);
       if (mPortrait) {
         return r.left + mSquareDim * index * 4 / 3;
@@ -394,26 +453,12 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
 
-    int capturedScreenY(Player player, int index) {
+    private int capturedScreenY(Player player, int index) {
       Rect r = (player == Player.BLACK ? mCapturedBlack : mCapturedWhite);
       if (mPortrait) {
         return r.top;
       } else {
         return r.top + mSquareDim * index * 4 / 3;
-      }
-    }
-
-    // Given a screen coordinate <sx, sy>, see if it points to a captured
-    // piece for @p player. If so, return the piece index (the leftmost
-    // captured piece is zero).
-    int capturedPieceIndex(Player player, int sx, int sy) {
-      Rect r = (player == Player.BLACK ? mCapturedBlack : mCapturedWhite);
-      if (sx < r.left|| sx>= r.right) return -1;
-      if (sy < r.top || sy >= r.bottom) return -1;
-      if (mPortrait) {
-        return (sx - r.left) / (mSquareDim * 4 / 3);
-      } else {
-        return (sy - r.top) / (mSquareDim * 4 / 3);
       }
     }
 
@@ -423,21 +468,19 @@ public class BoardView extends View implements View.OnTouchListener {
     Rect mBoard;   // display the board status
     Rect mCapturedBlack;  // display pieces captured by black player
     Rect mCapturedWhite;  // display pieces captured by white player
-    Rect mStatus;  //display arbitrary status messages
   }
-  ScreenLayout mCachedLayout;
+  private ScreenLayout mCachedLayout;
 
   // If non-NULL, user is trying to move the piece from this square.
   // @invariant mMoveFrom == null || (0,0) <= mMoveFrom < (Board.DIM, Board.DIM)
-  Position mMoveFrom;
+  private Position mMoveFrom;
 
   // If non-NULL, user is trying to move the piece to this square.
   // @invariant mMoveTo== null || (0,0) <= mMoveTo < (Board.DIM, Board.DIM)
-  Position mMoveTo;
+  private Position mMoveTo;
 
-  EventListener mListener;
-  ArrayList<Player> mHumanPlayers;
-  boolean mAllowUndo;
+  private EventListener mListener;
+  private ArrayList<Player> mHumanPlayers;
   
   void drawEmptyBoard(Canvas canvas, ScreenLayout layout) {
     // Fill the board square
@@ -449,84 +492,111 @@ public class BoardView extends View implements View.OnTouchListener {
     // Draw the gridlines
     p.setColor(0xff000000);
     for (int i = 0; i < Board.DIM; ++i) {
-      int sx = layout.screenX(i);
-      int sy = layout.screenY(i);
+      float sx = layout.screenX(i);
+      float sy = layout.screenY(i);
       canvas.drawLine(sx, boardRect.top, sx, boardRect.bottom, p);
       canvas.drawLine(boardRect.left, sy, boardRect.right, sy, p);
     }
   }
 
-  void drawCapturedPieces(Canvas canvas, ScreenLayout layout,
-                          Player player, int bits) {
-    Bitmap[] bitmaps = (player == Player.BLACK ? mBlackBitmaps : mWhiteBitmaps);
+  private static class CapturedPiece {
+    public CapturedPiece(int p, int i, float x, float y) {
+      piece = p; 
+      n = i;
+      sx = x;
+      sy = y;
+    }
+    
+    public final boolean equals(CapturedPiece p) {
+      if (p == null) return false;
+      return piece == p.piece && n == p.n && sx == p.sx && sy == p.sy;
+    }
+    
+    public final int piece;
+    public final int n;
+    public final float sx, sy;
+  }
+  
+  private ArrayList<CapturedPiece> listCapturedPieces(
+      ScreenLayout layout,
+      Player player) {
+    final int bits = (player == Player.BLACK ?
+        mBoard.mCapturedBlack : mBoard.mCapturedWhite);
+    
+    ArrayList<CapturedPiece> pieces = new ArrayList<CapturedPiece>();
     int seq = 0;
     int n = Board.numCapturedFu(bits);
     if (n > 0) {
-      drawCapturedPiece(canvas, layout, bitmaps[Board.K_FU], n, player, seq);
+      pieces.add(new CapturedPiece(Board.K_FU, n, 
+          layout.capturedScreenX(player, seq),
+          layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedKyo(bits);
     if (n > 0) {
-      drawCapturedPiece(canvas, layout, bitmaps[Board.K_KYO], n, player, seq);
+      pieces.add(new CapturedPiece(Board.K_KYO, n, 
+          layout.capturedScreenX(player, seq),
+          layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedKei(bits);
     if (n > 0) {
-      drawCapturedPiece(canvas, layout, bitmaps[Board.K_KEI], n, player, seq);
+      pieces.add(new CapturedPiece(Board.K_KEI, n, 
+          layout.capturedScreenX(player, seq),
+          layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedGin(bits);
     if (n > 0) {
-      drawCapturedPiece(canvas, layout, bitmaps[Board.K_GIN], n, player, seq);
+      pieces.add(new CapturedPiece(Board.K_GIN, n, 
+          layout.capturedScreenX(player, seq),
+          layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedKin(bits);
     if (n > 0) {
-      drawCapturedPiece(canvas, layout, bitmaps[Board.K_KIN], n, player, seq);
+      pieces.add(new CapturedPiece(Board.K_KIN, n, 
+          layout.capturedScreenX(player, seq),
+          layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedKaku(bits);
     if (n > 0) {
-      drawCapturedPiece(canvas, layout, bitmaps[Board.K_KAKU], n, player, seq);
+      pieces.add(new CapturedPiece(Board.K_KAKU, n, 
+          layout.capturedScreenX(player, seq),
+          layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedHi(bits);
     if (n > 0) {
-      drawCapturedPiece(canvas, layout, bitmaps[Board.K_HI], n, player, seq);
+      pieces.add(new CapturedPiece(Board.K_HI, n, 
+          layout.capturedScreenX(player, seq),
+          layout.capturedScreenY(player, seq)));
       ++seq;
+    }
+    return pieces;
+  }
+      
+  
+  private void drawCapturedPieces(Canvas canvas, ScreenLayout layout, Player player) {
+    ArrayList<CapturedPiece> pieces = listCapturedPieces(layout, player);
+    Bitmap[] bitmaps = (player == Player.BLACK ? mBlackBitmaps : mWhiteBitmaps);
+    for (int i = 0; i < pieces.size(); ++i) {
+      CapturedPiece p = pieces.get(i);
+      drawCapturedPiece(canvas, layout, bitmaps[p.piece], p.n, p.sx, p.sy);
     }
   }
 
-  static int getCapturedPiece(Board board, Player player, int index) {
-    int bits = (player == Player.BLACK ?
-                board.mCapturedBlack : board.mCapturedWhite);
-    if (Board.numCapturedFu(bits) > 0) --index;
-    if (index < 0) return Board.K_FU;
-    if (Board.numCapturedKyo(bits) > 0) --index;
-    if (index < 0) return Board.K_KYO;
-    if (Board.numCapturedKei(bits) > 0) --index;
-    if (index < 0) return Board.K_KEI;
-    if (Board.numCapturedGin(bits) > 0) --index;
-    if (index < 0) return Board.K_GIN;
-    if (Board.numCapturedKin(bits) > 0) --index;
-    if (index < 0) return Board.K_KIN;
-    if (Board.numCapturedKaku(bits) > 0) --index;
-    if (index < 0) return Board.K_KAKU;
-    if (Board.numCapturedHi(bits) > 0) --index;
-    if (index < 0) return Board.K_HI;
-    throw new AssertionError("???");
-  }
-
-  void drawPiece(Canvas canvas, ScreenLayout layout, Bitmap bm, int sx, int sy) {
+  private void drawPiece(Canvas canvas, ScreenLayout layout, Bitmap bm, float sx, float sy) {
     BitmapDrawable b = new BitmapDrawable(getResources(), bm);
-    b.setBounds(sx, sy, sx + layout.squareDim(), sy + layout.squareDim());
+    b.setBounds((int)sx, (int)sy, 
+        (int)(sx + layout.squareDim()), (int)(sy + layout.squareDim()));
     b.draw(canvas);
   }
 
-  void drawCapturedPiece(Canvas canvas, ScreenLayout layout,
-      Bitmap bm, int num_pieces, Player player, int seq) {
-    int sx = layout.capturedScreenX(player, seq);
-    int sy = layout.capturedScreenY(player, seq);
+  private void drawCapturedPiece(Canvas canvas, 
+      ScreenLayout layout,
+      Bitmap bm, int num_pieces, float sx, float sy) {
     drawPiece(canvas, layout, bm, sx, sy);
     if (num_pieces >= 1) {
       int fontSize = 14;
@@ -714,26 +784,6 @@ public class BoardView extends View implements View.OnTouchListener {
         Log.wtf(TAG, "Illegal type: " + type);
     }
     return state.getTargets();
-  }
-
-  Position findSnapSquare(
-      ScreenLayout layout,
-      int from_x, int from_y,
-      float cur_sx, float cur_sy) {
-    ArrayList<Position> dests = possibleMoveTargets(
-        mBoard.getPiece(from_x, from_y),
-        from_x, from_y);
-    Position nearest = null;
-    float min_distance = layout.screenDistance(from_x, from_y, cur_sx, cur_sy);
-
-    for (Position dest: dests) {
-      float distance = layout.screenDistance(dest.getX(), dest.getY(), cur_sx, cur_sy);
-      if (distance < min_distance) {
-        nearest = dest;
-        min_distance = distance;
-      }
-    }
-    return nearest;
   }
 
   ScreenLayout getScreenLayout() {
