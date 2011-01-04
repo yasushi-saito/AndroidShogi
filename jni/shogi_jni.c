@@ -491,7 +491,6 @@ void Java_com_ysaito_shogi_BonanzaJNI_computerMove(
     return;
   }
 
-  __android_log_print(ANDROID_LOG_DEBUG, DEBUG_TAG, "ComputerMove");
   CHECK2_GE(com_turn_start(&tree, 0), 0, "error: %s", str_error);
 
   unsigned int move = last_pv_save.a[1];

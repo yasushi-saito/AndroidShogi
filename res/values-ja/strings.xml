@@ -2,8 +2,8 @@
 <resources>
     <string name="help">ヘルプ</string>
     <string name="draw">持将棋</string>
-    <string name="black_won">先手勝</string>
-    <string name="white_won">後手勝</string>
+    <string name="black_won">先手勝ち</string>
+    <string name="white_won">後手勝ち</string>
     <string name="confirm_quit_game">対局を終了しますか?</string>
     <string name="promote_piece">成りますか</string>
     <string name="do_not_promote">成らない</string>

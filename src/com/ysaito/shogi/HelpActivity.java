@@ -15,6 +15,10 @@ public class HelpActivity extends Activity {
 	private String helpString() {
 		StringBuilder b = new StringBuilder();
 		b.append("<html><body>");
+		b.append("<h2>Shogi version 1.1</h2>");
+		b.append("Released Jan 3, 2011.");
+		b.append("<p>Copyright(c) 2011 Yasushi Saito<br>All rights reserved<br>");
+		b.append("This program is distributed under Apache 2.0 license.");
 		b.append("<h3>What are Shogi Database files?</h3>");
 		b.append("Three files, <tt>hash.bin</tt>, <tt>fv.bin</tt>, and <tt>book.bin</tt> are loaded by the computer solver code (Bonanza).");
 		b.append("These files are large (41MB compressed, 200MB uncompressed) and they don't fit in the ");

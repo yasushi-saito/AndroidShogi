@@ -46,6 +46,11 @@ public class GameActivity extends Activity {
   private BoardView mBoardView;
   private GameStatusView mStatusView;
   private Menu mMenu;
+
+  // Game params
+  private int mHandicap;           // BonanzaController.H_XXXX
+  private int mComputerLevel;      // 0 .. 4
+  private String mPlayerTypes;      // "HC", "CH", "HH", "CC"
   
   // State of the game
   private Board mBoard;            // current state of the board
@@ -66,39 +71,16 @@ public class GameActivity extends Activity {
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.game);
-    mBlackThinkTimeMs = 0;
-    mWhiteThinkTimeMs = 0;
-    mBlackThinkStartMs = 0;  
-    mWhiteThinkStartMs = 0;
-    
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
-        getBaseContext());
-    String player_types = prefs.getString("player_types", "HC");
-    Log.d(TAG, "onCreate " + player_types);
-
-    mHumanPlayers = new ArrayList<Player>();
-    if (player_types.charAt(0) == 'H') {
-      mHumanPlayers.add(Player.BLACK);
-    }
-    if (player_types.charAt(1) == 'H') {
-      mHumanPlayers.add(Player.WHITE);      
-    }
-
-    int computer_level = Integer.parseInt(
-        prefs.getString("computer_difficulty", "1"));
-    int handicap = Integer.parseInt(prefs.getString("handicap", "0"));
+    initializeInstanceState(savedInstanceState);
     
     mStatusView = (GameStatusView)findViewById(R.id.gamestatusview);
     mStatusView.initialize(
-        playerName(player_types.charAt(0), computer_level),
-        playerName(player_types.charAt(1), computer_level));
+        playerName(mPlayerTypes.charAt(0), mComputerLevel),
+        playerName(mPlayerTypes.charAt(1), mComputerLevel));
     
     mBoardView = (BoardView)findViewById(R.id.boardview);
     mBoardView.initialize(mViewListener, mHumanPlayers);
-    
-    mUndosRemaining= Integer.parseInt(prefs.getString("max_undos", "0"));
-    
-    mController = new BonanzaController(mEventHandler, handicap, computer_level);
+    mController = new BonanzaController(mEventHandler, mHandicap, mComputerLevel);
     mController.start(savedInstanceState);
     schedulePeriodicTimer();
     // mController will call back via mControllerHandler when Bonanza is 
@@ -116,7 +98,8 @@ public class GameActivity extends Activity {
   }
   
   @Override public void onSaveInstanceState(Bundle bundle) {
-    mController.saveInstanceState(bundle);
+	  saveInstanceState(bundle);
+	  mController.saveInstanceState(bundle);
   }
   
   @Override
@@ -172,6 +155,47 @@ public class GameActivity extends Activity {
   
   private boolean isHumanPlayer(Player p) {
     return mHumanPlayers.contains(p);
+  }
+
+  private void saveInstanceState(Bundle b) {
+	  b.putLong("shogi_undos_remaining", mUndosRemaining);
+	  b.putLong("shogi_black_think_time_ms", mBlackThinkTimeMs);
+	  b.putLong("shogi_white_think_time_ms", mWhiteThinkTimeMs);	  
+	  b.putLong("shogi_black_think_start_ms", mBlackThinkStartMs);	  	  
+	  b.putLong("shogi_white_think_start_ms", mWhiteThinkStartMs);	  
+  }
+  private void initializeInstanceState(Bundle b) {
+	  SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
+			  getBaseContext());
+	  mUndosRemaining = (int)initializeLong(b, "shogi_undos_remaining", prefs, "max_undos", 0);
+	  mBlackThinkTimeMs = initializeLong(b, "shogi_black_think_time_ms", null, null, 0);
+	  mWhiteThinkTimeMs = initializeLong(b, "shogi_white_think_time_ms", null, null, 0);	  
+	  mBlackThinkStartMs = initializeLong(b, "shogi_black_think_start_ms", null, null, 0);
+	  mWhiteThinkStartMs = initializeLong(b, "shogi_white_think_start_ms", null, null, 0);
+	  
+	  mPlayerTypes = prefs.getString("player_types", "HC");
+	  Log.d(TAG, "onCreate " + mPlayerTypes);
+	  mHumanPlayers = new ArrayList<Player>();
+	  if (mPlayerTypes.charAt(0) == 'H') {
+		  mHumanPlayers.add(Player.BLACK);
+	  }
+	  if (mPlayerTypes.charAt(1) == 'H') {
+		  mHumanPlayers.add(Player.WHITE);      
+	  }
+	  mComputerLevel = Integer.parseInt(prefs.getString("computer_difficulty", "1"));
+	  mHandicap = Integer.parseInt(prefs.getString("handicap", "0"));
+  }
+  private long initializeLong(Bundle b, String bundle_key, SharedPreferences prefs, String pref_key, long dflt) {
+	  long v = dflt;
+	  if (b != null) {
+		  v = b.getLong(bundle_key, dflt);
+		  if (v != dflt) return v;
+	  }
+	  if (prefs != null) {
+		  return Integer.parseInt(prefs.getString(pref_key, String.valueOf(dflt)));
+	  } else {
+		  return v;
+	  }
   }
   
   // 

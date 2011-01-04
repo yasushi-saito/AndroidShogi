@@ -6,10 +6,11 @@ import java.util.Arrays;
  * Store the state of a Shogi board.
  */
 public class Board implements java.io.Serializable {
+	
   // X and Y dimensions of a board
   public static final int DIM = 9; 
 
-  // Encoding of mSquares[]. A piecebelonging to P_UP (resp. P_DOWN) is 
+  // Encoding of mSquares[]. A piecebelonging to Player.BLACK (resp. Player.WHITE) is 
   // positive (resp. negative).
   // The absolute value defines the type of the piece. It is one of the following.
   //
