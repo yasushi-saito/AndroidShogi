@@ -370,20 +370,21 @@ public class BoardView extends View implements View.OnTouchListener {
 
       // TODO(saito) this code doesn't handle a square screen
       int dim;
+      int sep = 10; // # pixels between the board and captured pieces.
       if (width < height) {
+    	// Portrait layout. Captured pieces are shown at the top & bottom of the board
         dim = width;
-        // Captured pieces are shown at the top & bottom of the board
         mPortrait = true;
         mCapturedWhite= new Rect(0, 0, dim, dim/ 10);
-        mCapturedBlack = new Rect(0, dim * 11 / 10, dim, dim * 12 / 10);
-        mBoard = new Rect(0, dim/ 10, dim, dim * 11 / 10);
+        mCapturedBlack = new Rect(0, dim * 11 / 10 + sep*2, dim, dim * 12 / 10 + sep*2);
+        mBoard = new Rect(0, dim/ 10 + sep, dim, dim * 11 / 10 + sep);
       } else {
-        // Captured pieces are shown at the left & right of the board
+        // Landscape layout. Captured pieces are shown at the left & right of the board
         mPortrait = false;
         dim = height;
         mCapturedWhite = new Rect(0, 0, dim / 10, dim);
-        mCapturedBlack = new Rect(dim * 11 / 10, 0, dim * 12/ 10, dim);
-        mBoard = new Rect(dim / 10, 0, dim * 11 / 10, dim);
+        mCapturedBlack = new Rect(dim * 11 / 10 + sep*2, 0, dim * 12/ 10 + sep*2, dim);
+        mBoard = new Rect(dim / 10 + sep, 0, dim * 11 / 10 + sep, dim);
       }
       mSquareDim = dim / Board.DIM;
     }

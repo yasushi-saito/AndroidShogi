@@ -26,16 +26,20 @@ system("sudo mount -o loop,umask=0 /home/saito/.android/avd/saito_avd.avd/sdcard
 
 print "mounted\n";
 
-MaybeMkdir("$TMP_DIR/shogi");
+MaybeMkdir("$TMP_DIR/Android");
+MaybeMkdir("$TMP_DIR/Android/data");
+MaybeMkdir("$TMP_DIR/Android/data/com.ysaito.shogi");
+MaybeMkdir("$TMP_DIR/Android/data/com.ysaito.shogi/files");
 
+$DEST_DIR="$TMP_DIR/Android/data/com.ysaito.shogi/files";
 print "copy book.bin\n";
-system("cp $BONANZA_DIR/bonanza_v4.1.3/winbin/book.bin $TMP_DIR/shogi");
+system("cp $BONANZA_DIR/bonanza_v4.1.3/winbin/book.bin $DEST_DIR");
 
 print "copy hash.bin\n";
-system("cp $BONANZA_DIR/bonanza_v4.1.3/winbin/hash.bin $TMP_DIR/shogi");
+system("cp $BONANZA_DIR/bonanza_v4.1.3/winbin/hash.bin $DEST_DIR");
 
 print "copy fv.bin\n";
-system("cp $BONANZA_DIR/bonanza_v4.1.3/winbin/fv.bin $TMP_DIR/shogi");
+system("cp $BONANZA_DIR/bonanza_v4.1.3/winbin/fv.bin $DEST_DIR");
 
 print "unmounting\n";
 system("sudo umount $TMP_DIR");

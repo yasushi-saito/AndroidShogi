@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="help">ヘルプ</string>
     <string name="draw">持将棋</string>
     <string name="black_won">先手勝</string>
     <string name="white_won">後手勝</string>

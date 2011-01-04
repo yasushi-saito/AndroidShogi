@@ -23,10 +23,8 @@ public class GameStatusView extends LinearLayout {
       if (mLastThinkTimeSeconds != t) {
         mLastThinkTimeSeconds = t;
         long seconds = t % 60;
-        t /= 60;
-        long minutes = t % 60;
-        long hours = t / 60;
-        mView.setText(String.format("%02d:%02d:%02d", hours, minutes, seconds));
+        long minutes = t / 60;
+        mView.setText(String.format("%3d:%02d", minutes, seconds));
       }
     }
     public TextView getView() { return mView; }
@@ -50,7 +48,7 @@ public class GameStatusView extends LinearLayout {
   
   private TextView newTextView(Context context) {
     TextView v = new TextView(context);
-    v.setTextSize(dpsToPixels(14));
+    v.setTextSize(dpsToPixels(11));
     return v;
   }
   
