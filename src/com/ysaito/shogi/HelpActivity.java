@@ -15,7 +15,7 @@ public class HelpActivity extends Activity {
 	private String helpString() {
 		StringBuilder b = new StringBuilder();
 		b.append("<html><body>");
-		b.append("<h2>Shogi version 1.1</h2>");
+		b.append("<h2>Shogi version 1.2</h2>");
 		b.append("Released Jan 3, 2011.");
 		b.append("<p>Copyright(c) 2011 Yasushi Saito<br>All rights reserved<br>");
 		b.append("This program is distributed under Apache 2.0 license.");
