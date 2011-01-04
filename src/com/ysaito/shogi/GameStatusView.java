@@ -50,7 +50,7 @@ public class GameStatusView extends LinearLayout {
   
   private TextView newTextView(Context context) {
     TextView v = new TextView(context);
-    v.setTextSize(dpsToPixels(10));
+    v.setTextSize(dpsToPixels(14));
     return v;
   }
   
@@ -113,9 +113,6 @@ public class GameStatusView extends LinearLayout {
       mBlackStatus.setBackgroundColor(0xff000000);
       mBlackStatus.setTextColor(0xffffffff);
     }
-    mBlackStatus.invalidate();
-    mWhiteStatus.invalidate();
-
     String msg = "";
     if (moves.size() > 0) {
       Move m = moves.get(moves.size() - 1);

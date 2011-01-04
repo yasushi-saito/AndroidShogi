@@ -1,0 +1,26 @@
+ All files, except under jni/* and res/drawable*/* are distributed under
+ Apache license below:
+
+ Copyright 2011 Yasushi Saito
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+Some under res/drawable are copied from http://mucho.girly.jp/bona/.
+They are distributed under Creative Commons license.
+
+Files under jni/ are modified copies of Bonanza 4.1.3. The original
+source code can be downloaded from
+http://www.computer-shogi.org/library/ or
+http://www.geocities.jp/bonanza_shogi/. See BONANZA-README.TXT for the
+conditions for redistribution (Note: this file is in japanese.  It
+allows redistribution only for non-commercial purposes).
