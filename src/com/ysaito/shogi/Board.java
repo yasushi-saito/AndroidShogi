@@ -57,10 +57,13 @@ public class Board implements java.io.Serializable {
     }
   }
   
-  // Public members
-  public int mSquares[];      // Contents of the board
-  public int mCapturedBlack;     // Pieces captured by Player.BLACK
-  public int mCapturedWhite;   // Pieces captured by Player.WHITE
+  // mSquares is a 81-entry array. mSquares[X + 9 * Y] stores the piece at coordinate <X, Y>. 
+  // <0, 0> is at the upper left corner of the board.
+  public int mSquares[];    
+  // Encode the set of pieces captured by the BLACK player. Use numCaptured* methods to parse the value. 
+  public int mCapturedBlack;
+  // Encode the set of pieces captured by the WHITE player. Use numCaptured* methods to parse the value.   
+  public int mCapturedWhite;
 
   // Given a piece in mSquares[], return the player type.
   public static final Player player(int piece) { 

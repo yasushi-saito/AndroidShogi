@@ -2,8 +2,6 @@
 
 package com.ysaito.shogi;
 
-import android.util.Log;
-
 /**
  * @author saito@google.com (Yaz Saito)
  *
@@ -13,21 +11,25 @@ import android.util.Log;
 public class Move implements java.io.Serializable {
   // The piece to move. 
   //
-  // - The value is negative if player==Player.DOWN.
+  // - The value is negative if player==Player.WHITE.
   // - If the piece is to be promoted, this field stores the promoted piece type.
   //   For example, if the piece is originally a "fu" and it is to be promoted
-  //   to "to" at <to_x,to_y>, @p piece should be K_TO.
+  //   to "to" at <to_x,to_y>, piece will store K_TO.
   public int piece;
 
-  // The source and destination coordinates. Each value is in range
-  // [0, Board.DIM).
+  // The source and destination coordinates. When moving a piece on the board, each value is in range
+  // [0, Board.DIM). When dropping a captured piece on the board, from_X = from_Y = -1.
   public int fromX, fromY, toX, toY;
 
   @Override public String toString() {
     return toCsaString();
   }
   
+  // Return the CSA-format string for this move. 
   public final String toCsaString() {
+	// This program uses defines the upper left corner of the board to be <0,0>, whereas CSA defines
+    // the upper right corner to be <1, 1>. 
+	// Translate the coordinate accordingly.
     int cFromX = 0;
     int cFromY = 0;
     if (fromX >= 0) {

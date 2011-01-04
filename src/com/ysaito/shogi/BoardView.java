@@ -112,10 +112,10 @@ public class BoardView extends View implements View.OnTouchListener {
 
     private void tryScreenPosition(float sx, float sy, 
         int px, int py, int type) {
-      float centerX = sx + mLayout.squareDim() / 2;
-      float centerY = sy + mLayout.squareDim() / 2;      
+      float centerX = sx + mLayout.getSquareDim() / 2;
+      float centerY = sy + mLayout.getSquareDim() / 2;      
       double distance = Math.hypot(centerX- mSx, centerY - mSy);
-      if (distance < mMinDistance && distance < mLayout.squareDim()) {
+      if (distance < mMinDistance && distance < mLayout.getSquareDim()) {
         mMinDistance = distance;
         mPx = px;
         mPy = py;
@@ -141,7 +141,6 @@ public class BoardView extends View implements View.OnTouchListener {
     if (!isHumanPlayer(mCurrentPlayer)) return false;
 
     ScreenLayout layout = getScreenLayout();
-    int squareDim = layout.squareDim();
     int action = event.getAction();
 
     NearestSquareFinder finder = new NearestSquareFinder(layout, event.getX(), event.getY());
@@ -226,7 +225,7 @@ public class BoardView extends View implements View.OnTouchListener {
   @Override public void onDraw(Canvas canvas) {
     if (mBoard == null) return;
     ScreenLayout layout = getScreenLayout();
-    int squareDim = layout.squareDim();
+    int squareDim = layout.getSquareDim();
 
     drawEmptyBoard(canvas, layout);
 
@@ -392,7 +391,7 @@ public class BoardView extends View implements View.OnTouchListener {
     // Get the screen dimension
     public int getScreenWidth() { return mWidth; }
     public int getScreenHeight() { return mHeight; }
-    public int squareDim() { return mSquareDim; }
+    public int getSquareDim() { return mSquareDim; }
     public Rect getBoard() { return mBoard; }
 
     // Convert X screen coord to board position. May return a position
@@ -487,15 +486,18 @@ public class BoardView extends View implements View.OnTouchListener {
     }
     
     public final boolean equals(CapturedPiece p) {
-      if (p == null) return false;
+      if (p == null) return false;   
       return piece == p.piece && n == p.n && sx == p.sx && sy == p.sy;
     }
     
-    public final int piece;
-    public final int n;
-    public final float sx, sy;
+    public final int piece;     // Piece type, one of Board.K_XX. The value is negative if owned by Player.WHITE.
+    public final int n;         // Number of pieces owned of type "piece".
+    public final float sx, sy;  // Screen location at which this piece should be drawn.
   }
   
+  /**
+   * List pieces captured by player.
+   */
   private ArrayList<CapturedPiece> listCapturedPieces(
       ScreenLayout layout,
       Player player) {
@@ -575,7 +577,7 @@ public class BoardView extends View implements View.OnTouchListener {
     Bitmap bm = bitmaps[Board.type(piece)];
     BitmapDrawable b = new BitmapDrawable(getResources(), bm);
     b.setBounds((int)sx, (int)sy, 
-        (int)(sx + layout.squareDim()), (int)(sy + layout.squareDim()));
+        (int)(sx + layout.getSquareDim()), (int)(sy + layout.getSquareDim()));
     b.setAlpha(alpha);
     b.draw(canvas);
   }
@@ -591,8 +593,8 @@ public class BoardView extends View implements View.OnTouchListener {
       p.setColor(0xffeeeeee);
       p.setTypeface(Typeface.DEFAULT_BOLD);
       canvas.drawText(Integer.toString(n),
-          sx + layout.squareDim() - fontSize / 4,
-          sy + layout.squareDim() - fontSize / 2,
+          sx + layout.getSquareDim() - fontSize / 4,
+          sy + layout.getSquareDim() - fontSize / 2,
           p);
     }
   }
@@ -693,15 +695,15 @@ public class BoardView extends View implements View.OnTouchListener {
     private boolean mSeenOpponentPiece;
   }
 
-  // Generate the list of board positions that a piece at <cur_x, cur_y> can
-  // move to. It takes other pieces on the board into account, but it may
-  // still generate illegal moves -- e.g., this method doesn't check for
-  // nifu, sennichite, uchi-fu zume aren't by this method.
-  private ArrayList<Position> possibleMoveTargets(
-      int piece, int cur_x, int cur_y) {
+  /**
+   * Generate the list of board positions that a piece at <cur_x, cur_y> can
+   * move to. It takes other pieces on the board into account, but it may
+   * still generate illegal moves -- e.g., this method doesn't check for
+   * nifu, sennichite, uchi-fu zume aren't by this method.
+   */
+  private ArrayList<Position> possibleMoveTargets(int piece, int cur_x, int cur_y) {
     int type = Board.type(piece);
     Player player = Board.player(piece);
-    ArrayList<Position> dests = new ArrayList<Position>();
     MoveTargetsLister state = new MoveTargetsLister(player, cur_x, cur_y);
 
     switch (type) {

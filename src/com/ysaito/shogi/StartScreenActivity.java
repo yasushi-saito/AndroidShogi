@@ -80,12 +80,9 @@ public class StartScreenActivity extends Activity {
   @Override
   public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
-      case R.id.new_game:
-        newGame();
-        return true;
-      case R.id.settings:
-        settings();
-        return true;
+      case R.id.help_menu_id:
+          help();
+          return true;
       default:    
         return super.onOptionsItemSelected(item);
     }
@@ -165,11 +162,6 @@ public class StartScreenActivity extends Activity {
     }
   };
   
-  // Download Bonanza data files
-  private boolean installedShogiData() {
-    return false;
-  }
-
   @Override
   protected Dialog onCreateDialog(int id) {
     switch (id) {
@@ -198,6 +190,9 @@ public class StartScreenActivity extends Activity {
     startActivity(new Intent(this, ShogiPreferenceActivity.class));
   }
   
+  private void help() {
+	  startActivity(new Intent(this, HelpActivity.class));
+  }
   
   private class BonanzaInitializeThread extends Thread {
     @Override public void run() {
