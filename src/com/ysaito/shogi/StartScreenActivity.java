@@ -118,6 +118,7 @@ public class StartScreenActivity extends Activity {
     return mPrefs.getString("download_source_url", dflt);
   }
   private ProgressDialog newDownloadDialog() {
+    // TODO(saito) screen rotation will abort downloading.
     ProgressDialog d = new ProgressDialog(this);
     d.setCancelable(true);
     d.setMessage(String.format("Downloading %s", dbSourceUrl()));

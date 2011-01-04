@@ -12,7 +12,9 @@
                  android:label="@string/app_name"
                  >
         <activity android:name=".StartScreenActivity"
-                  android:alwaysRetainTaskState="true">
+                  android:alwaysRetainTaskState="true"
+		  android:screenOrientation="portrait">
+	    <!-- screenOrientation is fixed to avoid aborting the data downloading thread -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
