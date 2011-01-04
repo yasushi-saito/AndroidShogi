@@ -17,7 +17,10 @@
     <string name="computer">コンピュータ</string>
     <string name="computer_difficulty">コンピュータ難易度</string>
     <string name="reset_preferences">設定リセット</string>
+    <string name="flip_screen">画面を上下反転する</string>
     <string name="undo">待った</string>
+    <string name="undo_disallowed">待ったなし</string>
+    <string name="undos_remaining">待った(残り%d回)</string>
     <string name="max_undos">待った</string>
     <string name="piece_style">駒の種類</string>
     <string name="handicap">駒落ち</string>

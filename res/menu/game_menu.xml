@@ -3,4 +3,5 @@
   <group android:id="@+id/undo_group">
 	<item android:id="@+id/undo" android:title="@string/undo" />
   </group>
+  <item android:id="@+id/flip_screen" android:title="@string/flip_screen" />
 </menu>

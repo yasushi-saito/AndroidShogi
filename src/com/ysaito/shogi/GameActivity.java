@@ -47,10 +47,11 @@ public class GameActivity extends Activity {
   private GameStatusView mStatusView;
   private Menu mMenu;
 
-  // Game params
+  // Game preferences
   private int mHandicap;           // BonanzaController.H_XXXX
   private int mComputerLevel;      // 0 .. 4
-  private String mPlayerTypes;      // "HC", "CH", "HH", "CC"
+  private String mPlayerTypes;     // "HC", "CH", "HH", "CC"
+  private boolean mFlipScreen;
   
   // State of the game
   private Board mBoard;            // current state of the board
@@ -79,7 +80,7 @@ public class GameActivity extends Activity {
         playerName(mPlayerTypes.charAt(1), mComputerLevel));
     
     mBoardView = (BoardView)findViewById(R.id.boardview);
-    mBoardView.initialize(mViewListener, mHumanPlayers);
+    mBoardView.initialize(mViewListener, mHumanPlayers, mFlipScreen);
     mController = new BonanzaController(mEventHandler, mHandicap, mComputerLevel);
     mController.start(savedInstanceState);
     schedulePeriodicTimer();
@@ -107,6 +108,9 @@ public class GameActivity extends Activity {
     switch (item.getItemId()) {
       case R.id.undo:
         undo();
+        return true;
+      case R.id.flip_screen:
+        mBoardView.flipScreen();
         return true;
       default:    
         return super.onOptionsItemSelected(item);
@@ -173,6 +177,7 @@ public class GameActivity extends Activity {
 	  mBlackThinkStartMs = initializeLong(b, "shogi_black_think_start_ms", null, null, 0);
 	  mWhiteThinkStartMs = initializeLong(b, "shogi_white_think_start_ms", null, null, 0);
 	  
+	  mFlipScreen = prefs.getBoolean("flip_screen", false);
 	  mPlayerTypes = prefs.getString("player_types", "HC");
 	  Log.d(TAG, "onCreate " + mPlayerTypes);
 	  mHumanPlayers = new ArrayList<Player>();
@@ -257,11 +262,13 @@ public class GameActivity extends Activity {
     mMenu.setGroupEnabled(R.id.undo_group, (mUndosRemaining > 0));
     MenuItem item = mMenu.getItem(0);
     if (mUndosRemaining <= 0) {
-      item.setTitle("Undo (disallowed)");
+      item.setTitle(R.string.undo_disallowed);
     } else if (mUndosRemaining >= 100) {
-      item.setTitle("Undo");
+      item.setTitle(getResources().getText(R.string.undo));
     } else {
-      item.setTitle("Undo (" + mUndosRemaining + " remaining)");
+      item.setTitle(String.format(
+          getResources().getString(R.string.undos_remaining),
+          new Integer(mUndosRemaining)));
     }
   }  
   

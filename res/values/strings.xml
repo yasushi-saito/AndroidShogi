@@ -17,7 +17,10 @@
     <string name="computer">Computer</string>
     <string name="computer_difficulty">Computer Difficulty</string>
     <string name="reset_preferences">Reset Preferences</string>
+    <string name="flip_screen">Flip Screen</string>
     <string name="undo">Undo</string>
+    <string name="undo_disallowed">Undo (disallowed)</string>
+    <string name="undos_remaining">Undo (%d remaining)</string>
     <string name="max_undos">Allow Undo</string>
     <string name="piece_style">Piece Style</string>
     <string name="handicap">Handicap</string>

@@ -7,6 +7,9 @@
     android:defaultValue="HC"
     android:entries="@array/player_types"
     android:entryValues="@array/player_type_values"/>
+  <CheckBoxPreference    
+    android:title="@string/flip_screen"
+    android:key="flip_screen"/>
   <ListPreference
     android:title="@string/computer_difficulty"
     android:key="computer_difficulty"

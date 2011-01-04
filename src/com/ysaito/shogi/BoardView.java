@@ -47,11 +47,21 @@ public class BoardView extends View implements View.OnTouchListener {
    */
   public final void initialize(
       EventListener listener,
-      ArrayList<Player> humanPlayers) {
+      ArrayList<Player> humanPlayers,
+      boolean flipScreen) {
     mListener = listener;
     mHumanPlayers = new ArrayList<Player>(humanPlayers);
+    mFlipped = flipScreen;
   }
 
+  /**
+   * Flip the screen upside down.
+   */
+  public final void flipScreen() {
+    mFlipped = !mFlipped;
+    invalidate();
+  }
+  
   /**
    *  Update the state of the board as well as players' turn.
    */
@@ -302,9 +312,10 @@ public class BoardView extends View implements View.OnTouchListener {
 
   // Bitmap for all the pieces. mWhiteBitmaps[i] is the same as
   // mBlackBitmapsmaps[i], except upside down.
-  private Bitmap mBlackBitmaps[];
-  private Bitmap mWhiteBitmaps[];
+  private BitmapDrawable mBlackBitmaps[];
+  private BitmapDrawable mWhiteBitmaps[];
 
+  private boolean mFlipped;        // if true, flip the board upside down.
   private Player mCurrentPlayer;   // Player currently holding the turn
   private Board mBoard;            // Current state of the board
   private boolean mBoardInitialized; 
@@ -364,9 +375,10 @@ public class BoardView extends View implements View.OnTouchListener {
 
   // A class describing the pixel-level layout of this view.
   private static class ScreenLayout {
-    public ScreenLayout(int width, int height) {
+    public ScreenLayout(int width, int height, boolean flipped) {
       mWidth = width;
       mHeight = height;
+      mFlipped = flipped;
 
       // TODO(saito) this code doesn't handle a square screen
       int dim;
@@ -386,6 +398,11 @@ public class BoardView extends View implements View.OnTouchListener {
         mCapturedBlack = new Rect(dim * 11 / 10 + sep*2, 0, dim * 12/ 10 + sep*2, dim);
         mBoard = new Rect(dim / 10 + sep, 0, dim * 11 / 10 + sep, dim);
       }
+      if (mFlipped) {
+    	  Rect tmp = mCapturedWhite;
+    	  mCapturedWhite = mCapturedBlack;
+    	  mCapturedBlack = tmp;
+      }
       mSquareDim = dim / Board.DIM;
     }
 
@@ -393,32 +410,40 @@ public class BoardView extends View implements View.OnTouchListener {
     public int getScreenWidth() { return mWidth; }
     public int getScreenHeight() { return mHeight; }
     public int getSquareDim() { return mSquareDim; }
+    public boolean getFlipped() { return mFlipped; }
     public Rect getBoard() { return mBoard; }
 
     // Convert X screen coord to board position. May return a position
     // outside the range [0,Board.DIM).
     public int boardX(float sx) {
-      int px = (int)((sx - mBoard.left) / mSquareDim);
-      return px;
+      return maybeFlip((int)((sx - mBoard.left) / mSquareDim));
     }
 
     // Convert X screen coord to board position. May return a position
     // outside the range [0,Board.DIM).
     public int boardY(float sy) {
-      int py = (int)((sy - mBoard.top) / mSquareDim);
-      return py;
+      return maybeFlip((int)((sy - mBoard.top) / mSquareDim));
     }
 
     // Convert X board position to the position of the left edge on the screen.
     public float screenX(int px) {
+      px = maybeFlip(px); 	
       return mBoard.left + mBoard.width() * px / Board.DIM;
     }
 
     // Convert board Y position to the position of the top edge on the screen.
     public float screenY(int py) {
+      py = maybeFlip(py); 	    	
       return mBoard.top + mBoard.height() * py / Board.DIM;
     }
 
+    private int maybeFlip(int p) {
+      if (mFlipped) {
+        return 8 - p;
+      } else {
+        return p;
+      }
+    }
     // Return the screen location for displaying a captured piece.
     //
     // @p index an integer 0, 1, 2, ... that specifies the position of the
@@ -444,6 +469,7 @@ public class BoardView extends View implements View.OnTouchListener {
     private boolean mPortrait;    // is the screen in portrait mode?
     private int mWidth, mHeight;  // screen pixel size
     private int mSquareDim; // pixel size of each square in the board
+    private boolean mFlipped;     // draw the board upside down
     private Rect mBoard;   // display the board status
     private Rect mCapturedBlack;  // display pieces captured by black player
     private Rect mCapturedWhite;  // display pieces captured by white player
@@ -573,10 +599,9 @@ public class BoardView extends View implements View.OnTouchListener {
       Canvas canvas, ScreenLayout layout, 
       int piece,
       float sx, float sy, int alpha) {
-    Bitmap[] bitmaps = (Board.player(piece) == Player.BLACK) ? 
-        mBlackBitmaps : mWhiteBitmaps;
-    Bitmap bm = bitmaps[Board.type(piece)];
-    BitmapDrawable b = new BitmapDrawable(getResources(), bm);
+    boolean isBlack = (Board.player(piece) == Player.BLACK);
+    BitmapDrawable[] bitmaps = (isBlack != mFlipped) ? mBlackBitmaps : mWhiteBitmaps;
+    BitmapDrawable b = bitmaps[Board.type(piece)];
     b.setBounds((int)sx, (int)sy, 
         (int)(sx + layout.getSquareDim()), (int)(sy + layout.getSquareDim()));
     b.setAlpha(alpha);
@@ -610,8 +635,8 @@ public class BoardView extends View implements View.OnTouchListener {
     String prefix = prefs.getString("piece_style", "kinki_simple");
     
     Resources r = getResources();
-    mBlackBitmaps = new Bitmap[Board.NUM_TYPES];
-    mWhiteBitmaps = new Bitmap[Board.NUM_TYPES];
+    mBlackBitmaps = new BitmapDrawable[Board.NUM_TYPES];
+    mWhiteBitmaps = new BitmapDrawable[Board.NUM_TYPES];
     String koma_names[] = {
         null,
         "fu", "kyo", "kei", "gin", "kin", "kaku", "hi", "ou",
@@ -624,10 +649,11 @@ public class BoardView extends View implements View.OnTouchListener {
     for (int i = 1; i < Board.NUM_TYPES; ++i) {
       if (koma_names[i] == null) continue;
       int id = r.getIdentifier(String.format("@com.ysaito.shogi:drawable/%s_%s", prefix, koma_names[i]), null, null);
-      mBlackBitmaps[i] = BitmapFactory.decodeResource(r, id);
-      mWhiteBitmaps[i] = Bitmap.createBitmap(mBlackBitmaps[i], 0, 0,
-          mBlackBitmaps[i].getWidth(), mBlackBitmaps[i].getHeight(),
-          flip, false);
+      Bitmap blackBm = BitmapFactory.decodeResource(r, id);
+      mBlackBitmaps[i] = new BitmapDrawable(getResources(), blackBm);
+      Bitmap whiteBm = Bitmap.createBitmap(blackBm, 0, 0, blackBm.getWidth(), blackBm.getHeight(), 
+    		  flip, false);
+      mWhiteBitmaps[i] = new BitmapDrawable(getResources(), whiteBm);
     }
     assert 1 == 0;
   }
@@ -782,10 +808,11 @@ public class BoardView extends View implements View.OnTouchListener {
   private ScreenLayout getScreenLayout() {
     if (mCachedLayout != null &&
         mCachedLayout.getScreenWidth() == getWidth() &&
-        mCachedLayout.getScreenHeight() == getHeight()) {
+        mCachedLayout.getScreenHeight() == getHeight() &&
+        mCachedLayout.getFlipped() == mFlipped) {
       // reuse the cached value
     } else {
-      mCachedLayout = new ScreenLayout(getWidth(), getHeight());
+      mCachedLayout = new ScreenLayout(getWidth(), getHeight(), mFlipped);
     }
     return mCachedLayout;
   }
