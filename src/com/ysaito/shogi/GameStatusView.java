@@ -1,10 +1,7 @@
-// Copyright 2010 Google Inc. All Rights Reserved.
-
 package com.ysaito.shogi;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -24,7 +21,7 @@ public class GameStatusView extends LinearLayout {
         mLastThinkTimeSeconds = t;
         long seconds = t % 60;
         long minutes = t / 60;
-        mView.setText(String.format("%3d:%02d", minutes, seconds));
+        mView.setText(String.format("%3d:%02d  ", minutes, seconds));
       }
     }
     public TextView getView() { return mView; }
@@ -33,8 +30,8 @@ public class GameStatusView extends LinearLayout {
     private long mLastThinkTimeSeconds;
   }
   
-  private Context mContext;
   private TextView mGameStatus;
+  private TextView mMoveHistory;
   private Timer mBlackTime;
   private TextView mBlackStatus;
   private Timer mWhiteTime;
@@ -42,50 +39,23 @@ public class GameStatusView extends LinearLayout {
   private String mBlackPlayerName;
   private String mWhitePlayerName;
   
-  private int dpsToPixels(int v) {
-    return (int)(mContext.getResources().getDisplayMetrics().density * v);
-  }
-  
-  private TextView newTextView(Context context) {
-    TextView v = new TextView(context);
-    v.setTextSize(dpsToPixels(11));
-    return v;
-  }
-  
   public GameStatusView(Context context, AttributeSet attrs) {
     super(context, attrs);
-    setOrientation(HORIZONTAL);
-    mContext = context;
-    
-    LinearLayout.LayoutParams lStatus = new LinearLayout.LayoutParams(
-        LayoutParams.WRAP_CONTENT,
-        LayoutParams.WRAP_CONTENT);
-    lStatus.gravity = Gravity.TOP| Gravity.FILL_HORIZONTAL;
-    lStatus.weight = 1;
-    
-    mGameStatus = newTextView(context);
-    addView(mGameStatus, lStatus);
-    
-    mBlackTime = new Timer(newTextView(context));
-    LinearLayout.LayoutParams lTime = new LinearLayout.LayoutParams(
-        dpsToPixels(64),
-        LayoutParams.WRAP_CONTENT);
-    lTime.gravity = Gravity.TOP;
-    addView(mBlackTime.getView(), lTime);
-
-    mBlackStatus = newTextView(context);
-    addView(mBlackStatus, lStatus);
-    
-    mWhiteTime = new Timer(newTextView(context));
-    addView(mWhiteTime.getView(), lTime);
-    
-    mWhiteStatus = newTextView(context);
-    addView(mWhiteStatus, lStatus);
+  }
+  public GameStatusView(Context context) {
+    super(context);
   }
   
   public final void initialize(
       String blackPlayerName,
       String whitePlayerName) {
+    mGameStatus = (TextView)findViewById(R.id.status_game_status);
+    mMoveHistory = (TextView)findViewById(R.id.status_move_history);    
+    mBlackTime = new Timer((TextView)findViewById(R.id.status_black_time));
+    mBlackStatus = (TextView)findViewById(R.id.status_black_player_name);
+    mWhiteTime = new Timer((TextView)findViewById(R.id.status_white_time));
+    mWhiteStatus = (TextView)findViewById(R.id.status_white_player_name);
+  
     mBlackPlayerName = blackPlayerName;
     mWhitePlayerName = whitePlayerName;
     mBlackStatus.setText(mBlackPlayerName);
@@ -111,10 +81,16 @@ public class GameStatusView extends LinearLayout {
       mBlackStatus.setBackgroundColor(0xff000000);
       mBlackStatus.setTextColor(0xffffffff);
     }
-    String msg = "";
     if (moves.size() > 0) {
-      Move m = moves.get(moves.size() - 1);
-      msg = m.toCsaString() + " ";
+      // Display the last two moves.
+      int n = Math.min(moves.size(), 2);
+      String s = "";
+      for (int i = moves.size() - n; i < moves.size(); ++i) {
+        Move m = moves.get(i);
+        if (s != "") s += ", ";
+        s += (i+1) + ":" + m.toCsaString();
+      }
+      mMoveHistory.setText(s);
     }
     String endGameMessage = null;
     if (gameState == GameState.ACTIVE) {
@@ -129,9 +105,8 @@ public class GameStatusView extends LinearLayout {
     }
     if (endGameMessage != null) {
       Toast.makeText(getContext(), endGameMessage, Toast.LENGTH_LONG).show();
-      msg += endGameMessage;
+      mGameStatus.setText(endGameMessage);
     }
-    mGameStatus.setText(msg);
   }
   public final void updateThinkTimes(long black, long white) {
     mBlackTime.update(black);

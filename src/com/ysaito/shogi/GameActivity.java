@@ -352,8 +352,8 @@ public class GameActivity extends Activity {
     if (type == Board.K_KIN || type == Board.K_OU) return false;
     
     if (move.fromX < 0) return false;  // dropping a captured piece
-    if (player == Player.WHITE && move.toY < 6) return false;
-    if (player == Player.BLACK && move.toY >= 3) return false;
+    if (player == Player.WHITE && move.fromY < 6 && move.toY < 6) return false;
+    if (player == Player.BLACK && move.fromY >= 3 && move.toY >= 3) return false;
     return true;
   }
 
