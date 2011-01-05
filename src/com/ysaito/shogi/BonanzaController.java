@@ -70,7 +70,7 @@ public class BonanzaController {
     };
   }
 
-  public void saveInstanceState(Bundle bundle) {
+  public final void saveInstanceState(Bundle bundle) {
     if (mInstanceId != 0) {
       bundle.putInt("bonanza_instance_id", mInstanceId);
     }
@@ -78,7 +78,7 @@ public class BonanzaController {
   
   private final int NO_INSTANCE_ID = 0;
     
-  public void start(Bundle bundle) {
+  public final void start(Bundle bundle) {
     int instanceId = 0;
     if (bundle != null) {
       instanceId = bundle.getInt("bonanza_instance_id", 0);
@@ -90,7 +90,7 @@ public class BonanzaController {
    * Stop the background thread that controls Bonanza. Must be called once before
    * abandonding this object.
    */
-  public void destroy() {
+  public final void destroy() {
     sendInputMessage(C_DESTROY, NO_INSTANCE_ID, null, null, -1, -1);
   }
 
@@ -101,7 +101,7 @@ public class BonanzaController {
    * @param player is the player that has made the @p move. It is used only to
    *  report back Result.nextPlayer.
    */   
-  public void humanMove(Player player, Move move) {
+  public final void humanMove(Player player, Move move) {
     sendInputMessage(C_HUMAN_MOVE, NO_INSTANCE_ID, player, move, -1, -1);
   }
   
@@ -112,7 +112,7 @@ public class BonanzaController {
    * @param player the identity of the computer player. It is used only to 
    * report back Result.nextPlayer.
    */
-  public void computerMove(Player player) {
+  public final void computerMove(Player player) {
     sendInputMessage(C_COMPUTER_MOVE, NO_INSTANCE_ID, player, null, -1, -1);
   }
 
@@ -121,7 +121,7 @@ public class BonanzaController {
    * @param player the player who made the last move.
    * @param cookie The last move made in the game.
    */
-  public void undo1(Player player, int cookie) {
+  public final void undo1(Player player, int cookie) {
     sendInputMessage(C_UNDO, NO_INSTANCE_ID, player, null, cookie, -1);
   }
   
@@ -131,7 +131,7 @@ public class BonanzaController {
    * @param cookie1 the last move made in the game.
    * @param cookie2 the penultimate move made in the game.
    */
-  public void undo2(Player player, int cookie1, int cookie2) {
+  public final void undo2(Player player, int cookie1, int cookie2) {
     sendInputMessage(C_UNDO, NO_INSTANCE_ID, player, null, cookie1, cookie2);
   }
   
@@ -225,7 +225,7 @@ public class BonanzaController {
   //
   // Implementation details
   //
-  private void sendInputMessage(
+  private final void sendInputMessage(
       int command, 
       int resumeInstanceId,
       Player curPlayer, 
@@ -243,7 +243,7 @@ public class BonanzaController {
     mInputHandler.sendMessage(msg);
   }
 
-  private void sendOutputMessage(Result result) {
+  private final void sendOutputMessage(Result result) {
     Message msg = mOutputHandler.obtainMessage();
     Bundle b = new Bundle();
     b.putSerializable("result", result);
@@ -251,7 +251,7 @@ public class BonanzaController {
     mOutputHandler.sendMessage(msg);
   }
 
-  private void doStart(int resumeInstanceId) {
+  private final void doStart(int resumeInstanceId) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     mInstanceId = BonanzaJNI.startGame(
         resumeInstanceId, mHandicap, mComputerDifficulty, 60, 1, jr);
@@ -265,7 +265,7 @@ public class BonanzaController {
     sendOutputMessage(r);
   }
 
-  private void doHumanMove(Player player, Move move) {
+  private final void doHumanMove(Player player, Move move) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     BonanzaJNI.humanMove(mInstanceId, move.toCsaString(), jr);
     if (jr.status == BonanzaJNI.R_INSTANCE_DELETED) {
@@ -276,7 +276,7 @@ public class BonanzaController {
     sendOutputMessage(Result.fromJNI(jr, player));
   }
 
-  private void doComputerMove(Player player) {
+  private final void doComputerMove(Player player) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     BonanzaJNI.computerMove(mInstanceId, jr);
     if (jr.status == BonanzaJNI.R_INSTANCE_DELETED) {
@@ -287,7 +287,7 @@ public class BonanzaController {
     sendOutputMessage(Result.fromJNI(jr, player));
   }
 
-  private void doUndo(Player player, int cookie1, int cookie2) {
+  private final void doUndo(Player player, int cookie1, int cookie2) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     Log.d(TAG, "Undo " + cookie1 + " " + cookie2);
     BonanzaJNI.undo(mInstanceId, cookie1, cookie2, jr);
@@ -307,7 +307,7 @@ public class BonanzaController {
     sendOutputMessage(r);
   }   
   
-  private void doDestroy() {
+  private final void doDestroy() {
     Log.d(TAG, "Destroy");
     mThread.quit();
   }

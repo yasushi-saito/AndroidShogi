@@ -7,8 +7,8 @@ package com.ysaito.shogi;
  *
  */
 public enum Player {
-  // Type of the players. "BLACK" is "sente" in japanese. It starts at the
-  // bottom and moves up. "WHITE" is "gote" in japanese.
+  // Type of the players. "BLACK" is "sente" in japanese. BLACK makes the first move
+  // of the game. "WHITE" is "gote" in japanese.
   INVALID,
   BLACK,
   WHITE;

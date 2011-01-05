@@ -83,7 +83,7 @@ public class GameStatusView extends LinearLayout {
     addView(mWhiteStatus, lStatus);
   }
   
-  public void initialize(
+  public final void initialize(
       String blackPlayerName,
       String whitePlayerName) {
     mBlackPlayerName = blackPlayerName;
@@ -92,7 +92,7 @@ public class GameStatusView extends LinearLayout {
     mWhiteStatus.setText(mWhitePlayerName);    
   }
   
-  public void update(
+  public final void update(
       GameState gameState,
       ArrayList<Move> moves,
       Player currentPlayer,
@@ -133,7 +133,7 @@ public class GameStatusView extends LinearLayout {
     }
     mGameStatus.setText(msg);
   }
-  public void updateThinkTimes(long black, long white) {
+  public final void updateThinkTimes(long black, long white) {
     mBlackTime.update(black);
     mWhiteTime.update(white);
   }

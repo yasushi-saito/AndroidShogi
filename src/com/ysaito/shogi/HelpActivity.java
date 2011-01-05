@@ -12,7 +12,7 @@ public class HelpActivity extends Activity {
 		browser.loadData(helpString(), "text/html", "utf-8");
 	}
 	
-	private String helpString() {
+	private final String helpString() {
 		StringBuilder b = new StringBuilder();
 		b.append("<html><body>");
 		b.append("<h2>Shogi version 1.2</h2>");
@@ -49,7 +49,7 @@ public class HelpActivity extends Activity {
 		return b.toString();
 	}
 	
-	private void appendHref(StringBuilder b, String uri) {
+	private final void appendHref(StringBuilder b, String uri) {
 		b.append("<a href=\""); b.append(uri); b.append("\">");
 		b.append(uri);
 		b.append("</a>");

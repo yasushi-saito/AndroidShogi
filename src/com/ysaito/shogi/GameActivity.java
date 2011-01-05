@@ -89,8 +89,7 @@ public class GameActivity extends Activity {
     // user inputs.
   }
 
-  @Override
-  public boolean onCreateOptionsMenu(Menu menu) {
+  @Override public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
     inflater.inflate(R.menu.game_menu, menu);
     mMenu = menu;
@@ -103,8 +102,7 @@ public class GameActivity extends Activity {
 	  mController.saveInstanceState(bundle);
   }
   
-  @Override
-  public boolean onOptionsItemSelected(MenuItem item) {
+  @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
       case R.id.undo:
         undo();
@@ -118,21 +116,19 @@ public class GameActivity extends Activity {
   }
   
   
-  private String playerName(char type, int level) {
+  private final String playerName(char type, int level) {
     if (type == 'H') return getResources().getString(R.string.human);
     return getResources().getStringArray(R.array.computer_level_names)[level];
   }
   
-  @Override
-  public void onDestroy() {
+  @Override public void onDestroy() {
     Log.d(TAG, "ShogiActivity destroyed");
     mController.destroy();
     super.onDestroy();
     mDestroyed = true;
   }
 
-  @Override
-  public void onBackPressed() { 
+  @Override public void onBackPressed() { 
     if (mGameState == GameState.ACTIVE) {
       showDialog(DIALOG_CONFIRM_QUIT);
     } else {
@@ -140,8 +136,7 @@ public class GameActivity extends Activity {
     }
   }
   
-  @Override
-  protected Dialog onCreateDialog(int id) {
+  @Override protected Dialog onCreateDialog(int id) {
     switch (id) {
       case DIALOG_PROMOTE: 
         mPromoteDialog = createPromoteDialog();
@@ -153,22 +148,22 @@ public class GameActivity extends Activity {
     }
   }
 
-  private boolean isComputerPlayer(Player p) { 
+  private final boolean isComputerPlayer(Player p) { 
     return p != Player.INVALID && !isHumanPlayer(p);
   }
   
-  private boolean isHumanPlayer(Player p) {
+  private final boolean isHumanPlayer(Player p) {
     return mHumanPlayers.contains(p);
   }
 
-  private void saveInstanceState(Bundle b) {
+  private final void saveInstanceState(Bundle b) {
 	  b.putLong("shogi_undos_remaining", mUndosRemaining);
 	  b.putLong("shogi_black_think_time_ms", mBlackThinkTimeMs);
 	  b.putLong("shogi_white_think_time_ms", mWhiteThinkTimeMs);	  
 	  b.putLong("shogi_black_think_start_ms", mBlackThinkStartMs);	  	  
 	  b.putLong("shogi_white_think_start_ms", mWhiteThinkStartMs);	  
   }
-  private void initializeInstanceState(Bundle b) {
+  private final void initializeInstanceState(Bundle b) {
 	  SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
 			  getBaseContext());
 	  mUndosRemaining = (int)initializeLong(b, "shogi_undos_remaining", prefs, "max_undos", 0);
@@ -190,7 +185,8 @@ public class GameActivity extends Activity {
 	  mComputerLevel = Integer.parseInt(prefs.getString("computer_difficulty", "1"));
 	  mHandicap = Integer.parseInt(prefs.getString("handicap", "0"));
   }
-  private long initializeLong(Bundle b, String bundle_key, SharedPreferences prefs, String pref_key, long dflt) {
+  
+  private final long initializeLong(Bundle b, String bundle_key, SharedPreferences prefs, String pref_key, long dflt) {
 	  long v = dflt;
 	  if (b != null) {
 		  v = b.getLong(bundle_key, dflt);
@@ -206,7 +202,7 @@ public class GameActivity extends Activity {
   // 
   // Periodic status update
   //
-  private Runnable mTimerHandler = new Runnable() {
+  private final Runnable mTimerHandler = new Runnable() {
     public void run() { 
       long now = System.currentTimeMillis();
       long totalBlack = mBlackThinkTimeMs;
@@ -220,7 +216,7 @@ public class GameActivity extends Activity {
       if (!mDestroyed) schedulePeriodicTimer();
     }
   };
-  private void setCurrentPlayer(Player p) {
+  private final void setCurrentPlayer(Player p) {
     // Register the time spent during the last move.
     final long now = System.currentTimeMillis();
     if (mCurrentPlayer == Player.BLACK && mBlackThinkStartMs > 0) {
@@ -237,13 +233,13 @@ public class GameActivity extends Activity {
     else if (mCurrentPlayer == Player.WHITE) mWhiteThinkStartMs = now;
   }
   
-  private void schedulePeriodicTimer() {
+  private final void schedulePeriodicTimer() {
     mEventHandler.postDelayed(mTimerHandler, 1000);
   }
   //
   // Undo
   //
-  private void undo() {
+  private final void undo() {
     if (!isHumanPlayer(mCurrentPlayer)) {
       Toast.makeText(getBaseContext(), "Computer is thinking", 
           Toast.LENGTH_SHORT).show();
@@ -258,7 +254,7 @@ public class GameActivity extends Activity {
     updateUndoMenu();
   }
 
-  private void updateUndoMenu() {
+  private final void updateUndoMenu() {
     mMenu.setGroupEnabled(R.id.undo_group, (mUndosRemaining > 0));
     MenuItem item = mMenu.getItem(0);
     if (mUndosRemaining <= 0) {
@@ -322,7 +318,7 @@ public class GameActivity extends Activity {
     }
   };
   
-  private AlertDialog createPromoteDialog() {
+  private final AlertDialog createPromoteDialog() {
     AlertDialog.Builder b = new AlertDialog.Builder(this);
     b.setTitle(R.string.promote_piece);
     b.setCancelable(true);
@@ -364,7 +360,7 @@ public class GameActivity extends Activity {
   // 
   // Confirm quitting the game ("BACK" button interceptor)
   //
-  private AlertDialog createConfirmQuitDialog() {
+  private final AlertDialog createConfirmQuitDialog() {
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
     builder.setMessage(R.string.confirm_quit_game);
     builder.setCancelable(false);

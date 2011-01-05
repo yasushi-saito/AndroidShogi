@@ -18,21 +18,18 @@ import android.view.MenuItem;
 public class ShogiPreferenceActivity extends PreferenceActivity {
   private static final String TAG = "ShogiPreference";
   
-  @Override
-  public void onCreate(Bundle savedInstanceState) {
+  @Override public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     addPreferencesFromResource(R.xml.preferences);
   }
   
-  @Override
-  public boolean onCreateOptionsMenu(Menu menu) {
+  @Override public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
     inflater.inflate(R.menu.preferences_menu, menu);
     return true;
   }
   
-  @Override
-  public boolean onOptionsItemSelected(MenuItem item) {
+  @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
       case R.id.reset_preferences:
         Log.d(TAG, "Reset");
