@@ -6,13 +6,12 @@ import java.util.Arrays;
  * Store the state of a Shogi board.
  */
 public class Board implements java.io.Serializable {
-	
   // X and Y dimensions of a board
   public static final int DIM = 9; 
 
-  // Encoding of mSquares[]. A piecebelonging to Player.BLACK (resp. Player.WHITE) is 
+  // Encoding of mSquares[]. A piece belonging to Player.BLACK (Player.WHITE) is 
   // positive (resp. negative).
-  // The absolute value defines the type of the piece. It is one of the following.
+  // The absolute value defines the type of the piece.
   //
   // Caution: These definitions are shared with Bonanza. Don't change!
   public static final int K_EMPTY = 0;  // placeholder for an unoccupied square
@@ -75,7 +74,7 @@ public class Board implements java.io.Serializable {
 
   // Given a piece in mSquares[], return its type, i.e., K_XXX.
   public static final int type(int piece) { 
-    return (piece< 0 ? -piece: piece); 
+    return (piece < 0 ? -piece: piece); 
   }
 
   // Helper functions to parse the value of mCapturedUp or mCapturedDown.

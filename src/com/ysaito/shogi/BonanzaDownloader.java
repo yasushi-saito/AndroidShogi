@@ -5,16 +5,13 @@ package com.ysaito.shogi;
 import android.app.DownloadManager;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
+import android.os.AsyncTask;
 import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Serializable;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -35,245 +32,240 @@ import java.util.zip.ZipFile;
  * 
  */
 public class BonanzaDownloader {
-	public static final String[] REQUIRED_FILES = {
-		"book.bin", "fv.bin", "hash.bin"
-	};
-	public static final int DOWNLOADING = 1; 
-	public static final int EXTRACTING = 2;
-	public static final int SUCCESS = 3;
-	public static final int ERROR = 4;
+  public static final String[] REQUIRED_FILES = {
+    "book.bin", "fv.bin", "hash.bin"
+  };
+  public static final int DOWNLOADING = 1; 
+  public static final int EXTRACTING = 2;
+  public static final int SUCCESS = 3;
+  public static final int ERROR = 4;
 
-	/** Status reported by the downloader. It is packed in the "status" value of
-	 * Message.getData()
-	 */
-	public static class Status implements Serializable {
-		int state;  // one of the above constants
-		String message;
+  public interface EventListener {
+    /**
+     * Called multiple times to report progress.
+     * @param message Download status
+     */
+    public void onProgressUpdate(String message);
+    
+    /**
+     *  Called exactly once when download finishes. error==null on success. Else, it contains an 
+     * @param error null on success. Contains an error message on error. 
+     */
+    public void onFinish(String error);  
+  };
+  
+  /**
+   * @param listener Used to report download status to the caller
+   * @param externalDir The directory to store the downloaded file.
+   * The basename of the file will be the same as the one in the sourceUrl.
+   * @param manager The system-wide download manager.
+   */
+  public BonanzaDownloader(
+      EventListener listener,
+      File externalDir,
+      DownloadManager manager) {
+    mListener = listener;
+    mExternalDir = externalDir;
+    mDownloadManager = manager;
+    mThread = new DownloadThread();
+  }
 
-		@Override public String toString() {
-			return "state=" + state + " message=" + message;
-		}
-	}
+  /**
+   * Must be called once to start downloading
+   * @param sourceUrl The location of the file.
+   */
+  public void start(String sourceUrl) {
+    mThread.execute(Uri.parse(sourceUrl));
+  }
 
-	/**
-	 * @param handler Used to report download status to the caller
-	 * @param externalDir The directory to store the downloaded file.
-	 * The basename of the file will be the same as the one in the sourceUrl.
-	 * @param sourceUrl The location of the file.
-	 * @param manager The system-wide download manager.
-	 */
-	public BonanzaDownloader(
-			Handler handler, 
-			File externalDir,
-			String sourceUrl,
-			DownloadManager manager) {
-		mHandler = handler;
-		mExternalDir = externalDir;
-		mDownloadManager = manager;
-		mThread = new DownloadThread(sourceUrl);
-	}
+  /**
+   * Must be called to stop the download thread.
+   */
+  public void destroy() {
+    Log.d(TAG, "Destroy");
+    mThread.cancel(false);
+  }
 
-	/**
-	 * Must be called once to start downloading
-	 */
-	public void start() {
-		mThread.start();
-	}
+  /**
+   * See if all the files required to run Bonanza are present in externalDir.
+   */
+  public static boolean hasRequiredFiles(File externalDir) {
+    for (String basename: REQUIRED_FILES) {
+      File file = new File(externalDir, basename);
+      if (!file.exists()) return false;
+    }
+    return true;
+  }
 
-	/**
-	 * Must be called to stop the download thread.
-	 */
-	public void destroy() {
-		Log.d(TAG, "Destroy");
-		mDestroyed = true;
-	}
+  // 
+  // Implementation details
+  //
+  private static final String TAG = "ShogiDownload";
+  private EventListener mListener;
+  private File mExternalDir;
+  private DownloadManager mDownloadManager;
+  private DownloadThread mThread;
+  private String mError;
+  private boolean mDestroyed;
 
-	/**
-	 * See if all the files required to run Bonanza are present in externalDir.
-	 */
-	public static boolean hasRequiredFiles(File externalDir) {
-		for (String basename: REQUIRED_FILES) {
-			File file = new File(externalDir, basename);
-			if (!file.exists()) return false;
-		}
-		return true;
-	}
+  private class DownloadThread extends AsyncTask<Uri, String, String> {
+    private Uri mSourceUri;
+    private String mZipBaseName;
 
-	// 
-	// Implementation details
-	//
-	private static final String TAG = "ShogiDownload";
-	private Handler mHandler;
-	private File mExternalDir;
-	private DownloadManager mDownloadManager;
-	private DownloadThread mThread;
-	private String mError;
-	private boolean mDestroyed;
+    @Override protected String doInBackground(Uri... sourceUri) {
+      mSourceUri = sourceUri[0];
 
-	private class DownloadThread extends Thread {
-		private Uri mSourceUri;
-		private String mZipBaseName;
+      List<String> segments = mSourceUri.getPathSegments();
+      if (segments.size() == 0) {
+        return "No file specified in " + mSourceUri;
+      }
+      mZipBaseName = segments.get(segments.size() - 1);
 
-		public DownloadThread(String sourceUri) {
-			mSourceUri = Uri.parse(sourceUri);
-		}
+      downloadFile();
+      if (mError == null) {
+        extractZipFiles();
+      }
+      if (mError == null) {
+        if (!hasRequiredFiles(mExternalDir)) {
+          mError = String.format("Failed to download required files to %s:", mExternalDir);
+          for (String s: REQUIRED_FILES) mError += " " + s;
+        }
+      }
+      
+      Log.d(TAG, "Download thread exiting : " + mError);
+      if (mError != null) {
+        deleteOldFiles();
+        return mError;
+      } else {
+        return null;  // null means success
+      }
+    }
 
-		@Override public void run() {
-			List<String> segments = mSourceUri.getPathSegments();
-			if (segments.size() == 0) {
-				sendMessage(ERROR, "No file specified in " + mSourceUri);
-				return;
-			}
-			mZipBaseName = segments.get(segments.size() - 1);
+    @Override public void onProgressUpdate(String... status) {
+      for (String s: status) mListener.onProgressUpdate(s);
+    }
+    
+    @Override public void onPostExecute(String status) {
+      mListener.onFinish(status);
+    }
+    
+    private void deleteOldFiles() {
+      String[] children = mExternalDir.list();
+      if (children != null) {
+        for (String child: children) {
+          File f = new File(mExternalDir, child);
+          Log.d(TAG, "Deleting " + f.getAbsolutePath());
+          f.delete();
+        }
+      }
+    }
 
-			downloadFile();
-			if (mError == null) {
-				extractZipFiles();
-			}
-			if (mError == null) {
-				if (!hasRequiredFiles(mExternalDir)) {
-					mError = String.format("Failed to download required files to %s:", mExternalDir);
-					for (String s: REQUIRED_FILES) mError += " " + s;
-				}
-			}
-			if (mError == null) {
-				sendMessage(SUCCESS, "");
-			} else {
-				deleteOldFiles();    	
-				sendMessage(ERROR, mError);
-			}
-			Log.d(TAG, "Download thread exiting : " + mError);
-		}
+    private void downloadFile() {
+      DownloadManager.Request req = new DownloadManager.Request(mSourceUri);
+      File dest = new File(mExternalDir, mZipBaseName);
+      req.setDestinationUri(Uri.fromFile(dest));
+      Log.d(TAG, "Start downloading " + mSourceUri.toString() +
+          "->" + dest.getAbsolutePath());
+      long downloadId = mDownloadManager.enqueue(req);
 
-		private void deleteOldFiles() {
-			String[] children = mExternalDir.list();
-			if (children != null) {
-				for (String child: children) {
-					File f = new File(mExternalDir, child);
-					Log.d(TAG, "Deleting " + f.getAbsolutePath());
-					f.delete();
-				}
-			}
-		}
+      DownloadManager.Query query = new DownloadManager.Query();
+      query.setFilterById(downloadId);
 
-		private void downloadFile() {
-			DownloadManager.Request req = new DownloadManager.Request(mSourceUri);
+      int n = 0;
+      for (;;) {
+        ++n;
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          Log.e(TAG, "Thread Interrupted");
+        }
 
-			File dest = new File(mExternalDir, mZipBaseName);
-			req.setDestinationUri(Uri.fromFile(dest));
-			Log.d(TAG, "Start downloading " + mSourceUri.toString() +
-					"->" + dest.getAbsolutePath());
-			long downloadId = mDownloadManager.enqueue(req);
+        int status = -1;
+        long bytes = -1;
+        String reason = null;
 
-			DownloadManager.Query query = new DownloadManager.Query();
-			query.setFilterById(downloadId);
+        Cursor cursor = mDownloadManager.query(query);
+        if (cursor != null) {
+          int idStatus = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+          cursor.moveToFirst();
+          status = cursor.getInt(idStatus);
 
-			int n = 0;
-			for (;;) {
-				++n;
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					Log.e(TAG, "Thread Interrupted");
-				}
+          int idBytes = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
+          cursor.moveToFirst();
+          bytes = cursor.getLong(idBytes);
 
-				int status = -1;
-				long bytes = -1;
-				String reason = null;
+          int idReason = cursor.getColumnIndex(DownloadManager.COLUMN_REASON);
+          cursor.moveToFirst();
+          reason = cursor.getString(idReason);
+          cursor.close();
+        }
 
-				Cursor cursor = mDownloadManager.query(query);
-				if (cursor != null) {
-					int idStatus = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
-					cursor.moveToFirst();
-					status = cursor.getInt(idStatus);
+        if (mDestroyed) {
+          setError("Cancelled by user");
+          mDownloadManager.remove(downloadId);
+          return;
+        }
+        if (status == DownloadManager.STATUS_SUCCESSFUL) {
+          return;
+        } else if (status == DownloadManager.STATUS_FAILED) {
+          if (!reason.equals(Integer.toString(DownloadManager.ERROR_FILE_ALREADY_EXISTS))) {
+            // TODO(saito) show more detailed status
+            setError("Download of " + mSourceUri.toString() +
+                " failed after " + bytes + " bytes: " + reason);
+          }
+          return;
+        }
+        publishProgress("Downloaded " + bytes + " bytes");
+      }
+    }
 
-					int idBytes = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
-					cursor.moveToFirst();
-					bytes = cursor.getLong(idBytes);
+    private void extractZipFiles() {
+      ZipEntry e = null;
+      try {
+        File zipPath = new File(mExternalDir, mZipBaseName);
+        ZipFile zip = new ZipFile(zipPath);
+        Enumeration<? extends ZipEntry> entries = zip.entries();
+        while (entries.hasMoreElements()) {
+          e = entries.nextElement();
+          extractZipFile(zip, e);
+        }
+      } catch (IOException ex) {
+        Log.e(TAG, "Exception: " + ex.toString());
+        String msg = "Failed to extract file: " + ex.toString(); 
+        if (e != null) msg += " for zip: " + e.toString();
+        setError(msg);
+      }
+    }
 
-					int idReason = cursor.getColumnIndex(DownloadManager.COLUMN_REASON);
-					cursor.moveToFirst();
-					reason = cursor.getString(idReason);
-					cursor.close();
-				}
+    private void extractZipFile(ZipFile zip, ZipEntry e) throws IOException {
+      Log.d(TAG, "Found zip entry:" + e.toString());
+      FileOutputStream out = null;
+      InputStream in = null;
+      publishProgress("Extracting " + e.getName());
+      try {
+        File outPath = new File(mExternalDir, e.getName());
+        out = new FileOutputStream(outPath);
+        in = zip.getInputStream(e);
+        byte[] buf = new byte[65536];
+        int n;
+        long cumulative = 0;
+        long lastReported = 0;
+        while ((n = in.read(buf)) > 0) {
+          out.write(buf, 0, n);
+          cumulative += n;
+          if (cumulative - lastReported >= (1 << 20)) {
+            publishProgress(e.getName() + ": " + cumulative + " bytes extracted");
+            lastReported = cumulative;
+          }
+        }
+      } finally {
+        if (in != null) in.close();
+        if (out != null) out.close();
+      }
+    }
+  }
 
-				if (mDestroyed) {
-					setError("Cancelled by user");
-					mDownloadManager.remove(downloadId);
-					return;
-				}
-				if (status == DownloadManager.STATUS_SUCCESSFUL) {
-					return;
-				} else if (status == DownloadManager.STATUS_FAILED) {
-					if (!reason.equals(Integer.toString(DownloadManager.ERROR_FILE_ALREADY_EXISTS))) {
-						// TODO(saito) show more detailed status
-						setError("Download of " + mSourceUri.toString() +
-								" failed after " + bytes + " bytes: " + reason);
-					}
-					return;
-				}
-				sendMessage(DOWNLOADING, "Downloaded " + bytes + " bytes");
-			}
-		}
-
-		private void extractZipFiles() {
-			ZipEntry e = null;
-			try {
-				File zipPath = new File(mExternalDir, mZipBaseName);
-				ZipFile zip = new ZipFile(zipPath);
-				Enumeration<? extends ZipEntry> entries = zip.entries();
-				while (entries.hasMoreElements()) {
-					e = entries.nextElement();
-					extractZipFile(zip, e);
-				}
-			} catch (IOException ex) {
-				Log.e(TAG, "Exception: " + ex.toString());
-				String msg = "Failed to extract file: " + ex.toString(); 
-				if (e != null) msg += " for zip: " + e.toString();
-				setError(msg);
-			}
-		}
-
-		private void extractZipFile(ZipFile zip, ZipEntry e) throws IOException {
-			Log.d(TAG, "Found zip entry:" + e.toString());
-			FileOutputStream out = null;
-			InputStream in = null;
-			sendMessage(EXTRACTING, "Extracting " + e.getName());
-			try {
-				File outPath = new File(mExternalDir, e.getName());
-				out = new FileOutputStream(outPath);
-				in = zip.getInputStream(e);
-				byte[] buf = new byte[65536];
-				int n;
-				long cumulative = 0;
-				long lastReported = 0;
-				while ((n = in.read(buf)) > 0) {
-					out.write(buf, 0, n);
-					cumulative += n;
-					if (cumulative - lastReported >= (1 << 20)) {
-						sendMessage(EXTRACTING, e.getName() + ": " + cumulative + " bytes extracted");
-						lastReported = cumulative;
-					}
-				}
-			} finally {
-				if (in != null) in.close();
-				if (out != null) out.close();
-			}
-		}
-	}
-
-	private void setError(String m) {
-		if (mError == null) mError = m;  // take only the first message
-	}
-
-	private void sendMessage(int state, String message) {
-		Message msg = mHandler.obtainMessage();
-		Bundle b = new Bundle();
-		Status s = new Status();
-		s.state = state;
-		s.message = message;
-		b.putSerializable("status", s);
-		msg.setData(b);
-		mHandler.sendMessage(msg);
-	}
+  private void setError(String m) {
+    if (mError == null) mError = m;  // take only the first message
+  }
 }

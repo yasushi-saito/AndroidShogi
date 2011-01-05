@@ -11,8 +11,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
@@ -135,31 +133,30 @@ public class StartScreenActivity extends Activity {
     mDownloadController = new BonanzaDownloader(
         mDownloadHandler, 
         mExternalDir,
-        dbSourceUrl(),
         m);
-    mDownloadController.start();
+    mDownloadController.start(dbSourceUrl());
     showDialog(DIALOG_DOWNLOAD);
   }
   
-  private final Handler mDownloadHandler = new Handler() {
-    @Override public void handleMessage(Message msg) {
-      BonanzaDownloader.Status status = (BonanzaDownloader.Status)msg.getData().get("status");
-      Log.d(TAG, "Recv status: " + status.toString());
+  private final BonanzaDownloader.EventListener mDownloadHandler = new BonanzaDownloader.EventListener() {
+    public void onProgressUpdate(String status) {
+      Log.d(TAG, "Recv status: " + status);
       if (mDownloadDialog != null) {
-        if (status.message != null) {
-          mDownloadDialog.setMessage(status.message);
-        }
-        if (status.state == BonanzaDownloader.SUCCESS) {
-          mDownloadDialog.dismiss();
-        }
+        mDownloadDialog.setMessage(status);
       }
-      if (status.state >= BonanzaDownloader.SUCCESS) {
-        if (mDownloadController != null) {
-          mDownloadController.destroy();
-          mDownloadController = null;
-        }
-        initializeBonanzaInBackground();
+    }
+    
+    public void onFinish(String status) {
+      if (status == null) {  // success
+        mDownloadDialog.dismiss();
+      } else {
+        mDownloadDialog.setMessage(status);
       }
+      if (mDownloadController != null) {
+        mDownloadController.destroy();
+        mDownloadController = null;
+      }
+      initializeBonanzaInBackground();
     }
   };
   

@@ -3,12 +3,10 @@
 package com.ysaito.shogi;
 
 /**
- * @author saito@google.com (Your Name Here)
- *
+ * Type of the player. "BLACK" is "sente" in japanese. BLACK makes the first move
+ * of the game. "WHITE" is "gote" in japanese.
  */
 public enum Player {
-  // Type of the players. "BLACK" is "sente" in japanese. BLACK makes the first move
-  // of the game. "WHITE" is "gote" in japanese.
   INVALID,
   BLACK,
   WHITE;
