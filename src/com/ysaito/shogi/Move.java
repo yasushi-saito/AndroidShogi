@@ -44,7 +44,7 @@ public class Move implements java.io.Serializable {
     int p = piece >= 0 ? piece : -piece;
     return String.format("%d%d%d%d%s", 
         cFromX, cFromY, cToX, cToY,
-        Board.csaPieceNames[p]);
+        Piece.csaNames[p]);
   }
   
   public static Move fromCsaString(String csa) {
@@ -61,7 +61,7 @@ public class Move implements java.io.Serializable {
     }
     m.toX = 9 - (csa.charAt(2) - '0');
     m.toY = csa.charAt(3) - '0' - 1;
-    m.piece = Board.fromCsaPieceName(csa.substring(4));
+    m.piece = Piece.fromCsaName(csa.substring(4));
     return m;
   }
 }

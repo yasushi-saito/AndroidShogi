@@ -1,5 +1,6 @@
 package com.ysaito.shogi;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -9,41 +10,18 @@ public class Board implements java.io.Serializable {
   // X and Y dimensions of a board
   public static final int DIM = 9; 
 
-  // Encoding of mSquares[]. A piece belonging to Player.BLACK (Player.WHITE) is 
-  // positive (resp. negative).
-  // The absolute value defines the type of the piece.
-  //
-  // Caution: These definitions are shared with Bonanza. Don't change!
-  public static final int K_EMPTY = 0;  // placeholder for an unoccupied square
-  public static final int K_FU = 1;
-  public static final int K_KYO = 2;
-  public static final int K_KEI = 3;
-  public static final int K_GIN = 4;
-  public static final int K_KIN = 5;
-  public static final int K_KAKU = 6;
-  public static final int K_HI = 7;
-  public static final int K_OU = 8;
-  public static final int K_TO = 9;
-  public static final int K_NARI_KYO = 10;
-  public static final int K_NARI_KEI = 11;
-  public static final int K_NARI_GIN = 12;
-  public static final int K_UMA = 14;
-  public static final int K_RYU = 15;
-  public static final int NUM_TYPES = 16;
-  
-  // CSA format string for each piece.
-  static String[] csaPieceNames = {
-    null, "FU", "KY", "KE", "GI", "KI", "KA", "HI", "OU", 
-          "TO", "NY", "NK", "NG", null, "UM", "RY"
-  };
-  public static int fromCsaPieceName(String s) {
-    for (int i = 0; i < csaPieceNames.length; ++i) {
-      String n = csaPieceNames[i];
-      if (n != null && n.equals(s)) return i;
-    }
-    throw new AssertionError("Illegal piece name: " + s);
-  }
-  
+
+  // mSquares is a 81-entry array. mSquares[X + 9 * Y] stores the piece at coordinate <X, Y>. 
+  // <0, 0> is at the upper left corner of the board. 
+  // 
+  // The sign of the value describes the owner of the piece. A positive (negative) value means that the piece
+  // is owned by Player.BLACK (Player.WHITE). The absolute value describes the piece type as defined in the Piece class.
+  public int mSquares[];    
+  // Encode the set of pieces captured by the BLACK player. Use numCaptured* methods to parse the value. 
+  public int mCapturedBlack;
+  // Encode the set of pieces captured by the WHITE player. Use numCaptured* methods to parse the value.   
+  public int mCapturedWhite;
+
   public static final boolean isPromoted(int piece) {
     return type(piece) >= 9;
   }
@@ -56,14 +34,6 @@ public class Board implements java.io.Serializable {
       return piece + 8;
     }
   }
-  
-  // mSquares is a 81-entry array. mSquares[X + 9 * Y] stores the piece at coordinate <X, Y>. 
-  // <0, 0> is at the upper left corner of the board.
-  public int mSquares[];    
-  // Encode the set of pieces captured by the BLACK player. Use numCaptured* methods to parse the value. 
-  public int mCapturedBlack;
-  // Encode the set of pieces captured by the WHITE player. Use numCaptured* methods to parse the value.   
-  public int mCapturedWhite;
 
   // Given a piece in mSquares[], return the player type.
   public static final Player player(int piece) { 
@@ -72,7 +42,7 @@ public class Board implements java.io.Serializable {
     return Player.WHITE;
   }
 
-  // Given a piece in mSquares[], return its type, i.e., K_XXX.
+  // Given a piece in mSquares[], return its type, i.e., Piece.XXX.
   public static final int type(int piece) { 
     return (piece < 0 ? -piece: piece); 
   }
@@ -103,4 +73,187 @@ public class Board implements java.io.Serializable {
   public final int getPiece(int x, int y) {
     return mSquares[x + y * DIM];
   }
+  
+  public static class MoveDelta {
+    public MoveDelta(int x, int y, boolean m) { deltaX = x; deltaY = y; multi = m; }
+    
+    // horizontal and vertical deltas. The values are for Player.BLACK.
+    // For Player.WHITE, the value of "y" must be negated.
+    public final int deltaX, deltaY;
+    
+    // if true, can move to <deltaX*N, deltaY*N> for every positive N.
+    public final boolean multi;
+  }
+
+  public static class Position {
+    public Position(int tx, int ty) { x = tx; y = ty; }
+    public final int x, y;
+  }
+  
+  /**
+   * Generate the list of board positions that a piece at <fromX, fromY> can
+   * move to. It takes other pieces on the board into account, but it may
+   * still generate illegal moves -- e.g., this method doesn't check for
+   * nifu, sennichite, uchi-fu zume aren't by this method.
+   */
+  ArrayList<Position> possibleMoveDestinations(int fromX, int fromY) {
+    int piece = getPiece(fromX, fromY);
+    MoveTargetsLister lister = new MoveTargetsLister(
+        this, player(piece), fromX, fromY);
+    for (MoveDelta m: possibleMoves(type(piece))) {
+      lister.tryMove(m);
+    }
+    return lister.getTargets();
+  }
+  
+  // Helper class for listing possible positions a piece can move to
+  private static final class MoveTargetsLister {
+    // <cur_x, cur_y> is the current board position of the piece.
+    // Both are in range [0, Board.DIM).
+    public MoveTargetsLister(Board board, Player player, int cur_x, int cur_y) {
+      mBoard = board;
+      mPlayer = player;
+      mCurX = cur_x;
+      mCurY = cur_y;
+    }
+
+    // TODO(saito) disallow double pawn moves.
+    
+    // If the piece can be moved to <cur_x+dx, cur_y+dy>, add it to
+    // mTargets.
+    public final void tryMove(MoveDelta m) {
+      mSeenOpponentPiece = false;
+      int dy = m.deltaY;
+      if (mPlayer == Player.WHITE) dy = -dy;
+      if (!m.multi) {
+        tryMoveTo(mCurX + m.deltaX, mCurY + dy);
+      } else {
+        int x = mCurX;
+        int y = mCurY;
+        for (;;) {
+          x += m.deltaX;
+          y += dy;
+          if (!tryMoveTo(x, y)) break;
+        }
+      }
+    }
+
+    // Return the computed list of move targets.
+    public final ArrayList<Position> getTargets() { return mTargets; }
+
+
+    private final boolean tryMoveTo(int x, int y) {
+      // Disallow moving outside the board
+      if (x < 0 || x >= Board.DIM || y < 0 || y >= Board.DIM) {
+        return false;
+      }
+      // Disallow skipping over an opponent piece
+      if (mSeenOpponentPiece) return false;
+
+      // Disallow occuping the same square twice
+      int existing = mBoard.getPiece(x, y);
+      if (existing != 0) {
+        if (Board.player(existing) == mPlayer) return false;
+        mSeenOpponentPiece = true;
+        mTargets.add(new Position(x, y));
+        return true;
+      }
+
+      mTargets.add(new Position(x, y));
+      return true;
+    }
+
+    private final ArrayList<Position> mTargets 
+      = new ArrayList<Position>();
+    private final Board mBoard;
+    private final Player mPlayer;
+    private final int mCurX;
+    private final int mCurY;
+    private boolean mSeenOpponentPiece;
+  }
+
+  
+  public static MoveDelta[] possibleMoves(int piece) {
+    switch (piece) {
+    case Piece.FU: return mFuMoves;
+    case Piece.KYO: return mKyoMoves;
+    case Piece.KEI: return mKeiMoves;
+    case Piece.GIN: return mGinMoves;
+    case Piece.KIN:
+    case Piece.TO:
+    case Piece.NARI_KYO:
+    case Piece.NARI_KEI:
+    case Piece.NARI_GIN:        
+      return mKinMoves;
+    case Piece.KAKU: return mKakuMoves;
+    case Piece.UMA: return mUmaMoves;
+    case Piece.HI: return mHiMoves;
+    case Piece.RYU: return mRyuMoves;
+    case Piece.OU: return mOuMoves;
+    default:
+      throw new AssertionError("Invalid piece " + piece);
+    }
+  }
+  
+  private static final MoveDelta[] mFuMoves = { new MoveDelta(0, -1, false) };
+  private static final MoveDelta[] mKyoMoves = { new MoveDelta(0, -1, true) };  
+  private static final MoveDelta[] mKeiMoves = { 
+    new MoveDelta(-1, -2, false),
+    new MoveDelta(1, -2, false) };
+  private static final MoveDelta[] mGinMoves = {
+    new MoveDelta(-1, -1, false),
+    new MoveDelta(0, -1, false),
+    new MoveDelta(1, -1, false),
+    new MoveDelta(-1, 1, false),
+    new MoveDelta(1, 1, false) };
+  private static final MoveDelta[] mKinMoves = {
+    new MoveDelta(-1, -1, false),
+    new MoveDelta(0, -1, false),
+    new MoveDelta(1, -1, false),
+    new MoveDelta(-1, 0, false),
+    new MoveDelta(1, 0, false),
+    new MoveDelta(0, 1, false) };
+  private static final MoveDelta[] mKakuMoves = {
+    new MoveDelta(-1, -1, true),
+    new MoveDelta(1, 1, true),
+    new MoveDelta(1, -1, true),
+    new MoveDelta(-1, 1, true),
+  };  
+  private static final MoveDelta[] mUmaMoves = {
+    new MoveDelta(-1, -1, true),
+    new MoveDelta(1, 1, true),
+    new MoveDelta(1, -1, true),
+    new MoveDelta(-1, 1, true),
+    new MoveDelta(0, -1, false),
+    new MoveDelta(0, 1, false),
+    new MoveDelta(1, 0, false),
+    new MoveDelta(-1, 0, false),
+  };  
+  private static final MoveDelta[] mHiMoves = {  
+    new MoveDelta(0, -1, true),
+    new MoveDelta(0, 1, true),
+    new MoveDelta(-1, 0, true),
+    new MoveDelta(1, 0, true),
+  };
+  private static final MoveDelta[] mRyuMoves = {  
+    new MoveDelta(0, -1, true),
+    new MoveDelta(0, 1, true),
+    new MoveDelta(-1, 0, true),
+    new MoveDelta(1, 0, true),
+    new MoveDelta(-1, -1, false),
+    new MoveDelta(-1, 1, false),
+    new MoveDelta(1, -1, false),
+    new MoveDelta(1, 1, false),
+  };
+  private static final MoveDelta[] mOuMoves = { 
+    new MoveDelta(0, -1, false),
+    new MoveDelta(0, 1, false),
+    new MoveDelta(1, 0, false),
+    new MoveDelta(-1, 0, false),
+    new MoveDelta(-1, -1, false),
+    new MoveDelta(-1, 1, false),
+    new MoveDelta(1, -1, false),
+    new MoveDelta(1, 1, false),
+  };
+  
 }

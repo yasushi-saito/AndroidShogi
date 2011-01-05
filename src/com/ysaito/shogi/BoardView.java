@@ -36,8 +36,8 @@ public class BoardView extends View implements View.OnTouchListener {
     super(context, attrs);
     mCurrentPlayer = Player.INVALID;
     mBoard = new Board();
-    mBoard.setPiece(3, 3, Board.K_KEI);
-    mBoard.setPiece(5, 5, Board.K_KEI);
+    mBoard.setPiece(3, 3, Piece.KEI);
+    mBoard.setPiece(5, 5, Piece.KEI);
     initializeBitmaps(context);
     setOnTouchListener(this);
   }
@@ -94,9 +94,17 @@ public class BoardView extends View implements View.OnTouchListener {
       mType = S_INVALID;
     }
 
-    public final void findNearestEmptySquareOnBoard(Board board, Player player) {
+    public final void findNearestEmptySquareOnBoard(
+        Board board, Player player, int pieceToDrop) { 
       int px = mLayout.boardX(mSx);
       int py = mLayout.boardY(mSy);
+      if (Board.type(pieceToDrop) == Piece.FU) {
+        // Disallow double pawns
+        for (int y = 0; y < Board.DIM; ++y) {
+          if (y != py && board.getPiece(px, y) == pieceToDrop) return;
+        }
+      }
+      
       for (int i = -1; i <= 1; ++i) {
         for (int j = -1; j <= 1; ++j) {
           int x = px + i;
@@ -189,9 +197,8 @@ public class BoardView extends View implements View.OnTouchListener {
       PositionOnBoard to = null;
       if (mMoveFrom instanceof PositionOnBoard) {
         PositionOnBoard from = (PositionOnBoard)mMoveFrom;
-        ArrayList<PositionOnBoard> dests = getPossibleMoveTargets(
-            mBoard.getPiece(from.x, from.y), from.x, from.y);
-        for (PositionOnBoard d: dests) {
+        ArrayList<Board.Position> dests = mBoard.possibleMoveDestinations(from.x, from.y);
+        for (Board.Position d: dests) {
           finder.tryScreenPosition(
               layout.screenX(d.x), layout.screenY(d.y),
               d.x, d.y, S_MOVE_DESTINATION);               
@@ -200,7 +207,8 @@ public class BoardView extends View implements View.OnTouchListener {
         finder.tryScreenPosition(
             layout.screenX(from.x), layout.screenY(from.y), from.x, from.y, S_MOVE_DESTINATION);
       } else {
-        finder.findNearestEmptySquareOnBoard(mBoard, mCurrentPlayer);
+        CapturedPiece p = (CapturedPiece)mMoveFrom;
+        finder.findNearestEmptySquareOnBoard(mBoard, mCurrentPlayer, p.piece);
       }
       if (finder.nearestType() != S_INVALID) {
         to = new PositionOnBoard(finder.nearestX(), finder.nearestY());
@@ -268,13 +276,12 @@ public class BoardView extends View implements View.OnTouchListener {
       if (mMoveFrom instanceof PositionOnBoard) {
         PositionOnBoard from = (PositionOnBoard)mMoveFrom;
         // Draw orange dots in each possible destination
-        ArrayList<PositionOnBoard> dests = getPossibleMoveTargets(
-            mBoard.getPiece(from.x, from.y), from.x, from.y);
+        ArrayList<Board.Position> dests = mBoard.possibleMoveDestinations(from.x, from.y);
 
         Paint cp = new Paint();
         cp.setColor(0xc0ff8c00);
         cp.setStyle(Style.FILL);
-        for (PositionOnBoard dest: dests) {
+        for (Board.Position dest: dests) {
           float sx = layout.screenX(dest.x);
           float sy = layout.screenY(dest.y);
 
@@ -296,6 +303,8 @@ public class BoardView extends View implements View.OnTouchListener {
         pieceToMove = ((CapturedPiece)mMoveFrom).piece;                
         if (mCurrentPlayer == Player.WHITE) pieceToMove = -pieceToMove;
       }
+      // TODO(saito) draw a big circle around mMoveTo so that people
+      // with chubby finger can still see the destination.
       drawPiece(canvas, layout, pieceToMove,
           layout.screenX(mMoveTo.x),
           layout.screenY(mMoveTo.y),
@@ -360,7 +369,7 @@ public class BoardView extends View implements View.OnTouchListener {
       sx = x;
       sy = y;
     }
-    public final int piece;     // Piece type, one of Board.K_XX. The value is negative if owned by Player.WHITE.
+    public final int piece;     // Piece type, one of Piece.XX. The value is negative if owned by Player.WHITE.
     public final int n;         // Number of pieces owned of type "piece".
     public final float sx, sy;  // Screen location at which this piece should be drawn.
   }
@@ -509,49 +518,49 @@ public class BoardView extends View implements View.OnTouchListener {
     int seq = 0;
     int n = Board.numCapturedFu(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Board.K_FU, n, 
+      pieces.add(new CapturedPiece(Piece.FU, n, 
           layout.capturedScreenX(player, seq),
           layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedKyo(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Board.K_KYO, n, 
+      pieces.add(new CapturedPiece(Piece.KYO, n, 
           layout.capturedScreenX(player, seq),
           layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedKei(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Board.K_KEI, n, 
+      pieces.add(new CapturedPiece(Piece.KEI, n, 
           layout.capturedScreenX(player, seq),
           layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedGin(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Board.K_GIN, n, 
+      pieces.add(new CapturedPiece(Piece.GIN, n, 
           layout.capturedScreenX(player, seq),
           layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedKin(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Board.K_KIN, n, 
+      pieces.add(new CapturedPiece(Piece.KIN, n, 
           layout.capturedScreenX(player, seq),
           layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedKaku(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Board.K_KAKU, n, 
+      pieces.add(new CapturedPiece(Piece.KAKU, n, 
           layout.capturedScreenX(player, seq),
           layout.capturedScreenY(player, seq)));
       ++seq;
     }
     n = Board.numCapturedHi(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Board.K_HI, n, 
+      pieces.add(new CapturedPiece(Piece.HI, n, 
           layout.capturedScreenX(player, seq),
           layout.capturedScreenY(player, seq)));
       ++seq;
@@ -609,8 +618,8 @@ public class BoardView extends View implements View.OnTouchListener {
     String prefix = prefs.getString("piece_style", "kinki_simple");
 
     Resources r = getResources();
-    mBlackBitmaps = new BitmapDrawable[Board.NUM_TYPES];
-    mWhiteBitmaps = new BitmapDrawable[Board.NUM_TYPES];
+    mBlackBitmaps = new BitmapDrawable[Piece.NUM_TYPES];
+    mWhiteBitmaps = new BitmapDrawable[Piece.NUM_TYPES];
     String koma_names[] = {
         null,
         "fu", "kyo", "kei", "gin", "kin", "kaku", "hi", "ou",
@@ -620,7 +629,7 @@ public class BoardView extends View implements View.OnTouchListener {
     Matrix flip = new Matrix();
     flip.postRotate(180);
 
-    for (int i = 1; i < Board.NUM_TYPES; ++i) {
+    for (int i = 1; i < Piece.NUM_TYPES; ++i) {
       if (koma_names[i] == null) continue;
       int id = r.getIdentifier(String.format("@com.ysaito.shogi:drawable/%s_%s", prefix, koma_names[i]), null, null);
       Bitmap blackBm = BitmapFactory.decodeResource(r, id);
@@ -630,155 +639,6 @@ public class BoardView extends View implements View.OnTouchListener {
       mWhiteBitmaps[i] = new BitmapDrawable(getResources(), whiteBm);
     }
     assert 1 == 0;
-  }
-
-  // Helper class for listing possible positions a piece can move to
-  private final class MoveTargetsLister {
-    // <cur_x, cur_y> is the current board position of the piece.
-    // Both are in range [0, Board.DIM).
-    public MoveTargetsLister(Player player, int cur_x, int cur_y) {
-      mPlayer = player;
-      mCurX = cur_x;
-      mCurY = cur_y;
-    }
-
-    // If the piece can be moved to <cur_x+dx, cur_y+dy>, add it to
-    // mTargets.
-    public final void tryMove(int dx, int dy) {
-      mSeenOpponentPiece = false;
-      if (mPlayer == Player.WHITE) dy = -dy;
-      tryMoveTo(mCurX + dx, mCurY + dy);
-    }
-
-    // Perform tryMove for each <dx,dy>, <2*dx,2*dy>, ...,
-    // Stop upon reaching the first disallowed square.
-    public final void tryMoveMulti(int dx, int dy) {
-      mSeenOpponentPiece = false;
-      if (mPlayer == Player.WHITE) dy = -dy;
-      int x = mCurX;
-      int y = mCurY;
-      for (;;) {
-        x += dx;
-        y += dy;
-        if (!tryMoveTo(x, y)) break;
-      }
-    }
-
-    // Return the computed list of move targets.
-    public final ArrayList<PositionOnBoard> getTargets() { return mTargets; }
-
-
-    private final boolean tryMoveTo(int x, int y) {
-      // Disallow moving outside the board
-      if (x < 0 || x >= Board.DIM || y < 0 || y >= Board.DIM) {
-        return false;
-      }
-      // Disallow skipping over an opponent piece
-      if (mSeenOpponentPiece) return false;
-
-      // Disallow occuping the same square twice
-      int existing = mBoard.getPiece(x, y);
-      if (existing != 0) {
-        if (Board.player(existing) == mPlayer) return false;
-        mSeenOpponentPiece = true;
-        mTargets.add(new PositionOnBoard(x, y));
-        return true;
-      }
-
-      mTargets.add(new PositionOnBoard(x, y));
-      return true;
-    }
-
-    private final ArrayList<PositionOnBoard> mTargets 
-      = new ArrayList<PositionOnBoard>();
-    private Player mPlayer;
-    private int mCurX;
-    private int mCurY;
-    private boolean mSeenOpponentPiece;
-  }
-
-  /**
-   * Generate the list of board positions that a piece at <cur_x, cur_y> can
-   * move to. It takes other pieces on the board into account, but it may
-   * still generate illegal moves -- e.g., this method doesn't check for
-   * nifu, sennichite, uchi-fu zume aren't by this method.
-   */
-  private final ArrayList<PositionOnBoard> getPossibleMoveTargets(
-      int piece, int cur_x, int cur_y) {
-    int type = Board.type(piece);
-    Player player = Board.player(piece);
-    MoveTargetsLister state = new MoveTargetsLister(player, cur_x, cur_y);
-
-    switch (type) {
-    case Board.K_FU:
-      state.tryMove(0, -1);
-      break;
-    case Board.K_KYO:
-      state.tryMoveMulti(0, -1);
-      break;
-    case Board.K_KEI:
-      state.tryMove(-1, -2);
-      state.tryMove(1, -2);
-      break;
-    case Board.K_GIN:
-      state.tryMove(-1, -1);
-      state.tryMove(0, -1);
-      state.tryMove(1, -1);
-      state.tryMove(-1, 1);
-      state.tryMove(1, 1);
-      break;
-    case Board.K_KIN:
-    case Board.K_TO:
-    case Board.K_NARI_KYO:
-    case Board.K_NARI_KEI:
-    case Board.K_NARI_GIN:        
-      state.tryMove(-1, -1);
-      state.tryMove(0, -1);
-      state.tryMove(1, -1);
-      state.tryMove(-1, 0);
-      state.tryMove(1, 0);
-      state.tryMove(0, 1);
-      break;
-    case Board.K_KAKU:
-    case Board.K_UMA:
-      state.tryMoveMulti(-1, -1);
-      state.tryMoveMulti(1, 1);
-      state.tryMoveMulti(1, -1);
-      state.tryMoveMulti(-1, 1);
-      if (type == Board.K_UMA) {
-        state.tryMove(0, -1);
-        state.tryMove(0, 1);
-        state.tryMove(1, 0);
-        state.tryMove(-1, 0);
-      }
-      break;
-    case Board.K_HI:
-    case Board.K_RYU:
-      state.tryMoveMulti(0, -1);
-      state.tryMoveMulti(0, 1);
-      state.tryMoveMulti(-1, 0);
-      state.tryMoveMulti(1, 0);
-      if (type == Board.K_RYU) {
-        state.tryMove(-1, -1);
-        state.tryMove(-1, 1);
-        state.tryMove(1, -1);
-        state.tryMove(1, 1);
-      }
-      break;
-    case Board.K_OU:
-      state.tryMove(0, -1);
-      state.tryMove(0, 1);
-      state.tryMove(1, 0);
-      state.tryMove(-1, 0);
-      state.tryMove(-1, -1);
-      state.tryMove(-1, 1);
-      state.tryMove(1, -1);
-      state.tryMove(1, 1);
-      break;
-    default:
-      Log.wtf(TAG, "Illegal type: " + type);
-    }
-    return state.getTargets();
   }
 
   private final ScreenLayout getScreenLayout() {

@@ -3,6 +3,8 @@ import com.ysaito.shogi.Board;
 
 // JNI interface for Bonanza
 public class BonanzaJNI {
+  // TODO(saito) don't write to games.csa
+  
   //
   // Return values of HumanMove and ComputerMove
   //

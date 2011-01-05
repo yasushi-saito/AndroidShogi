@@ -349,7 +349,7 @@ public class GameActivity extends Activity {
     if (Board.isPromoted(move.piece)) return false;  // already promoted
     
     final int type = Board.type(move.piece);
-    if (type == Board.K_KIN || type == Board.K_OU) return false;
+    if (type == Piece.KIN || type == Piece.OU) return false;
     
     if (move.fromX < 0) return false;  // dropping a captured piece
     if (player == Player.WHITE && move.fromY < 6 && move.toY < 6) return false;
