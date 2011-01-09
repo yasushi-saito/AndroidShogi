@@ -32,7 +32,7 @@ public class Move implements java.io.Serializable {
   }
 
   @Override public String toString() {
-    return toCsaString();
+    return String.format("%d%d%d%d:%d", fromX, fromY, toX, toY, piece);
   }
   
   // Return the CSA-format string for this move. 
@@ -80,12 +80,17 @@ public class Move implements java.io.Serializable {
   // Modifier bits. Used only by TraditionalNotation.modifier.
   public static final int DROP = (1 << 0);
   public static final int PROMOTE = (1 << 1);
-  public static final int FORWARD = (1 << 4);        
-  public static final int BACKWARD = (1 << 5);
-  public static final int SIDEWAYS = (1 << 6);
+  
+  // Move direction bits
+  public static final int FORWARD = (1 << 2);        
+  public static final int BACKWARD = (1 << 3);
+  public static final int SIDEWAYS = (1 << 4);
 
-  public static final int LEFT = (1 << 2);
-  public static final int RIGHT = (1 << 3);    
+  // Location of this piece relative to other pieces that can move to
+  // the same <toX, toY>.
+  public static final int LEFT = (1 << 5);
+  public static final int RIGHT = (1 << 6);    
+  public static final int CENTER = (1 << 7);
   
   public static class TraditionalNotation {
     public TraditionalNotation(int p, int xx, int yy, int m) {
@@ -94,23 +99,27 @@ public class Move implements java.io.Serializable {
       y = yy;
       modifier = m;
     }
+    
+    @Override public String toString() {
+      return String.format("%d <%d,%d>/%x", piece, x, y, modifier);
+    }
+    
     public final int piece;
     public final int x, y;
     public int modifier;  // bitstring, see below
   }
   
   public final TraditionalNotation toTraditionalNotation(Board board) {
-    Log.d(TAG, "ToTrad: " + toString());
     int modifier = 0;
     int pieceBeforeMove = piece;
     if (isNewlyPromoted(board)) {
       modifier |= PROMOTE;
-      pieceBeforeMove = maybeUnpromote(piece);
+      pieceBeforeMove = Board.unpromote(piece);
     }
-    
+    Log.d(TAG, "ToTrad: " + toString());
     ArrayList<Board.Position> others = listOtherMoveSources(board);
     for (Board.Position p: others) {
-      Log.d(TAG, String.format("Other: %d %d", p.x, p.y));
+      Log.d(TAG, toString() + ": OtherPos: " + p.x + "/" + p.y);
     }
     if (others.isEmpty()) {
       ;
@@ -136,11 +145,19 @@ public class Move implements java.io.Serializable {
         // Thus, the modifier can just specify the move direction of my piece to
         // disambiguate it from other legit moves.
       } else {
+        // There are pieces that move in the same direction.
+        // Determine the location of this piece relative to them.
+        //
+        // There are only three possibilites --- the piece is to the right,
+        // to the left, or in the center of other pieces.
+        int relPos = 0;
         for (Board.Position p: others) {
           if (moveDirection(p.x, p.y, toX, toY) == myMoveDir) {
-            modifier |= relativePosition(fromX, fromY, p.x, p.y);
+            relPos |= relativePosition(fromX, fromY, p.x, p.y);
           }
         }
+        if (relPos == (LEFT | RIGHT)) relPos = CENTER;
+        modifier |= relPos;
       }
     }
     return new TraditionalNotation(pieceBeforeMove, 9 - toX, toY + 1, modifier);
@@ -152,7 +169,6 @@ public class Move implements java.io.Serializable {
     if (isDroppingCapturedPiece()) return false; 
     boolean fromPromoted = Board.isPromoted(board.getPiece(fromX, fromY)); 
     boolean toPromoted = Board.isPromoted(piece);
-    // Log.d("FOO", String.format("XXX %d %d %d %d %d", fromPromoted ? 0 : 1, toPromoted ? 0 : 1, fromX, fromY, piece));
     return toPromoted && !fromPromoted;
   }
   
@@ -189,11 +205,12 @@ public class Move implements java.io.Serializable {
         // can move to the same spot. 
         if (maybeUnpromote(otherPiece) != maybeUnpromote(piece)) continue;
 
-        Log.d("YYY", String.format("%d %d %d %d", x, y, otherPiece, piece));
-
+        Log.d(TAG, toString() + ": OtherPos: " + x + "/" + y);
+        
         // If otherPiece can move to <fromX,  fromY>, then we need disambiguation
         for (Board.Position p : board.possibleMoveDestinations(x, y)) {
           if (p.x == toX && p.y == toY) {
+            Log.d(TAG, toString() + ": OtherPosX: " + p.x + "/" + p.y);            
             list.add(new Board.Position(x, y));
             break;
           }
@@ -205,8 +222,21 @@ public class Move implements java.io.Serializable {
       // The destination is empty now, so we need to check if
       // there's a captured piece that can be dropped to <tox,toy>.
       Player me = Board.player(piece);
+      Log.d(TAG, "Cap: " + me);
       for (Board.CapturedPiece cp: board.getCapturedPieces(me)) {
-        if (cp.piece == piece) {
+        boolean dropAllowed = true;
+        if (Board.type(cp.piece) == Piece.FU) {
+          // Don't allow double pawns
+          for (int y = 0; y < Board.DIM; ++y) {
+            int piece = board.getPiece(toX, y);
+            if (Board.player(piece) == me &&
+                Board.type(piece) == Piece.FU) {
+              dropAllowed = false;
+              break;
+            }
+          }
+        }
+        if (dropAllowed && cp.piece == piece) {
           list.add(new Board.Position(-1, -1));
           break;
         }

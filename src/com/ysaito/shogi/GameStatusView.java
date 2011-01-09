@@ -2,17 +2,21 @@ package com.ysaito.shogi;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 /**
  * Widget for displaying game status, such as elapsed time per player and 
  * last moves.
  */
 public class GameStatusView extends LinearLayout {
+  private final String TAG = "ShogiStatus";
+  
   class Timer {
     public Timer(TextView v) { mView = v; mLastThinkTimeSeconds = -1; }
     public void update(long thinkTimeMs) {
@@ -39,6 +43,9 @@ public class GameStatusView extends LinearLayout {
   private String mBlackPlayerName;
   private String mWhitePlayerName;
   
+  // List of past moves, in display format.
+  private ArrayList<String> mMoveList;
+  
   public GameStatusView(Context context, AttributeSet attrs) {
     super(context, attrs);
   }
@@ -55,6 +62,7 @@ public class GameStatusView extends LinearLayout {
     mBlackStatus = (TextView)findViewById(R.id.status_black_player_name);
     mWhiteTime = new Timer((TextView)findViewById(R.id.status_white_time));
     mWhiteStatus = (TextView)findViewById(R.id.status_white_player_name);
+    mMoveList = new ArrayList<String>();
   
     mBlackPlayerName = blackPlayerName;
     mWhitePlayerName = whitePlayerName;
@@ -64,6 +72,7 @@ public class GameStatusView extends LinearLayout {
   
   public final void update(
       GameState gameState,
+      Board board,
       ArrayList<Move> moves,
       Player currentPlayer,
       String errorMessage) {
@@ -80,15 +89,29 @@ public class GameStatusView extends LinearLayout {
     } else {
       mBlackStatus.setBackgroundColor(0xff000000);
       mBlackStatus.setTextColor(0xffffffff);
+    } 
+    while (moves.size() > mMoveList.size()) {
+      // Generally, moves is just one larger than mMoveList, in which case
+      // we can use "board" to compute the display string of the last move.
+      // If moves.size() > mMovesList.size() + 1, then moves other than the last
+      // may be inaccurately displayed since "board" may not correspond to the
+      // state before these moves are made.
+      Move m = moves.get(mMoveList.size());
+      mMoveList.add(traditionalMoveNotation(board, m));
     }
-    if (moves.size() > 0) {
+    
+    // Handle undos
+    while (moves.size() < mMoveList.size()) {
+      mMoveList.remove(mMoveList.size() - 1);
+    }
+    
+    if (mMoveList.size() > 0) {
       // Display the last two moves.
-      int n = Math.min(moves.size(), 2);
+      int n = Math.min(mMoveList.size(), 2);
       String s = "";
-      for (int i = moves.size() - n; i < moves.size(); ++i) {
-        Move m = moves.get(i);
+      for (int i = mMoveList.size() - n; i < mMoveList.size(); ++i) {
         if (s != "") s += ", ";
-        s += (i+1) + ":" + m.toCsaString();
+        s += (i+1) + ":" + mMoveList.get(i);
       }
       mMoveHistory.setText(s);
     }
@@ -108,8 +131,40 @@ public class GameStatusView extends LinearLayout {
       mGameStatus.setText(endGameMessage);
     }
   }
+  
   public final void updateThinkTimes(long black, long white) {
     mBlackTime.update(black);
     mWhiteTime.update(white);
+  }
+  private final String traditionalMoveNotation(Board board, Move m) {
+    if (!Locale.getDefault().getLanguage().equals("ja")) {
+      return m.toCsaString();
+    }
+    Move.TraditionalNotation n = m.toTraditionalNotation(board);
+    String s = String.format("%d%s%s%s",
+        n.x, japaneseNumbers[n.y], japanesePieceNames[n.piece],
+        modifiersToJapanese(n.modifier));
+    return s;
+  }
+  
+  // Japanese move display support
+  private static final String japaneseNumbers[] = {
+    null, "一", "二", "三", "四", "五", "六", "七", "八", "九",    
+  };
+  private static final String japanesePieceNames[] = {
+    null, "歩", "香","桂","銀","金","角","飛", "王",
+        "と", "成香", "成桂", "成銀", null, "馬", "龍" };
+  
+  private static final String modifiersToJapanese(int modifiers) {
+    String s = "";
+    if ((modifiers & Move.DROP) != 0) s += "打";
+    if ((modifiers & Move.PROMOTE) != 0) s += "成";    
+    if ((modifiers & Move.FORWARD) != 0) s += "上";        
+    if ((modifiers & Move.BACKWARD) != 0) s += "引";            
+    if ((modifiers & Move.SIDEWAYS) != 0) s += "寄";          
+    if ((modifiers & Move.RIGHT) != 0) s += "右";                    
+    if ((modifiers & Move.LEFT) != 0) s += "左";                        
+    if ((modifiers & Move.CENTER) != 0) s += "直";                            
+    return s;
   }
 }

@@ -79,20 +79,21 @@ public class Board implements java.io.Serializable {
   }
 
   // Get the list of piece type and its count captured by player p.
-  // Even for Player.WHITE, the values of CapturedPiece.piece are positive. 
+  // For Player.WHITE, the values of CapturedPiece.piece will be still
+  // positive.
   public final ArrayList<CapturedPiece> getCapturedPieces(Player p) {
     // Note: The JNI code will set mCapturedBlack and mCapturedWhite.
     // getCapturedPiece will translate them to a list.
     if (p == Player.BLACK) {
       if (mLastReadCapturedBlack != mCapturedBlack) {
         mLastReadCapturedBlack = mCapturedBlack;
-        mCapturedBlackList = listCapturedPieces(mCapturedBlack);
+        mCapturedBlackList = listCapturedPieces(Player.BLACK, mCapturedBlack);
       }
       return mCapturedBlackList;
     } else if (p == Player.WHITE) {
       if (mLastReadCapturedWhite != mCapturedWhite) {
         mLastReadCapturedWhite = mCapturedWhite;
-        mCapturedWhiteList = listCapturedPieces(mCapturedWhite);
+        mCapturedWhiteList = listCapturedPieces(Player.WHITE, mCapturedWhite);
       }
       return mCapturedWhiteList;
     } else {
@@ -128,35 +129,38 @@ public class Board implements java.io.Serializable {
     }
   }
   
-  private static final ArrayList<CapturedPiece> listCapturedPieces(int bits) {
+  private static final ArrayList<CapturedPiece> listCapturedPieces(
+      Player player, int bits) {
+    int sign = (player == Player.BLACK ? 1 : -1);
+    
     ArrayList<CapturedPiece> pieces = new ArrayList<CapturedPiece>();
     int n = Board.numCapturedFu(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.FU, n));
+      pieces.add(new CapturedPiece(Piece.FU * sign, n));
     }
     n = Board.numCapturedKyo(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.KYO, n));
+      pieces.add(new CapturedPiece(Piece.KYO * sign, n));
     }
     n = Board.numCapturedKei(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.KEI, n));
+      pieces.add(new CapturedPiece(Piece.KEI * sign, n));
     }
     n = Board.numCapturedGin(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.GIN, n));
+      pieces.add(new CapturedPiece(Piece.GIN * sign, n));
     }
     n = Board.numCapturedKin(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.KIN, n));
+      pieces.add(new CapturedPiece(Piece.KIN * sign, n));
     }
     n = Board.numCapturedKaku(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.KAKU, n));
+      pieces.add(new CapturedPiece(Piece.KAKU * sign, n));
     }
     n = Board.numCapturedHi(bits);
     if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.HI, n));
+      pieces.add(new CapturedPiece(Piece.HI * sign, n));
     }
     return pieces;
   }

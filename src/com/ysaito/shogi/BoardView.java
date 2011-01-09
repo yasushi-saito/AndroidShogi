@@ -17,6 +17,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
@@ -24,6 +25,7 @@ import android.widget.Toast;
 import com.ysaito.shogi.Board;
 
 public class BoardView extends View implements View.OnTouchListener {
+  static public final String TAG = "ShogiView";
   /**
    * Interface for communicating user moves to the owner of this view.
    * onHumanMove is called when a human player moves a piece, or drops a
@@ -235,6 +237,7 @@ public class BoardView extends View implements View.OnTouchListener {
               ((CapturedPiece)mMoveFrom).piece,
               -1, -1,
               mMoveTo.x, mMoveTo.y);
+          Log.d(TAG, String.format("MOVEMOVE %d", move.piece));
         }
         mListener.onHumanMove(mCurrentPlayer, move);
         mCurrentPlayer = Player.INVALID;
@@ -540,8 +543,8 @@ public class BoardView extends View implements View.OnTouchListener {
     ArrayList<CapturedPiece> pieces = listCapturedPieces(layout, player);
     for (int i = 0; i < pieces.size(); ++i) {
       CapturedPiece p = pieces.get(i);
-      int piece = (player == Player.BLACK ? p.piece : -p.piece);
-      drawCapturedPiece(canvas, layout, piece, p.n, p.sx, p.sy);
+      // int piece = (player == Player.BLACK ? p.piece : -p.piece);
+      drawCapturedPiece(canvas, layout, p.piece, p.n, p.sx, p.sy);
     }
   }
 
@@ -605,7 +608,6 @@ public class BoardView extends View implements View.OnTouchListener {
           flip, false);
       mWhiteBitmaps[i] = new BitmapDrawable(getResources(), whiteBm);
     }
-    throw new AssertionError("??");
   }
 
   private final ScreenLayout getScreenLayout() {

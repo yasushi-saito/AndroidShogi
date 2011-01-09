@@ -275,13 +275,11 @@ public class GameActivity extends Activity {
     @Override public void handleMessage(Message msg) {
       BonanzaController.Result r = (BonanzaController.Result)(
           msg.getData().get("result"));
-      mGameState = r.gameState;
-      mBoard = r.board;
-      setCurrentPlayer(r.nextPlayer);
       if (r.lastMove != null) {
         mMoves.add(r.lastMove);
         mMoveCookies.add(r.lastMoveCookie);
-      } 
+      }
+      setCurrentPlayer(r.nextPlayer);
       for (int i = 0; i < r.undoMoves; ++i) {
         Assert.isTrue(r.lastMove == null);
         mMoves.remove(mMoves.size() - 1);
@@ -289,8 +287,14 @@ public class GameActivity extends Activity {
       }
       
       mBoardView.update(r.gameState, r.board, r.nextPlayer);
-      mStatusView.update(r.gameState, mMoves, r.nextPlayer, r.errorMessage);
+      mStatusView.update(r.gameState,
+          // Note: statusview needs the board state before the move
+          // to compute the traditional move notation.
+          mBoard,
+          mMoves, r.nextPlayer, r.errorMessage);
       
+      mGameState = r.gameState;
+      mBoard = r.board;
       if (isComputerPlayer(r.nextPlayer)) {
         mController.computerMove(r.nextPlayer);
       }
