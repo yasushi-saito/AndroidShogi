@@ -2,6 +2,10 @@
 
 package com.ysaito.shogi;
 
+import java.util.ArrayList;
+
+import android.util.Log;
+
 /**
  * @author saito@google.com (Yaz Saito)
  *
@@ -9,17 +13,23 @@ package com.ysaito.shogi;
  * Move represents a move by a human player
  */
 public class Move implements java.io.Serializable {
+  private final String TAG = "ShogiMove";
   // The piece to move. 
   //
-  // - The value is negative if player==Player.WHITE.
-  // - If the piece is to be promoted, this field stores the promoted piece type.
-  //   For example, if the piece is originally a "fu" and it is to be promoted
-  //   to "to" at <to_x,to_y>, piece will store K_TO.
-  public int piece;
+  // The value is negative if player==Player.WHITE.
+  public final int piece;
 
   // The source and destination coordinates. When moving a piece on the board, each value is in range
-  // [0, Board.DIM). When dropping a captured piece on the board, from_X = from_Y = -1.
-  public int fromX, fromY, toX, toY;
+  // [0, Board.DIM). When dropping a captured piece on the board, fromX = fromY = -1.
+  public final int fromX, fromY, toX, toY;
+  
+  public Move(int p, int fx, int fy, int tx, int ty) {
+    piece = p;
+    fromX = fx;
+    fromY = fy;
+    toX = tx;
+    toY = ty;
+  }
 
   @Override public String toString() {
     return toCsaString();
@@ -48,20 +58,165 @@ public class Move implements java.io.Serializable {
   }
   
   public static Move fromCsaString(String csa) {
-    Move m = new Move();
     int tmp = csa.charAt(0) - '0';
-    
+    int fromX, fromY;
     if (tmp > 0) {
       // Moving a piece on board
-      m.fromX = 9 - tmp;
-      m.fromY = csa.charAt(1) - '0' - 1;
+      fromX = 9 - tmp;
+      fromY = csa.charAt(1) - '0' - 1;
     } else {
       // Dropping a captured piece
-      m.fromX = m.fromY = -1;
+      fromX = fromY = -1;
     }
-    m.toX = 9 - (csa.charAt(2) - '0');
-    m.toY = csa.charAt(3) - '0' - 1;
-    m.piece = Piece.fromCsaName(csa.substring(4));
-    return m;
+    int toX = 9 - (csa.charAt(2) - '0');
+    int toY = csa.charAt(3) - '0' - 1;
+    
+    int piece = Piece.fromCsaName(csa.substring(4));
+    
+    return new Move(
+        piece, fromX, fromY, toX, toY);
+  }
+  
+  // Modifier bits. Used only by TraditionalNotation.modifier.
+  public static final int DROP = (1 << 0);
+  public static final int PROMOTE = (1 << 1);
+  public static final int FORWARD = (1 << 4);        
+  public static final int BACKWARD = (1 << 5);
+  public static final int SIDEWAYS = (1 << 6);
+
+  public static final int LEFT = (1 << 2);
+  public static final int RIGHT = (1 << 3);    
+  
+  public static class TraditionalNotation {
+    public TraditionalNotation(int p, int xx, int yy, int m) {
+      piece = p;
+      x = xx;
+      y = yy;
+      modifier = m;
+    }
+    public final int piece;
+    public final int x, y;
+    public int modifier;  // bitstring, see below
+  }
+  
+  public final TraditionalNotation toTraditionalNotation(Board board) {
+    Log.d(TAG, "ToTrad: " + toString());
+    int modifier = 0;
+    int pieceBeforeMove = piece;
+    if (isNewlyPromoted(board)) {
+      modifier |= PROMOTE;
+      pieceBeforeMove = maybeUnpromote(piece);
+    }
+    
+    ArrayList<Board.Position> others = listOtherMoveSources(board);
+    for (Board.Position p: others) {
+      Log.d(TAG, String.format("Other: %d %d", p.x, p.y));
+    }
+    if (others.isEmpty()) {
+      ;
+    } else if (isDroppingCapturedPiece()) {
+      modifier |= DROP;
+    } else {
+      int myMoveDir = moveDirection(fromX, fromY, toX, toY);
+      modifier |= myMoveDir;
+      
+      boolean hasPieceWithSameMoveDir = false;
+      int otherMoveDirs = 0;
+      for (Board.Position p: others) {
+        int dir = moveDirection(p.x, p.y, toX, toY);
+        if (dir == myMoveDir) {
+          hasPieceWithSameMoveDir = true;
+        } else {
+          otherMoveDirs |= dir;
+        }
+      }
+      
+      if (!hasPieceWithSameMoveDir) {
+        // There's no piece that moves in the same direction to reach <tox,toy>.
+        // Thus, the modifier can just specify the move direction of my piece to
+        // disambiguate it from other legit moves.
+      } else {
+        for (Board.Position p: others) {
+          if (moveDirection(p.x, p.y, toX, toY) == myMoveDir) {
+            modifier |= relativePosition(fromX, fromY, p.x, p.y);
+          }
+        }
+      }
+    }
+    return new TraditionalNotation(pieceBeforeMove, 9 - toX, toY + 1, modifier);
+  }
+  
+  private final boolean isDroppingCapturedPiece() { return fromX < 0; }
+  
+  private final boolean isNewlyPromoted(Board board) {
+    if (isDroppingCapturedPiece()) return false; 
+    boolean fromPromoted = Board.isPromoted(board.getPiece(fromX, fromY)); 
+    boolean toPromoted = Board.isPromoted(piece);
+    // Log.d("FOO", String.format("XXX %d %d %d %d %d", fromPromoted ? 0 : 1, toPromoted ? 0 : 1, fromX, fromY, piece));
+    return toPromoted && !fromPromoted;
+  }
+  
+  private final int moveDirection(int fx, int fy, int tx, int ty) {
+    if (fx < 0) return DROP;
+    if (fy == ty) return SIDEWAYS;
+    if (Board.player(piece) == Player.BLACK) {
+      return (ty < fy) ? FORWARD : BACKWARD; 
+    } else {
+      return (ty < fy) ? BACKWARD : FORWARD;
+    }
+  }
+
+  private final int relativePosition(int x1, int y1, int x2, int y2) {
+    if (Board.player(piece) == Player.BLACK) {
+      return(x1 < x2) ? LEFT : RIGHT; 
+    } else {
+      return(x1 < x2) ? RIGHT : LEFT;
+    }
+  }
+  
+  // Find pieces other than the one at <fromX, fromX> 
+  // that can move or can be dropped at<toX, toY>. 
+  // For captured pieces, Position.x and Position.y
+  // are both -1. 
+  private final ArrayList<Board.Position> listOtherMoveSources(Board board) {
+    ArrayList<Board.Position> list = new ArrayList<Board.Position>();
+    for (int x = 0; x < Board.DIM; ++x) {
+      for (int y = 0; y < Board.DIM; ++y) {
+        if (x == fromX && y == fromY) continue;  // exclude this piece.
+        int otherPiece = board.getPiece(x, y);
+
+        // We need disambiguation only when there are two pieces of the same type that
+        // can move to the same spot. 
+        if (maybeUnpromote(otherPiece) != maybeUnpromote(piece)) continue;
+
+        Log.d("YYY", String.format("%d %d %d %d", x, y, otherPiece, piece));
+
+        // If otherPiece can move to <fromX,  fromY>, then we need disambiguation
+        for (Board.Position p : board.possibleMoveDestinations(x, y)) {
+          if (p.x == toX && p.y == toY) {
+            list.add(new Board.Position(x, y));
+            break;
+          }
+        }
+      }
+    }
+    
+    if (board.getPiece(toX, toY) == 0 && !isDroppingCapturedPiece()) {
+      // The destination is empty now, so we need to check if
+      // there's a captured piece that can be dropped to <tox,toy>.
+      Player me = Board.player(piece);
+      for (Board.CapturedPiece cp: board.getCapturedPieces(me)) {
+        if (cp.piece == piece) {
+          list.add(new Board.Position(-1, -1));
+          break;
+        }
+      }
+    }
+    return list;
+  }
+  
+  static final int maybeUnpromote(int piece) {
+    if (Board.isPromoted(piece)) return Board.unpromote(piece);
+    return piece;
   }
 }

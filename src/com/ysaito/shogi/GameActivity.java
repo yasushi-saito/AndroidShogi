@@ -283,7 +283,7 @@ public class GameActivity extends Activity {
         mMoveCookies.add(r.lastMoveCookie);
       } 
       for (int i = 0; i < r.undoMoves; ++i) {
-        assert r.lastMove == null;
+        Assert.isTrue(r.lastMove == null);
         mMoves.remove(mMoves.size() - 1);
         mMoveCookies.remove(mMoveCookies.size() - 1);
       }
@@ -336,7 +336,10 @@ public class GameActivity extends Activity {
         new DialogInterface.OnClickListener() {
           public void onClick(DialogInterface d, int item) {
             if (item == 0) {
-              mSavedMoveForPromotion.piece = Board.promote(mSavedMoveForPromotion.piece);
+              mSavedMoveForPromotion = new Move(
+                  Board.promote(mSavedMoveForPromotion.piece), 
+                  mSavedMoveForPromotion.fromX, mSavedMoveForPromotion.fromY,
+                  mSavedMoveForPromotion.toX, mSavedMoveForPromotion.toY);
             }
             mController.humanMove(mSavedPlayerForPromotion, mSavedMoveForPromotion);
             mSavedMoveForPromotion = null;

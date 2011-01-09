@@ -10,12 +10,13 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
+import android.graphics.RadialGradient;
 import android.graphics.Rect;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
@@ -222,19 +223,18 @@ public class BoardView extends View implements View.OnTouchListener {
     }
     if (action == MotionEvent.ACTION_UP) {
       if (mMoveTo != null && !mMoveFrom.equals(mMoveTo)) {
-        Move move = new Move();
-        move.toX = mMoveTo.x;
-        move.toY = mMoveTo.y;
-
+        Move move = null;
         if (mMoveFrom instanceof PositionOnBoard) {
           PositionOnBoard from = (PositionOnBoard)mMoveFrom;
-          move.piece = mBoard.getPiece(from.x, from.y);
-          move.fromX = from.x;
-          move.fromY = from.y;
+          move = new Move(
+              mBoard.getPiece(from.x, from.y), 
+              from.x, from.y,
+              mMoveTo.x, mMoveTo.y);
         } else {
-          CapturedPiece p = (CapturedPiece)mMoveFrom;
-          move.piece = p.piece;
-          move.fromX = move.fromY = -1;
+          move = new Move(
+              ((CapturedPiece)mMoveFrom).piece,
+              -1, -1,
+              mMoveTo.x, mMoveTo.y);
         }
         mListener.onHumanMove(mCurrentPlayer, move);
         mCurrentPlayer = Player.INVALID;
@@ -261,16 +261,20 @@ public class BoardView extends View implements View.OnTouchListener {
       for (int x = 0; x < Board.DIM; ++x) {
         int v = mBoard.getPiece(x, y);
         if (v == 0) continue;
-        drawPiece(canvas, layout, v, layout.screenX(x), layout.screenY(y), 255);
+        int alpha = 255;
+        
+        // A piece that the user is trying to move will be draw with a bit of
+        // transparency.
+        if (mMoveFrom != null && mMoveFrom instanceof PositionOnBoard) {
+          PositionOnBoard p = (PositionOnBoard)mMoveFrom;
+          if (x == p.x && y == p.y) alpha = 64;
+        }
+        drawPiece(canvas, layout, v, layout.screenX(x), layout.screenY(y), alpha);
       }
     }
 
-    if (mBoard.mCapturedBlack != 0) {
-      drawCapturedPieces(canvas, layout, Player.BLACK);
-    }
-    if (mBoard.mCapturedWhite!= 0) {
-      drawCapturedPieces(canvas, layout, Player.WHITE);
-    }
+    drawCapturedPieces(canvas, layout, Player.BLACK);
+    drawCapturedPieces(canvas, layout, Player.WHITE);
 
     if (mMoveFrom != null) {
       if (mMoveFrom instanceof PositionOnBoard) {
@@ -309,6 +313,13 @@ public class BoardView extends View implements View.OnTouchListener {
           layout.screenX(mMoveTo.x),
           layout.screenY(mMoveTo.y),
           192);
+      
+      Paint cp = new Paint();
+      float radius = squareDim * 0.9f;
+      float cx = layout.screenX(mMoveTo.x) + squareDim / 2.0f;
+      float cy = layout.screenY(mMoveTo.y) + squareDim / 2.0f;
+      cp.setShader(new RadialGradient(cx, cy, radius, 0xffb8860b, 0x00b8860b, Shader.TileMode.MIRROR));
+      canvas.drawCircle(cx, cy, radius, cp);
     }
     if (!mBoardInitialized) {
       if (mInitializingToast == null) {
@@ -326,8 +337,7 @@ public class BoardView extends View implements View.OnTouchListener {
   //
   // Implementation details
   //
-  private static final String TAG = "BoardView";
-
+  
   // Bitmap for all the pieces. mWhiteBitmaps[i] is the same as
   // mBlackBitmapsmaps[i], except upside down.
   private BitmapDrawable mBlackBitmaps[];
@@ -511,56 +521,10 @@ public class BoardView extends View implements View.OnTouchListener {
   private final ArrayList<CapturedPiece> listCapturedPieces(
       ScreenLayout layout,
       Player player) {
-    final int bits = (player == Player.BLACK ?
-        mBoard.mCapturedBlack : mBoard.mCapturedWhite);
-
-    ArrayList<CapturedPiece> pieces = new ArrayList<CapturedPiece>();
     int seq = 0;
-    int n = Board.numCapturedFu(bits);
-    if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.FU, n, 
-          layout.capturedScreenX(player, seq),
-          layout.capturedScreenY(player, seq)));
-      ++seq;
-    }
-    n = Board.numCapturedKyo(bits);
-    if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.KYO, n, 
-          layout.capturedScreenX(player, seq),
-          layout.capturedScreenY(player, seq)));
-      ++seq;
-    }
-    n = Board.numCapturedKei(bits);
-    if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.KEI, n, 
-          layout.capturedScreenX(player, seq),
-          layout.capturedScreenY(player, seq)));
-      ++seq;
-    }
-    n = Board.numCapturedGin(bits);
-    if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.GIN, n, 
-          layout.capturedScreenX(player, seq),
-          layout.capturedScreenY(player, seq)));
-      ++seq;
-    }
-    n = Board.numCapturedKin(bits);
-    if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.KIN, n, 
-          layout.capturedScreenX(player, seq),
-          layout.capturedScreenY(player, seq)));
-      ++seq;
-    }
-    n = Board.numCapturedKaku(bits);
-    if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.KAKU, n, 
-          layout.capturedScreenX(player, seq),
-          layout.capturedScreenY(player, seq)));
-      ++seq;
-    }
-    n = Board.numCapturedHi(bits);
-    if (n > 0) {
-      pieces.add(new CapturedPiece(Piece.HI, n, 
+    ArrayList<CapturedPiece> pieces = new ArrayList<CapturedPiece>();
+    for (Board.CapturedPiece p: mBoard.getCapturedPieces(player)) {
+      pieces.add(new CapturedPiece(p.piece, p.n, 
           layout.capturedScreenX(player, seq),
           layout.capturedScreenY(player, seq)));
       ++seq;
@@ -569,7 +533,10 @@ public class BoardView extends View implements View.OnTouchListener {
   }
 
 
-  private final void drawCapturedPieces(Canvas canvas, ScreenLayout layout, Player player) {
+  private final void drawCapturedPieces(
+      Canvas canvas, 
+      ScreenLayout layout, 
+      Player player) {
     ArrayList<CapturedPiece> pieces = listCapturedPieces(layout, player);
     for (int i = 0; i < pieces.size(); ++i) {
       CapturedPiece p = pieces.get(i);
@@ -638,7 +605,7 @@ public class BoardView extends View implements View.OnTouchListener {
           flip, false);
       mWhiteBitmaps[i] = new BitmapDrawable(getResources(), whiteBm);
     }
-    assert 1 == 0;
+    throw new AssertionError("??");
   }
 
   private final ScreenLayout getScreenLayout() {

@@ -3,9 +3,12 @@
  */
 package com.ysaito.shogi.test;
 
+import java.util.ArrayList;
+
 import com.ysaito.shogi.Board;
 import com.ysaito.shogi.Move;
 import com.ysaito.shogi.Piece;
+import com.ysaito.shogi.Player;
 
 import android.test.AndroidTestCase;
 import android.util.Log;
@@ -45,9 +48,12 @@ public class MoveTest extends AndroidTestCase {
     Move m = newMove(Piece.KYO, -1, -1, 7, 8);
     Log.d("START", "START");
     assertEquals(toTraditionalNotation(m, b), "78KY/DROP");
+    
+    b = newBoard(-1, -1, Piece.KYO);
     m = newMove(Piece.KYO, 7, 9, 7, 8);
     assertEquals(toTraditionalNotation(m, b), "78KY/FORWARD");
-    m = newMove(Piece.KYO, 7, 9, 7, 1);
+    
+    m = newMove(Piece.NARI_KYO, 7, 9, 7, 1);
     assertEquals(toTraditionalNotation(m, b), "71KY/PROMOTE");
   }
   
@@ -78,11 +84,19 @@ public class MoveTest extends AndroidTestCase {
   private Board newBoard(int... values) { 
     Board b = new Board();
     assertEquals(values.length % 3, 0);
+    ArrayList<Board.CapturedPiece> captured = new ArrayList<Board.CapturedPiece>();
     for (int i = 0; i < values.length; i += 3) {
       int x = values[i];
       int y = values[i + 1];
       int piece = values[i + 2];
-      b.setPiece(9 - x, y - 1, piece);
+      if (x >= 0) {
+        b.setPiece(9 - x, y - 1, piece);
+      } else {
+        captured.add(new Board.CapturedPiece(piece, 1));
+      }
+    }
+    if (captured.size() > 0) {
+      b.TEST_setCapturedPieces(Player.BLACK, captured);
     }
     return b;
   }

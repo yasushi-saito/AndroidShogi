@@ -10,62 +10,30 @@ public class Board implements java.io.Serializable {
   // X and Y dimensions of a board
   public static final int DIM = 9; 
 
-
-  // mSquares is a 81-entry array. mSquares[X + 9 * Y] stores the piece at coordinate <X, Y>. 
-  // <0, 0> is at the upper left corner of the board. 
-  // 
-  // The sign of the value describes the owner of the piece. A positive (negative) value means that the piece
-  // is owned by Player.BLACK (Player.WHITE). The absolute value describes the piece type as defined in the Piece class.
-  public int mSquares[];    
-  // Encode the set of pieces captured by the BLACK player. Use numCaptured* methods to parse the value. 
-  public int mCapturedBlack;
-  // Encode the set of pieces captured by the WHITE player. Use numCaptured* methods to parse the value.   
-  public int mCapturedWhite;
-
-  public static final boolean isPromoted(int piece) {
-    return type(piece) >= 9;
-  }
-
-  public static final int promote(int piece) {
-    assert !isPromoted(piece);
-    if (piece < 0) {
-      return piece - 8;
-    } else {
-      return piece + 8;
-    }
-  }
-
-  // Given a piece in mSquares[], return the player type.
-  public static final Player player(int piece) { 
-    if (piece > 0) return Player.BLACK;
-    if (piece == 0) return Player.INVALID;
-    return Player.WHITE;
-  }
-
-  // Given a piece in mSquares[], return its type, i.e., Piece.XXX.
-  public static final int type(int piece) { 
-    return (piece < 0 ? -piece: piece); 
-  }
-
-  // Helper functions to parse the value of mCapturedUp or mCapturedDown.
-  public static final int numCapturedFu(int c) { return c & 0x1f; }
-  public static final int numCapturedKyo(int c) { return (c >> 5) & 7; }
-  public static final int numCapturedKei(int c) { return (c >>  8) & 0x07; }
-  public static final int numCapturedGin(int c) { return (c >> 11) & 0x07; }
-  public static final int numCapturedKin(int c) { return (c >> 14) & 0x07; }
-  public static final int numCapturedKaku(int c) { return (c >> 17) & 3; }
-  public static final int numCapturedHi(int c) { return (c >> 19); }
-
+  public static class CapturedPiece {
+    public CapturedPiece(int p, int _n) { piece = p; n = _n; }
+    public final int piece;  // one of Piece.*
+    public final int n;      // number of pieces of the same type
+  };
+  
   public Board() {
     mSquares = new int[DIM * DIM];  // initialized to zero
+    mCapturedBlackList = new ArrayList<CapturedPiece>();
+    mCapturedWhiteList = new ArrayList<CapturedPiece>();
   }
 
   public Board(Board src) {
     mSquares = Arrays.copyOf(src.mSquares, src.mSquares.length);
     mCapturedBlack = src.mCapturedBlack;
     mCapturedWhite = src.mCapturedWhite;
+    mCapturedBlackList = new ArrayList<CapturedPiece>(src.mCapturedBlack);
+    mCapturedWhiteList = new ArrayList<CapturedPiece>(src.mCapturedWhite);
   }
 
+  // getPiece and setPiece will set the piece at coordinate <x, y>. The upper left 
+  // corner is <0, 0>. A piece belonging to Player.BLACK will have a positive value of 
+  // one of Piece.* (e.g., Piece.FU). A piece belonging to Player.WHITE will have a negative value.
+  // (e.g., -Piece.FU).
   public final void setPiece(int x, int y, int piece) {
     mSquares[x + y * DIM] = piece;
   }
@@ -73,8 +41,73 @@ public class Board implements java.io.Serializable {
   public final int getPiece(int x, int y) {
     return mSquares[x + y * DIM];
   }
+
+  // Given a piece returned by getPiece(), return its type, e.g., Piece.FU, etc.
+  public static final int type(int piece) { 
+    return (piece < 0 ? -piece: piece); 
+  }
+
+  // Given a piece returned by getPieces(), return the player that owns it.
+  public static final Player player(int piece) { 
+    if (piece > 0) return Player.BLACK;
+    if (piece == 0) return Player.INVALID;
+    return Player.WHITE;
+  }
+
+  // Given a value returned by getPiece(), see if the piece is promoted.
+  public static final boolean isPromoted(int piece) {
+    return type(piece) >= 9;
+  }
+
+  public static final int promote(int piece) {
+    Assert.isFalse(isPromoted(piece));
+    if (piece < 0) {
+      return piece - 8;
+    } else {
+      return piece + 8;
+    }
+  }
   
-  public static class MoveDelta {
+  public static final int unpromote(int piece) {
+    Assert.isTrue(isPromoted(piece));
+    if (piece < 0) {
+      return piece + 8;
+    } else {
+      return piece - 8;
+    }
+    
+  }
+
+  // Get the list of piece type and its count captured by player p.
+  // Even for Player.WHITE, the values of CapturedPiece.piece are positive. 
+  public final ArrayList<CapturedPiece> getCapturedPieces(Player p) {
+    // Note: The JNI code will set mCapturedBlack and mCapturedWhite.
+    // getCapturedPiece will translate them to a list.
+    if (p == Player.BLACK) {
+      if (mLastReadCapturedBlack != mCapturedBlack) {
+        mLastReadCapturedBlack = mCapturedBlack;
+        mCapturedBlackList = listCapturedPieces(mCapturedBlack);
+      }
+      return mCapturedBlackList;
+    } else if (p == Player.WHITE) {
+      if (mLastReadCapturedWhite != mCapturedWhite) {
+        mLastReadCapturedWhite = mCapturedWhite;
+        mCapturedWhiteList = listCapturedPieces(mCapturedWhite);
+      }
+      return mCapturedWhiteList;
+    } else {
+      throw new AssertionError("Invalid player");
+    }
+  }
+  
+  // Absolute position on a Board.
+  public static class Position {
+    public Position(int tx, int ty) { x = tx; y = ty; }
+    public final int x, y;
+  }
+  
+  // A relative move.
+  private static class MoveDelta {
     public MoveDelta(int x, int y, boolean m) { deltaX = x; deltaY = y; multi = m; }
     
     // horizontal and vertical deltas. The values are for Player.BLACK.
@@ -85,9 +118,47 @@ public class Board implements java.io.Serializable {
     public final boolean multi;
   }
 
-  public static class Position {
-    public Position(int tx, int ty) { x = tx; y = ty; }
-    public final int x, y;
+  public void TEST_setCapturedPieces(Player p, ArrayList<Board.CapturedPiece> pieces) {
+    if (p == Player.BLACK) {
+      mCapturedBlackList = pieces;
+      mCapturedBlack = mLastReadCapturedBlack = 0;
+    } else {
+      mCapturedWhiteList = pieces;
+      mCapturedWhite = mLastReadCapturedWhite = 0;
+    }
+  }
+  
+  private static final ArrayList<CapturedPiece> listCapturedPieces(int bits) {
+    ArrayList<CapturedPiece> pieces = new ArrayList<CapturedPiece>();
+    int n = Board.numCapturedFu(bits);
+    if (n > 0) {
+      pieces.add(new CapturedPiece(Piece.FU, n));
+    }
+    n = Board.numCapturedKyo(bits);
+    if (n > 0) {
+      pieces.add(new CapturedPiece(Piece.KYO, n));
+    }
+    n = Board.numCapturedKei(bits);
+    if (n > 0) {
+      pieces.add(new CapturedPiece(Piece.KEI, n));
+    }
+    n = Board.numCapturedGin(bits);
+    if (n > 0) {
+      pieces.add(new CapturedPiece(Piece.GIN, n));
+    }
+    n = Board.numCapturedKin(bits);
+    if (n > 0) {
+      pieces.add(new CapturedPiece(Piece.KIN, n));
+    }
+    n = Board.numCapturedKaku(bits);
+    if (n > 0) {
+      pieces.add(new CapturedPiece(Piece.KAKU, n));
+    }
+    n = Board.numCapturedHi(bits);
+    if (n > 0) {
+      pieces.add(new CapturedPiece(Piece.HI, n));
+    }
+    return pieces;
   }
   
   /**
@@ -173,7 +244,7 @@ public class Board implements java.io.Serializable {
   }
 
   
-  public static MoveDelta[] possibleMoves(int piece) {
+  private static MoveDelta[] possibleMoves(int piece) {
     switch (piece) {
     case Piece.FU: return mFuMoves;
     case Piece.KYO: return mKyoMoves;
@@ -256,4 +327,33 @@ public class Board implements java.io.Serializable {
     new MoveDelta(1, 1, false),
   };
   
+  // Helper functions to parse the value of mCapturedBlack or mCapturedWhite.
+  private static final int numCapturedFu(int c) { return c & 0x1f; }
+  private static final int numCapturedKyo(int c) { return (c >> 5) & 7; }
+  private static final int numCapturedKei(int c) { return (c >>  8) & 0x07; }
+  private static final int numCapturedGin(int c) { return (c >> 11) & 0x07; }
+  private static final int numCapturedKin(int c) { return (c >> 14) & 0x07; }
+  private static final int numCapturedKaku(int c) { return (c >> 17) & 3; }
+  private static final int numCapturedHi(int c) { return (c >> 19); }
+
+  // mSquares is a 81-entry array. mSquares[X + 9 * Y] stores the piece at coordinate <X, Y>. 
+  // <0, 0> is at the upper left corner of the board. 
+  // 
+  // The sign of the value describes the owner of the piece. A positive (negative) value means that the piece
+  // is owned by Player.BLACK (Player.WHITE). The absolute value describes the piece type as defined in the Piece class.
+  private int mSquares[];    
+  
+  // The following two fields are set directly by the JNI C code.
+  private int mCapturedBlack;
+  private int mCapturedWhite;
+  
+  // Encode the set of pieces captured by the BLACK player. 
+  private ArrayList<CapturedPiece> mCapturedBlackList;
+  // Encode the set of pieces captured by the WHITE player. 
+  private ArrayList<CapturedPiece> mCapturedWhiteList;
+
+  // the values of mCaptured{Black,White} used when computing the above lists.
+  private int mLastReadCapturedBlack;
+  private int mLastReadCapturedWhite;
+
 }
