@@ -1,7 +1,6 @@
 package com.ysaito.shogi;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 /**
  * Store the state of a Shogi board.
@@ -23,7 +22,7 @@ public class Board implements java.io.Serializable {
   }
 
   public Board(Board src) {
-    mSquares = Arrays.copyOf(src.mSquares, src.mSquares.length);
+    mSquares = src.mSquares.clone();
     mCapturedBlack = src.mCapturedBlack;
     mCapturedWhite = src.mCapturedWhite;
     mCapturedBlackList = new ArrayList<CapturedPiece>(src.mCapturedBlack);

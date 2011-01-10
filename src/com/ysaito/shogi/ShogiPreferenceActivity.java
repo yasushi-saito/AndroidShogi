@@ -2,10 +2,10 @@
 
 package com.ysaito.shogi;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -16,8 +16,6 @@ import android.view.MenuItem;
  * Preference activity
  */
 public class ShogiPreferenceActivity extends PreferenceActivity {
-  private static final String TAG = "ShogiPreference";
-  
   @Override public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     addPreferencesFromResource(R.xml.preferences);
@@ -32,9 +30,11 @@ public class ShogiPreferenceActivity extends PreferenceActivity {
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
       case R.id.reset_preferences:
-        Log.d(TAG, "Reset");
         PreferenceManager.getDefaultSharedPreferences(getBaseContext())
           .edit().clear().commit();
+        return true;
+      case R.id.preferences_help_menu_id:
+        startActivity(new Intent(this, HelpActivity.class));
         return true;
       default:    
         return super.onOptionsItemSelected(item);

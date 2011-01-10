@@ -15,8 +15,8 @@ public class HelpActivity extends Activity {
   private final String helpString() {
     StringBuilder b = new StringBuilder();
     b.append("<html><body>");
-    b.append("<h2>Shogi version 1.2</h2>");
-    b.append("Released Jan 3, 2011.");
+    b.append("<h2>Shogi version 1.3</h2>");
+    b.append("Released Jan 9, 2011.");
     b.append("<p>Copyright(c) 2011 Yasushi Saito<br>All rights reserved<br>");
     b.append("This program is distributed under Apache 2.0 license.");
     b.append("<h3>What are Shogi Database files?</h3>");
@@ -24,12 +24,18 @@ public class HelpActivity extends Activity {
     b.append("These files are large (41MB compressed, 200MB uncompressed) and they don't fit in the ");
     b.append("application <tt>.apk</tt> file.");
     b.append("<p>");
-    b.append("If you don't want to download them over air, you can copy them to sdcard manually:<ul>");
+    b.append("If you don't want to download them over air, you can copy them to sdcard manually:");
+    b.append("<ul><li> Download <tt>shogi-data.zip</tt> from ");
+    b.append("<tt>www.ysaito.com/~downloads/shogi-data.zip.</tt>");
+    b.append("Mount the sdcard <tt>shogi-data.zip</tt> to <tt>/mnt/sdcard/Android//mnt/sdcard/Android/data/com.ysaito.shogi/files/shogi-data.zip</tt>");
+    b.append("You may need to create the directory <tt>/mnt/sdcard/Android//mnt/sdcard/Android/data/com.ysaito.shogi/files</tt> first.");
+    b.append("</ul>");
+    b.append("In case <tt>www.ysaito.com</tt> is unavailable, you can download the database files directly from the source:<ul>");
     b.append("<li> Download Bonanza from ");
     appendHref(b, "http://www.computer-shogi.org/library/bonanza_v4.1.3.zip");
     b.append(".");
     b.append("<li> Extract hash.bin, fv.bin, and book.bin from the zip file.");
-    b.append("<li> Mount the phone's sdcard, and copy the files to directory /sdcard/Android/data/com.ysaito.shogi/files");
+    b.append("<li> Mount the phone's sdcard, and copy the files to directory /mnt/sdcard/Android/data/com.ysaito.shogi/files");
     b.append("</ul>");
 
     b.append("<h3>Credits</h3>");

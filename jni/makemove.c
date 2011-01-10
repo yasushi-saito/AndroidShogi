@@ -6,12 +6,12 @@
 #define DropB( PIECE, piece )  Xor( to, BB_B ## PIECE );                    \
                                HASH_KEY    ^= ( b_ ## piece ## _rand )[to]; \
                                HAND_B      -= flag_hand_ ## piece;          \
-                               BOARD[to]  = piece; LOG(to,-piece);
+                               BOARD[to]  = piece; 
 
 #define DropW( PIECE, piece )  Xor( to, BB_W ## PIECE );                    \
                                HASH_KEY    ^= ( w_ ## piece ## _rand )[to]; \
                                HAND_W      -= flag_hand_ ## piece;          \
-                               BOARD[to]  = - piece; LOG(to,-piece);
+                               BOARD[to]  = - piece;
 
 #define CapB( PIECE, piece, pro_piece )                   \
           Xor( to, BB_B ## PIECE );                       \
@@ -31,7 +31,7 @@
           HASH_KEY    ^= ( b_ ## pro_piece ## _rand )[to]     \
                        ^ ( b_ ## piece     ## _rand )[from];  \
           MATERIAL    += MT_PRO_ ## PIECE;                    \
-          BOARD[to] = pro_piece;LOG(to,pro_piece);
+          BOARD[to] = pro_piece;
 
 #define NocapProW( PIECE, PRO_PIECE, piece, pro_piece )       \
           Xor( from, BB_W ## PIECE );                         \
@@ -39,33 +39,19 @@
           HASH_KEY    ^= ( w_ ## pro_piece ## _rand )[to]     \
                        ^ ( w_ ## piece     ## _rand )[from];  \
           MATERIAL    -= MT_PRO_ ## PIECE;                    \
-          BOARD[to]  = - pro_piece;LOG(to,-pro_piece);
+          BOARD[to]  = - pro_piece;
 
 #define NocapNoproB( PIECE, piece )                          \
           SetClear( BB_B ## PIECE );                         \
           HASH_KEY    ^= ( b_ ## piece ## _rand )[to]        \
                        ^ ( b_ ## piece ## _rand )[from];     \
-          BOARD[to] = piece;LOG(to,piece);
+          BOARD[to] = piece;
 
 #define NocapNoproW( PIECE, piece )                          \
           SetClear( BB_W ## PIECE );                         \
           HASH_KEY    ^= ( w_ ## piece ## _rand )[to]        \
                        ^ ( w_ ## piece ## _rand )[from];     \
-          BOARD[to] = - piece;LOG(to,-piece);
-
-static void YYLOG(int to, int piece) {
-  LOG_DEBUG("YYMove: %d %d", to, piece);
-}
-
-static void LOG(int to, int piece) {
-  if (to == 0 && piece==-15) {
-    LOG_DEBUG("CCMove: %d %d", to, piece);
-  }
-  tree_t* ptree = &tree;
-  if (BOARD[0] == -15) {
-    YYLOG(to, piece);
-  }
-}
+          BOARD[to] = - piece;
 
 void
 make_move_b( tree_t * restrict ptree, unsigned int move, int ply )

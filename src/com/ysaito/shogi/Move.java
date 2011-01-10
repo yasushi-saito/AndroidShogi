@@ -116,11 +116,7 @@ public class Move implements java.io.Serializable {
       modifier |= PROMOTE;
       pieceBeforeMove = Board.unpromote(piece);
     }
-    Log.d(TAG, "ToTrad: " + toString());
     ArrayList<Board.Position> others = listOtherMoveSources(board);
-    for (Board.Position p: others) {
-      Log.d(TAG, toString() + ": OtherPos: " + p.x + "/" + p.y);
-    }
     if (others.isEmpty()) {
       ;
     } else if (isDroppingCapturedPiece()) {
@@ -205,12 +201,9 @@ public class Move implements java.io.Serializable {
         // can move to the same spot. 
         if (maybeUnpromote(otherPiece) != maybeUnpromote(piece)) continue;
 
-        Log.d(TAG, toString() + ": OtherPos: " + x + "/" + y);
-        
         // If otherPiece can move to <fromX,  fromY>, then we need disambiguation
         for (Board.Position p : board.possibleMoveDestinations(x, y)) {
           if (p.x == toX && p.y == toY) {
-            Log.d(TAG, toString() + ": OtherPosX: " + p.x + "/" + p.y);            
             list.add(new Board.Position(x, y));
             break;
           }
@@ -222,7 +215,6 @@ public class Move implements java.io.Serializable {
       // The destination is empty now, so we need to check if
       // there's a captured piece that can be dropped to <tox,toy>.
       Player me = Board.player(piece);
-      Log.d(TAG, "Cap: " + me);
       for (Board.CapturedPiece cp: board.getCapturedPieces(me)) {
         boolean dropAllowed = true;
         if (Board.type(cp.piece) == Piece.FU) {

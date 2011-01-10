@@ -5,7 +5,6 @@ package com.ysaito.shogi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.DownloadManager;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -58,7 +57,7 @@ public class StartScreenActivity extends Activity {
     b = (Button)findViewById(R.id.download_button);
     b.setOnClickListener(new Button.OnClickListener() {
       public void onClick(View v) { 
-        if (BonanzaDownloader.hasRequiredFiles(mExternalDir)) {
+        if (Downloader.hasRequiredFiles(mExternalDir)) {
           showDialog(DIALOG_CONFIRM_DOWNLOAD);
         } else {
           startDownload();
@@ -78,7 +77,7 @@ public class StartScreenActivity extends Activity {
   @Override
   public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
-      case R.id.help_menu_id:
+      case R.id.start_screen_help_menu_id:
           help();
           return true;
       default:    
@@ -90,7 +89,7 @@ public class StartScreenActivity extends Activity {
   // Data download
   //
   private ProgressDialog mDownloadDialog;
-  private BonanzaDownloader mDownloadController;
+  private Downloader mDownloadController;
   
   private AlertDialog newConfirmDownloadDialog() {
     AlertDialog.Builder b = new AlertDialog.Builder(this);
@@ -129,16 +128,14 @@ public class StartScreenActivity extends Activity {
   }
   
   private void startDownload() {
-    DownloadManager m = (DownloadManager)getSystemService(DOWNLOAD_SERVICE);
-    mDownloadController = new BonanzaDownloader(
+    mDownloadController = new Downloader(
         mDownloadHandler, 
-        mExternalDir,
-        m);
+        mExternalDir);
     mDownloadController.start(dbSourceUrl());
     showDialog(DIALOG_DOWNLOAD);
   }
   
-  private final BonanzaDownloader.EventListener mDownloadHandler = new BonanzaDownloader.EventListener() {
+  private final Downloader.EventListener mDownloadHandler = new Downloader.EventListener() {
     public void onProgressUpdate(String status) {
       Log.d(TAG, "Recv status: " + status);
       if (mDownloadDialog != null) {
@@ -174,7 +171,7 @@ public class StartScreenActivity extends Activity {
   }
   
   private void newGame() {
-    if (!BonanzaDownloader.hasRequiredFiles(mExternalDir)) {
+    if (!Downloader.hasRequiredFiles(mExternalDir)) {
       Toast.makeText(
           getBaseContext(),
           "Please download the shogi database files first",
@@ -189,7 +186,7 @@ public class StartScreenActivity extends Activity {
   }
   
   private void help() {
-	  startActivity(new Intent(this, HelpActivity.class));
+    startActivity(new Intent(this, HelpActivity.class));
   }
   
   private class BonanzaInitializeThread extends Thread {
@@ -199,7 +196,7 @@ public class StartScreenActivity extends Activity {
   }
   
   private void initializeBonanzaInBackground() {
-    if (!BonanzaDownloader.hasRequiredFiles(mExternalDir)) {
+    if (!Downloader.hasRequiredFiles(mExternalDir)) {
       Toast.makeText(
           getBaseContext(),
           "Please download the shogi database files first",

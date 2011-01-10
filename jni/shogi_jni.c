@@ -270,7 +270,7 @@ static void SetDifficulty(int difficulty,
   } else {
     depth_limit  = PLY_MAX;
   }
-  LOG_DEBUG("Set difficult: #node=%llu #depth=%d total=%ds, per_turn=%ds",
+  LOG_DEBUG("Set difficulty: #node=%llu #depth=%d total=%ds, per_turn=%ds",
             node_limit, depth_limit, sec_limit, sec_limit_up);
 }
 
