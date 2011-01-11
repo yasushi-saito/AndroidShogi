@@ -341,9 +341,9 @@ public class GameActivity extends Activity {
           public void onClick(DialogInterface d, int item) {
             if (item == 0) {
               mSavedMoveForPromotion = new Move(
-                  Board.promote(mSavedMoveForPromotion.piece), 
-                  mSavedMoveForPromotion.fromX, mSavedMoveForPromotion.fromY,
-                  mSavedMoveForPromotion.toX, mSavedMoveForPromotion.toY);
+                  Board.promote(mSavedMoveForPromotion.getPiece()), 
+                  mSavedMoveForPromotion.getFromX(), mSavedMoveForPromotion.getFromY(),
+                  mSavedMoveForPromotion.getToX(), mSavedMoveForPromotion.getToY());
             }
             mController.humanMove(mSavedPlayerForPromotion, mSavedMoveForPromotion);
             mSavedMoveForPromotion = null;
@@ -353,14 +353,14 @@ public class GameActivity extends Activity {
   }
   
   private static final boolean MoveAllowsForPromotion(Player player, Move move) {
-    if (Board.isPromoted(move.piece)) return false;  // already promoted
+    if (Board.isPromoted(move.getPiece())) return false;  // already promoted
     
-    final int type = Board.type(move.piece);
+    final int type = Board.type(move.getPiece());
     if (type == Piece.KIN || type == Piece.OU) return false;
     
-    if (move.fromX < 0) return false;  // dropping a captured piece
-    if (player == Player.WHITE && move.fromY < 6 && move.toY < 6) return false;
-    if (player == Player.BLACK && move.fromY >= 3 && move.toY >= 3) return false;
+    if (move.getFromX() < 0) return false;  // dropping a captured piece
+    if (player == Player.WHITE && move.getFromY() < 6 && move.getToY() < 6) return false;
+    if (player == Player.BLACK && move.getFromY() >= 3 && move.getToY() >= 3) return false;
     return true;
   }
 

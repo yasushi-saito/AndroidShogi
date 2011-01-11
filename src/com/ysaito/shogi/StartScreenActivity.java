@@ -20,6 +20,7 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.File;
+import java.util.ArrayList;
 
 /**
  * @author yasushi.saito@gmail.com 
@@ -42,21 +43,25 @@ public class StartScreenActivity extends Activity {
     setContentView(R.layout.start_screen);
 
     mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-    
     mExternalDir = getExternalFilesDir(null);
+    ArrayList<Button> buttons= new ArrayList<Button>();
+    
     Button b = (Button)findViewById(R.id.new_game_button);
+    buttons.add(b);
     b.setOnClickListener(new Button.OnClickListener() {
       public void onClick(View v) { newGame(); }
     });
 
     b = (Button)findViewById(R.id.settings_button);
+    buttons.add(b);    
     b.setOnClickListener(new Button.OnClickListener() {
       public void onClick(View v) { settings(); }
     });
     
     b = (Button)findViewById(R.id.download_button);
+    buttons.add(b);    
     b.setOnClickListener(new Button.OnClickListener() {
-      public void onClick(View v) { 
+      public void onClick(View v) {
         if (Downloader.hasRequiredFiles(mExternalDir)) {
           showDialog(DIALOG_CONFIRM_DOWNLOAD);
         } else {
@@ -64,7 +69,16 @@ public class StartScreenActivity extends Activity {
         }
        }
     });
-    initializeBonanzaInBackground();
+    
+    if (mExternalDir == null) {
+      Toast.makeText(
+          getBaseContext(),
+          "Please mount the sdcard on the device", 
+          Toast.LENGTH_LONG).show();
+      for (Button t: buttons) t.setEnabled(false);
+    } else {
+      initializeBonanzaInBackground();
+    }
   }
   
   @Override
@@ -134,7 +148,7 @@ public class StartScreenActivity extends Activity {
     mDownloadController.start(dbSourceUrl());
     showDialog(DIALOG_DOWNLOAD);
   }
-  
+
   private final Downloader.EventListener mDownloadHandler = new Downloader.EventListener() {
     public void onProgressUpdate(String status) {
       Log.d(TAG, "Recv status: " + status);

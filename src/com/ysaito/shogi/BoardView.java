@@ -237,7 +237,7 @@ public class BoardView extends View implements View.OnTouchListener {
               ((CapturedPiece)mMoveFrom).piece,
               -1, -1,
               mMoveTo.x, mMoveTo.y);
-          Log.d(TAG, String.format("MOVEMOVE %d", move.piece));
+          Log.d(TAG, String.format("MOVEMOVE %d", move.getPiece()));
         }
         mListener.onHumanMove(mCurrentPlayer, move);
         mCurrentPlayer = Player.INVALID;
