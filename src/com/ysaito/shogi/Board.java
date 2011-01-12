@@ -34,10 +34,18 @@ public class Board implements java.io.Serializable {
   // one of Piece.* (e.g., Piece.FU). A piece belonging to Player.WHITE will have a negative value.
   // (e.g., -Piece.FU).
   public final void setPiece(int x, int y, int piece) {
+    Assert.ge(x, 0);
+    Assert.lt(x, Board.DIM);
+    Assert.ge(y, 0);
+    Assert.lt(y, Board.DIM);
     mSquares[x + y * DIM] = piece;
   }
 
   public final int getPiece(int x, int y) {
+    Assert.ge(x, 0);
+    Assert.lt(x, Board.DIM);
+    Assert.ge(y, 0);
+    Assert.lt(y, Board.DIM);
     return mSquares[x + y * DIM];
   }
 
@@ -74,7 +82,6 @@ public class Board implements java.io.Serializable {
     } else {
       return piece - 8;
     }
-    
   }
 
   // Get the list of piece type and its count captured by player p.
@@ -168,7 +175,7 @@ public class Board implements java.io.Serializable {
    * Generate the list of board positions that a piece at <fromX, fromY> can
    * move to. It takes other pieces on the board into account, but it may
    * still generate illegal moves -- e.g., this method doesn't check for
-   * nifu, sennichite, uchi-fu zume aren't by this method.
+   * sennichite, uchi-fu zume aren't by this method.
    */
   ArrayList<Position> possibleMoveDestinations(int fromX, int fromY) {
     int piece = getPiece(fromX, fromY);
@@ -191,9 +198,7 @@ public class Board implements java.io.Serializable {
       mCurY = cur_y;
     }
 
-    // TODO(saito) disallow double pawn moves.
-    
-    // If the piece can be moved to <cur_x+dx, cur_y+dy>, add it to
+    // If the piece can be moved to <curX+m.deltaX, curY+m.deltaY>, add it to
     // mTargets.
     public final void tryMove(MoveDelta m) {
       mSeenOpponentPiece = false;
@@ -237,8 +242,7 @@ public class Board implements java.io.Serializable {
       return true;
     }
 
-    private final ArrayList<Position> mTargets 
-      = new ArrayList<Position>();
+    private final ArrayList<Position> mTargets = new ArrayList<Position>();
     private final Board mBoard;
     private final Player mPlayer;
     private final int mCurX;
@@ -246,7 +250,6 @@ public class Board implements java.io.Serializable {
     private boolean mSeenOpponentPiece;
   }
 
-  
   private static MoveDelta[] possibleMoves(int piece) {
     switch (piece) {
     case Piece.FU: return mFuMoves;
