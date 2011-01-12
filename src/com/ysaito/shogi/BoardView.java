@@ -101,13 +101,6 @@ public class BoardView extends View implements View.OnTouchListener {
         Board board, Player player, int pieceToDrop) { 
       int px = mLayout.boardX(mSx);
       int py = mLayout.boardY(mSy);
-      if (Board.type(pieceToDrop) == Piece.FU) {
-        // Disallow double pawns
-        for (int y = 0; y < Board.DIM; ++y) {
-          if (y != py && board.getPiece(px, y) == pieceToDrop) return;
-        }
-      }
-      
       for (int i = -1; i <= 1; ++i) {
         for (int j = -1; j <= 1; ++j) {
           int x = px + i;
@@ -115,7 +108,9 @@ public class BoardView extends View implements View.OnTouchListener {
           if (x >= 0 && x < Board.DIM && y >= 0 && y < Board.DIM) {
             int piece = board.getPiece(x, y);
             if (piece == 0) {
-              tryScreenPosition(mLayout.screenX(x), mLayout.screenY(y), x, y, S_PIECE);
+              if (!isDoublePawn(board, pieceToDrop, x, y)) {
+                tryScreenPosition(mLayout.screenX(x), mLayout.screenY(y), x, y, S_PIECE);
+              }
             }
           }
         }
@@ -151,6 +146,15 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
 
+    private static final boolean isDoublePawn(Board board, int pieceToDrop, int px, int py) {
+      if (Board.type(pieceToDrop) == Piece.FU) {
+        for (int y = 0; y < Board.DIM; ++y) {
+          if (y != py && board.getPiece(px, y) == pieceToDrop) return true;
+        }
+      }
+      return false;
+    }
+    
     public final int nearestType() { return mType; }
     public final int nearestX() { return mPx; }
     public final int nearestY() { return mPy; }
