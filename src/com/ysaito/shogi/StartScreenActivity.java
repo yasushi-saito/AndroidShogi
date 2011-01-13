@@ -33,9 +33,6 @@ public class StartScreenActivity extends Activity {
   private File mExternalDir;
   private SharedPreferences mPrefs;
   
-  static {  
-    System.loadLibrary("bonanza-jni");  
-  }
 
   @Override
   public void onCreate(Bundle savedInstanceState) {

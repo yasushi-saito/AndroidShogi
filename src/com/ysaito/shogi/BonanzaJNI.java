@@ -3,6 +3,10 @@ import com.ysaito.shogi.Board;
 
 // JNI interface for Bonanza
 public class BonanzaJNI {
+  static {  
+    System.loadLibrary("bonanza-jni");  
+  }
+  
   // TODO(saito) don't write to games.csa
   
   //

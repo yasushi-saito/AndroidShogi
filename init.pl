@@ -22,7 +22,7 @@ if (!-d "$BONANZA_DIR/bonanza_v4.1.3") {
 }
 
 system("sudo umount $TMP_DIR");
-system("sudo mount -o loop,umask=0 /home/saito/.android/avd/saito_avd.avd/sdcard.img $TMP_DIR");
+system("sudo mount -o loop,umask=0 /home/saito/.android/avd/saito_froyo.avd/sdcard.img $TMP_DIR");
 
 print "mounted\n";
 
