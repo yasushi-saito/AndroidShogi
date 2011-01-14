@@ -358,11 +358,7 @@ public class BoardView extends View implements View.OnTouchListener {
 
   // Position represents a logical position of a piece. It is either a
   // coordinate on the board (PositionOnBoard), or a captured piece (CapturedPiece).
-  private static class Position { 
-    @Override public int hashCode() {
-      throw new AssertionError("hashCode not implemented");
-    }
-  }
+  private static class Position {   }
   
   // Point to a coordinate on the board
   // @invariant (0,0) <= (mX,mY) < (9,9).
@@ -378,14 +374,36 @@ public class BoardView extends View implements View.OnTouchListener {
     public final int x, y;
   }
   
+  @Override public int hashCode() {
+    throw new AssertionError("hashCode not supported");
+  }
+  
   // Point to a captured piece
   private static class CapturedPiece extends Position {
-    public CapturedPiece(int p, int i, float x, float y) {
+    public CapturedPiece(int pos, int p, int i, float x, float y) {
+      position = pos;
       piece = p; 
       n = i;
       sx = x;
       sy = y;
     }
+    
+    @Override public boolean equals(Object o) {
+      if (o instanceof CapturedPiece) {
+        CapturedPiece other = (CapturedPiece)o;
+        return other.position == position &&
+               other.piece == piece &&
+               other.n == n;
+        // Note: sx and sy are derived from other fields, so they need not be compared.
+      }
+      return false;
+    }
+    
+    @Override public int hashCode() {
+      throw new AssertionError("hashCode not supported");
+    }
+    
+    public final int position;  // 0: leftmost piece on the screen, 1: 2nd from the left, etc
     public final int piece;     // Piece type, one of Piece.XX. The value is negative if owned by Player.WHITE.
     public final int n;         // Number of pieces owned of type "piece".
     public final float sx, sy;  // Screen location at which this piece should be drawn.
@@ -531,7 +549,8 @@ public class BoardView extends View implements View.OnTouchListener {
     int seq = 0;
     ArrayList<CapturedPiece> pieces = new ArrayList<CapturedPiece>();
     for (Board.CapturedPiece p: mBoard.getCapturedPieces(player)) {
-      pieces.add(new CapturedPiece(p.piece, p.n, 
+      pieces.add(new CapturedPiece(
+          seq, p.piece, p.n, 
           layout.capturedScreenX(player, seq),
           layout.capturedScreenY(player, seq)));
       ++seq;
@@ -547,8 +566,10 @@ public class BoardView extends View implements View.OnTouchListener {
     ArrayList<CapturedPiece> pieces = listCapturedPieces(layout, player);
     for (int i = 0; i < pieces.size(); ++i) {
       CapturedPiece p = pieces.get(i);
+      int alpha = 255;
+      if (p.equals(mMoveFrom)) alpha = 64; 
       // int piece = (player == Player.BLACK ? p.piece : -p.piece);
-      drawCapturedPiece(canvas, layout, p.piece, p.n, p.sx, p.sy);
+      drawCapturedPiece(canvas, layout, p.piece, p.n, p.sx, p.sy, alpha);
     }
   }
 
@@ -567,8 +588,8 @@ public class BoardView extends View implements View.OnTouchListener {
 
   private final void drawCapturedPiece(Canvas canvas, 
       ScreenLayout layout,
-      int piece, int n, float sx, float sy) {
-    drawPiece(canvas, layout, piece, sx, sy, 255);
+      int piece, int n, float sx, float sy, int alpha) {
+    drawPiece(canvas, layout, piece, sx, sy, alpha);
     if (n > 1) {
       int fontSize = 14;
       Paint p = new Paint();
