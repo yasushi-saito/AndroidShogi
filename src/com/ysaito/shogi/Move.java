@@ -3,6 +3,8 @@
 package com.ysaito.shogi;
 
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.util.Log;
 
@@ -13,7 +15,12 @@ import android.util.Log;
  * Move represents a move by a player
  */
 public class Move implements java.io.Serializable {
-  private final String TAG = "ShogiMove";
+  private static final String TAG = "ShogiMove";
+  
+  // Japanese move display support
+  public static final String japaneseNumbers[] = {
+    null, "一", "二", "三", "四", "五", "六", "七", "八", "九",    
+  };
   
   // The piece to move. 
   //
@@ -84,6 +91,67 @@ public class Move implements java.io.Serializable {
         piece, fromX, fromY, toX, toY);
   }
   
+  
+  private static final Pattern KIF_MOVE_PATTERN = Pattern.compile("([1-9１-９])(.)([^\\(]+)\\((.)(.)\\)$");
+  private static final Pattern KIF_MOVE2_PATTERN = Pattern.compile("同\\s*([^\\(]+)\\((.)(.)\\)$");
+  private static final Pattern KIF_DROP_PATTERN = Pattern.compile("([1-9１-９])(.)(.*)$");
+  // Parse a KIF-format string. It looks like
+  // "８四歩(83)" (move FU at 83 to 84).
+  public static final Move fromKifString(Move prevMove, Player player, String kifMove) throws ParseException {
+    Matcher m = KIF_MOVE_PATTERN.matcher(kifMove);
+    try {
+      if (m.matches()) {
+        return new Move(japaneseToPiece(player, m.group(3)),
+            arabicToXCoord(m.group(4)), arabicToYCoord(m.group(5)),
+            arabicToXCoord(m.group(1)), japaneseToYCoord(m.group(2)));
+      }
+      if (prevMove != null) {
+        m = KIF_MOVE2_PATTERN.matcher(kifMove);
+        if (m.matches()) {
+          return new Move(japaneseToPiece(player, m.group(1)), 
+              arabicToXCoord(m.group(2)), arabicToYCoord(m.group(3)),
+              prevMove.mToX, prevMove.mToY);
+        }
+      }
+      m = KIF_DROP_PATTERN.matcher(kifMove);
+      if (m.matches()) {
+        return new Move(japaneseToPiece(player, m.group(3)), 
+            -1, -1, arabicToXCoord(m.group(1)), japaneseToYCoord(m.group(2)));
+      }
+      throw new ParseException("Failed to parse " + kifMove);
+    } catch (NumberFormatException e) {
+      throw new ParseException("Failed to parse " + kifMove + ": " + e.getMessage()); 
+    }
+  }
+
+  private static int arabicToXCoord(String s) throws NumberFormatException {
+    return 9 - Integer.parseInt(s);
+  }
+
+  private static int arabicToYCoord(String s) throws NumberFormatException {
+    return Integer.parseInt(s) - 1;
+  }
+
+  private static int japaneseToYCoord(String s) throws NumberFormatException {
+    for (int i = 0; i < japaneseNumbers.length; ++i) {
+      if (s.equals(japaneseNumbers[i])) return i - 1;
+    }
+    throw new NumberFormatException(s + ": is not a japanese numeric string");
+  }
+
+  private static int japaneseToPiece(Player player, String s) throws NumberFormatException {
+    final boolean promoted = (s.indexOf("成") >= 0);
+    for (int i = 0; i < Piece.TO; ++i) {
+      final String pieceName = Piece.japaneseNames[i];
+      if (pieceName != null && s.indexOf(pieceName) >= 0) {
+        int piece = i;
+        if (promoted) piece = Board.promote(piece);
+        return (player == Player.BLACK) ? piece : -piece;
+      }
+    }
+    throw new NumberFormatException(s + ": Failed to parse as a japanese Shogi piece name");
+  }
+
   // Modifier bits. Used by TraditionalNotation.modifier.
   
   public static final int DROP = (1 << 0);    // dropping a captured piece

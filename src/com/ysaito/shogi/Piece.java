@@ -29,6 +29,10 @@ public class Piece {
           "TO", "NY", "NK", "NG", null, "UM", "RY"
   };
   
+  public static final String japaneseNames[] = {
+    null, "歩", "香","桂","銀","金","角","飛", "王",
+        "と", "成香", "成桂", "成銀", null, "馬", "龍" };
+  
   public static int fromCsaName(String s) {
     for (int i = 0; i < csaNames.length; ++i) {
       String n = csaNames[i];

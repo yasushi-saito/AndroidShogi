@@ -7,6 +7,7 @@ import java.util.ArrayList;
 
 import com.ysaito.shogi.Board;
 import com.ysaito.shogi.Move;
+import com.ysaito.shogi.ParseException;
 import com.ysaito.shogi.Piece;
 import com.ysaito.shogi.Player;
 
@@ -81,8 +82,9 @@ public class MoveTest extends AndroidTestCase {
     Move m = newMove(Piece.KYO, -1, -1, 7, 8);
     assertEquals(toTraditionalNotation(m, b), "78KY/DROP");
     
-    b = newBoard(-1, -1, Piece.KYO);
+    b = newBoard(-1, -1, Piece.KYO, 7, 9, Piece.KYO);
     m = newMove(Piece.KYO, 7, 9, 7, 8);
+    Log.d(TAG, "BLAHBLAH: " + m.toCsaString());
     assertEquals(toTraditionalNotation(m, b), "78KY/FORWARD");
     
     m = newMove(Piece.NARI_KYO, 7, 9, 7, 1);
@@ -130,7 +132,27 @@ public class MoveTest extends AndroidTestCase {
     m = newMove(Piece.KIN, 3, 3, 2, 2);
     assertEquals(toTraditionalNotation(m, b), "22KI/LEFT/FORWARD");
   }
+
+  public void testKif1() throws ParseException {
+    assertEquals(parseKifString(null, Player.BLACK, "8四歩(83)"), "8384FU");
+    assertEquals(parseKifString(null, Player.BLACK, "８四歩(83)"), "8384FU");    
+    assertEquals(parseKifString(null, Player.BLACK, "8四歩"), "0084FU");
+    assertEquals(parseKifString(null, Player.BLACK, "8四歩打"), "0084FU");
+    assertEquals(parseKifString(null, Player.BLACK, "8一香成(89)"), "8981NY");
+    assertEquals(parseKifString(null, Player.BLACK, "8一金上直(82)"), "8281KI");    
+  }
   
+  public void testKif2() throws ParseException {
+    Move prev = newMove(-Piece.FU, -1, -1, 8, 3);
+    assertEquals(parseKifString(prev, Player.BLACK, "同香(89)"), "8983KY");    
+    assertEquals(parseKifString(prev, Player.BLACK, "同 香(89)"), "8983KY");    
+    assertEquals(parseKifString(prev, Player.BLACK, "同 香成(89)"), "8983NY");    
+  }
+  
+
+  private static String parseKifString(Move prevMove, Player p, String s) throws ParseException {
+    return Move.fromKifString(prevMove, p, s).toCsaString();
+  }
   
   private String toTraditionalNotation(Move m, Board b) {  
     Move.TraditionalNotation n = m.toTraditionalNotation(b);
@@ -145,6 +167,8 @@ public class MoveTest extends AndroidTestCase {
     if ((n.modifier & Move.SIDEWAYS) != 0) s += "/SIDE";
     return s;
   }
+  
+  
   
   // The arg is a variadic list of <x, y, piece>.
   // <x, y> are in traditional coordinate to simplify testing.

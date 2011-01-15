@@ -142,18 +142,10 @@ public class GameStatusView extends LinearLayout {
     }
     Move.TraditionalNotation n = m.toTraditionalNotation(board);
     String s = String.format("%d%s%s%s",
-        n.x, japaneseNumbers[n.y], japanesePieceNames[n.piece],
+        n.x, Move.japaneseNumbers[n.y], Piece.japaneseNames[n.piece],
         modifiersToJapanese(n.modifier));
     return s;
   }
-  
-  // Japanese move display support
-  private static final String japaneseNumbers[] = {
-    null, "一", "二", "三", "四", "五", "六", "七", "八", "九",    
-  };
-  private static final String japanesePieceNames[] = {
-    null, "歩", "香","桂","銀","金","角","飛", "王",
-        "と", "成香", "成桂", "成銀", null, "馬", "龍" };
   
   private static final String modifiersToJapanese(int modifiers) {
     String s = "";
