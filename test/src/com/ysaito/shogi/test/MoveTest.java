@@ -1,6 +1,8 @@
 /**
- * 
+ * @author saito
+ *
  */
+
 package com.ysaito.shogi.test;
 
 import java.util.ArrayList;
@@ -14,10 +16,6 @@ import com.ysaito.shogi.Player;
 import android.test.AndroidTestCase;
 import android.util.Log;
 
-/**
- * @author saito
- *
- */
 public class MoveTest extends AndroidTestCase {
   private static final String TAG = "MoveTest";
   
@@ -167,8 +165,6 @@ public class MoveTest extends AndroidTestCase {
     if ((n.modifier & Move.SIDEWAYS) != 0) s += "/SIDE";
     return s;
   }
-  
-  
   
   // The arg is a variadic list of <x, y, piece>.
   // <x, y> are in traditional coordinate to simplify testing.

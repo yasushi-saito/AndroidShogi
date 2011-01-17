@@ -158,7 +158,7 @@ ini( tree_t * restrict ptree )
   game_status           = 0;
   str_buffer_cmdline[0] = '\0';
   ptrans_table_orig     = NULL;
-  record_game.pf        = NULL;
+  record_game.buf       = NULL;
   node_per_second       = TIME_CHECK_MIN_NODE;
   node_limit            = UINT64_MAX;
   time_response         = TIME_RESPONSE;

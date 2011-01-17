@@ -329,8 +329,14 @@ public class GameActivity extends Activity {
     b.setOnCancelListener(
         new DialogInterface.OnCancelListener() {
           public void onCancel(DialogInterface unused) {
-            setCurrentPlayer(mSavedPlayerForPromotion);
-            mBoardView.update(mGameState, mBoard, mCurrentPlayer);
+            if (mSavedMoveForPromotion == null) {
+              // Event delivered twice?
+            } else {
+              setCurrentPlayer(mSavedPlayerForPromotion);
+              mBoardView.update(mGameState, mBoard, mCurrentPlayer);
+              mSavedMoveForPromotion = null;
+              mSavedPlayerForPromotion = null;
+            }
           }
         });
     b.setItems(
@@ -339,6 +345,11 @@ public class GameActivity extends Activity {
             getResources().getString(R.string.do_not_promote) },
         new DialogInterface.OnClickListener() {
           public void onClick(DialogInterface d, int item) {
+            if (mSavedMoveForPromotion == null) {
+              // A click event delivered twice?
+              return;
+            }
+            
             if (item == 0) {
               mSavedMoveForPromotion = new Move(
                   Board.promote(mSavedMoveForPromotion.getPiece()), 
@@ -347,6 +358,7 @@ public class GameActivity extends Activity {
             }
             mController.humanMove(mSavedPlayerForPromotion, mSavedMoveForPromotion);
             mSavedMoveForPromotion = null;
+            mSavedPlayerForPromotion = null;
           }
         });
     return b.create();

@@ -1,5 +1,7 @@
 package com.ysaito.shogi;
 
+import java.util.HashMap;
+
 /**
  * Shogi piece types. They are stored in Board.mSquares. 
  * 
@@ -32,6 +34,12 @@ public class Piece {
   public static final String japaneseNames[] = {
     null, "歩", "香","桂","銀","金","角","飛", "王",
         "と", "成香", "成桂", "成銀", null, "馬", "龍" };
+  
+  public static final HashMap<String, String> alternateJapaneseNames;
+  static {
+    alternateJapaneseNames = new HashMap<String, String>();
+    alternateJapaneseNames.put("竜", "龍");
+  }
   
   public static int fromCsaName(String s) {
     for (int i = 0; i < csaNames.length; ++i) {

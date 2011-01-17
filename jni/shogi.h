@@ -677,7 +677,10 @@ typedef struct {
   union { char str_move[ MAX_ANSWER ][ 8 ]; } info;
   char str_name1[ SIZE_PLAYERNAME ];
   char str_name2[ SIZE_PLAYERNAME ];
-  FILE *pf;
+  char* buf;
+  char* write_ptr;
+  int buf_size;
+  //  FILE *pf;
   unsigned int games, moves, lines;
 } record_t;
 

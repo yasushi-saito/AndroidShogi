@@ -3,6 +3,8 @@
 package com.ysaito.shogi;
 
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -92,22 +94,26 @@ public class Move implements java.io.Serializable {
   }
   
   
-  private static final Pattern KIF_MOVE_PATTERN = Pattern.compile("([1-9１-９])(.)([^\\(]+)\\((.)(.)\\)$");
-  private static final Pattern KIF_MOVE2_PATTERN = Pattern.compile("同\\s*([^\\(]+)\\((.)(.)\\)$");
-  private static final Pattern KIF_DROP_PATTERN = Pattern.compile("([1-9１-９])(.)(.*)$");
+  //private static final Pattern KIF_MOVE_PATTERN = Pattern.compile("([1-9１-９])([一二三四五六七八九])(.+)\\((.)(.)\\)");
+  private static final Pattern KIF_MOVE_PATTERN = Pattern.compile("([1-9１-９])(.)(.+)\\((.)(.)\\)\\s*");
+  private static final Pattern KIF_MOVE2_PATTERN = Pattern.compile("同[　\\s]*(.+)\\((.)(.)\\)\\s*");
+  private static final Pattern KIF_DROP_PATTERN = Pattern.compile("([1-9１-９])([一二三四五六七八九])(.*)");
   // Parse a KIF-format string. It looks like
   // "８四歩(83)" (move FU at 83 to 84).
   public static final Move fromKifString(Move prevMove, Player player, String kifMove) throws ParseException {
     Matcher m = KIF_MOVE_PATTERN.matcher(kifMove);
     try {
       if (m.matches()) {
+        Log.d(TAG, "TRY DOX " + kifMove);        
         return new Move(japaneseToPiece(player, m.group(3)),
             arabicToXCoord(m.group(4)), arabicToYCoord(m.group(5)),
             arabicToXCoord(m.group(1)), japaneseToYCoord(m.group(2)));
       }
       if (prevMove != null) {
+        Log.d(TAG, "TRY DO2 " + kifMove);        
         m = KIF_MOVE2_PATTERN.matcher(kifMove);
         if (m.matches()) {
+          Log.d(TAG, "Matched DO " + kifMove);
           return new Move(japaneseToPiece(player, m.group(1)), 
               arabicToXCoord(m.group(2)), arabicToYCoord(m.group(3)),
               prevMove.mToX, prevMove.mToY);
@@ -115,8 +121,10 @@ public class Move implements java.io.Serializable {
       }
       m = KIF_DROP_PATTERN.matcher(kifMove);
       if (m.matches()) {
-        return new Move(japaneseToPiece(player, m.group(3)), 
+        Move mm = new Move(japaneseToPiece(player, m.group(3)), 
             -1, -1, arabicToXCoord(m.group(1)), japaneseToYCoord(m.group(2)));
+        Log.d(TAG, "DROP: " + kifMove + "/" + mm.toString());
+        return mm;
       }
       throw new ParseException("Failed to parse " + kifMove);
     } catch (NumberFormatException e) {
@@ -141,11 +149,22 @@ public class Move implements java.io.Serializable {
 
   private static int japaneseToPiece(Player player, String s) throws NumberFormatException {
     final boolean promoted = (s.indexOf("成") >= 0);
-    for (int i = 0; i < Piece.TO; ++i) {
+    for (Map.Entry<String, String> e: Piece.alternateJapaneseNames.entrySet()) {
+      if (e.getKey().equals(s)) {
+        s = e.getValue();
+        break;
+      }
+    }
+    for (int i = 0; i < Piece.japaneseNames.length; ++i) {
       final String pieceName = Piece.japaneseNames[i];
       if (pieceName != null && s.indexOf(pieceName) >= 0) {
         int piece = i;
-        if (promoted) piece = Board.promote(piece);
+        if (promoted) {
+          if (Board.isPromoted(piece)) {
+            throw new NumberFormatException(s + ": already promoted");
+          }
+          piece = Board.promote(piece);
+        }
         return (player == Player.BLACK) ? piece : -piece;
       }
     }
