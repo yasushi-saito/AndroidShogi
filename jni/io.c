@@ -249,7 +249,7 @@ open_history( const char *str_name1, const char *str_name2 )
   iret = record_close( &record_game );
   if ( iret < 0 ) { return -1; }
 
-  strncpy( str_file, "game.csa", SIZE_FILENAME-1 );
+  strncpy( str_file, "/dev/null", SIZE_FILENAME-1 );
   iret = record_open( &record_game, str_file, mode_read_write,
 		      str_name1, str_name2 );
   if ( iret < 0 ) { return -1; }
