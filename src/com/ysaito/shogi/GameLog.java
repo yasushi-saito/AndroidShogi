@@ -17,6 +17,8 @@ public class GameLog {
   
   // Common keys for mAttrs.
   public static final String A_TITLE = "title";
+  public static final String A_LOCATION = "location";
+  public static final String A_TIME_LIMIT = "timelimit";  
   public static final String A_TOURNAMENT = "tourament";
   public static final String A_BLACK_PLAYER = "blackplayer";
   public static final String A_WHITE_PLAYER = "whiteplayer";
@@ -62,13 +64,14 @@ public class GameLog {
     mAttrPatterns = new HashMap<String, Pattern>();
     mAttrPatterns.put(A_TITLE, Pattern.compile("表題[：:](.*)")); 
     mAttrPatterns.put(A_TOURNAMENT, Pattern.compile("棋戦[：:](.*)"));  
+    mAttrPatterns.put(A_TIME_LIMIT, Pattern.compile("持ち時間[：:](.*)"));  
+    mAttrPatterns.put(A_LOCATION, Pattern.compile("場所[：:](.*)"));  
     mAttrPatterns.put(A_HANDICAP, Pattern.compile("手合割[：:](.*)"));    
     mAttrPatterns.put(A_BLACK_PLAYER, Pattern.compile("先手[：:](.*)"));    
     mAttrPatterns.put(A_WHITE_PLAYER, Pattern.compile("後手[：:](.*)"));    
   }
 
   static public GameLog fromKif(InputStream stream) throws ParseException {
-    Log.d(TAG, "Start reading");
     GameLog l = new GameLog();
     Scanner scanner = new Scanner(stream);
     Move prevMove = null;
@@ -93,6 +96,9 @@ public class GameLog {
       if (line.startsWith("手数")) {
         continue;
       }
+      if (line.startsWith("まで")) {
+        continue;
+      }
       matcher = MOVE_PATTERN.matcher(line);
       if (matcher.matches()) {
         String moveString = matcher.group(1);
@@ -104,31 +110,45 @@ public class GameLog {
           prevMove = m;
           curPlayer = Player.opponentOf(curPlayer);
         }
+      } else {
+        Log.e(TAG, line + ": ignoring line");
       }
     }
     return l;
   }
   
-  private static final Pattern JAPANESE_DATE_PATTERN = Pattern.compile("(\\d{4})/(\\d{2})/(\\d{2})\\s*((\\d{2}):(\\d{2}):([\\d.]+))?");
+  // Exposed for unittesting only.
+  public static long TEST_parseDate(String s) throws ParseException {
+    return parseDate(s);
+  }
   
+  private static final Pattern JAPANESE_DATE_PATTERN = Pattern.compile("(\\d{4})/(\\d{1,2})/(\\d{1,2})\\s*(.*)");
+  
+  // Parse Japanese date string found in KIF file. Support format is:
+  //    YYYY/MM/DD [HH[:MM[:SS.SSS]]]
   private static long parseDate(String s) throws ParseException {
-    Matcher matcher = JAPANESE_DATE_PATTERN.matcher(s);
-    if (!matcher.matches()) {
-      throw new ParseException(s + ": failed to parse as date");
-    }
+    Scanner scanner = new Scanner(s);
+    scanner.useDelimiter("[/\\s　]");
+
+    if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse year");
+    final int year = Integer.parseInt(scanner.next());
+    if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse month");
+    final int month = Integer.parseInt(scanner.next());
+    if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse day");
+    final int day = Integer.parseInt(scanner.next());
     
+    int hour = 0;
+    int minute = 0;
+    int sec = 0;
+    
+    scanner.useDelimiter("[:\\s　]");    
+    if (scanner.hasNext()) hour = Integer.parseInt(scanner.next());
+    if (scanner.hasNext()) minute = Integer.parseInt(scanner.next());
+    if (scanner.hasNext()) sec = Integer.parseInt(scanner.next());
+
     // TODO(saito) support multiple timezones
     Calendar c = new GregorianCalendar();
-    Double secD = 0.0;
-    int secI = 0;
-    if (matcher.group(4) == null) {
-      c.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)), Integer.parseInt(matcher.group(3)));
-    } else {
-      secD = Double.parseDouble(matcher.group(6));
-      secI = secD.intValue();
-      c.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)), Integer.parseInt(matcher.group(3)),
-          Integer.parseInt(matcher.group(4)), Integer.parseInt(matcher.group(5)), secI);
-    }
-    return c.getTimeInMillis() + (long)((secD - secI) * 1000);
+    c.set(year, month, day, hour, minute, sec);
+    return c.getTimeInMillis();
   }
 }

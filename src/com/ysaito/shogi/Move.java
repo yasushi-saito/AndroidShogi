@@ -104,16 +104,13 @@ public class Move implements java.io.Serializable {
     Matcher m = KIF_MOVE_PATTERN.matcher(kifMove);
     try {
       if (m.matches()) {
-        Log.d(TAG, "TRY DOX " + kifMove);        
         return new Move(japaneseToPiece(player, m.group(3)),
             arabicToXCoord(m.group(4)), arabicToYCoord(m.group(5)),
             arabicToXCoord(m.group(1)), japaneseToYCoord(m.group(2)));
       }
       if (prevMove != null) {
-        Log.d(TAG, "TRY DO2 " + kifMove);        
         m = KIF_MOVE2_PATTERN.matcher(kifMove);
         if (m.matches()) {
-          Log.d(TAG, "Matched DO " + kifMove);
           return new Move(japaneseToPiece(player, m.group(1)), 
               arabicToXCoord(m.group(2)), arabicToYCoord(m.group(3)),
               prevMove.mToX, prevMove.mToY);
@@ -123,7 +120,6 @@ public class Move implements java.io.Serializable {
       if (m.matches()) {
         Move mm = new Move(japaneseToPiece(player, m.group(3)), 
             -1, -1, arabicToXCoord(m.group(1)), japaneseToYCoord(m.group(2)));
-        Log.d(TAG, "DROP: " + kifMove + "/" + mm.toString());
         return mm;
       }
       throw new ParseException("Failed to parse " + kifMove);
