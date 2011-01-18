@@ -25,6 +25,12 @@
         <activity android:name=".GameActivity"
                   android:label="@string/app_name">
         </activity>
+        <activity android:name=".ReplayGameActivity"
+                  android:label="@string/app_name">
+        </activity>
+        <activity android:name=".PickLogActivity"
+                  android:label="@string/app_name">
+        </activity>
         <activity android:name=".ShogiPreferenceActivity"
                   android:label="@string/app_name">
         </activity>

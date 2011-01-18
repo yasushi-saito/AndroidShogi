@@ -27,19 +27,19 @@ public class GameActivity extends Activity {
 
   private static final int DIALOG_PROMOTE = 1235;
   private static final int DIALOG_CONFIRM_QUIT = 1236;
- 
+
   // Config parameters
   //
   // List of players played by humans. The list size is usually one, when one side is 
   // played by Human and the other side by the computer.
   private ArrayList<Player> mHumanPlayers;
-  
+
   // Number of undos remaining.
   //
   // TODO(saito) This works only when there's only one human player in the game.
   // Make this field per-player attribute.
   private int mUndosRemaining;
-  
+
   // View components
   private AlertDialog mPromoteDialog;
   private BonanzaController mController;
@@ -52,7 +52,7 @@ public class GameActivity extends Activity {
   private int mComputerLevel;      // 0 .. 4
   private String mPlayerTypes;     // "HC", "CH", "HH", "CC"
   private boolean mFlipScreen;
-  
+
   // State of the game
   private Board mBoard;            // current state of the board
   private Player mCurrentPlayer;   // the next player to make a move 
@@ -62,23 +62,23 @@ public class GameActivity extends Activity {
   private long mWhiteThinkTimeMs;  // Cumulative # of think time (millisec)
   private long mWhiteThinkStartMs; // -1, or ms since epoch
   private boolean mDestroyed;      // onDestroy called?
-  
+
   // History of moves made in the game. Even (resp. odd) entries are 
   // moves by the black (resp. white) player.
   private final ArrayList<Move> mMoves = new ArrayList<Move>();
   private final ArrayList<Integer> mMoveCookies = new ArrayList<Integer>();
-  
+
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.game);
     initializeInstanceState(savedInstanceState);
-    
+
     mStatusView = (GameStatusView)findViewById(R.id.gamestatusview);
     mStatusView.initialize(
         playerName(mPlayerTypes.charAt(0), mComputerLevel),
         playerName(mPlayerTypes.charAt(1), mComputerLevel));
-    
+
     mBoardView = (BoardView)findViewById(R.id.boardview);
     mBoardView.initialize(mViewListener, mHumanPlayers, mFlipScreen);
     mController = new BonanzaController(mEventHandler, mHandicap, mComputerLevel);
@@ -89,38 +89,40 @@ public class GameActivity extends Activity {
     // user inputs.
   }
 
-  @Override public boolean onCreateOptionsMenu(Menu menu) {
+  @Override 
+  public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
     inflater.inflate(R.menu.game_menu, menu);
     mMenu = menu;
     updateUndoMenu();
     return true;
   }
-  
-  @Override public void onSaveInstanceState(Bundle bundle) {
-	  saveInstanceState(bundle);
-	  mController.saveInstanceState(bundle);
+
+  @Override 
+  public void onSaveInstanceState(Bundle bundle) {
+    saveInstanceState(bundle);
+    mController.saveInstanceState(bundle);
   }
-  
+
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
-      case R.id.undo:
-        undo();
-        return true;
-      case R.id.flip_screen:
-        mBoardView.flipScreen();
-        return true;
-      default:    
-        return super.onOptionsItemSelected(item);
+    case R.id.undo:
+      undo();
+      return true;
+    case R.id.flip_screen:
+      mBoardView.flipScreen();
+      return true;
+    default:    
+      return super.onOptionsItemSelected(item);
     }
   }
-  
-  
+
+
   private final String playerName(char type, int level) {
     if (type == 'H') return getResources().getString(R.string.human);
     return getResources().getStringArray(R.array.computer_level_names)[level];
   }
-  
+
   @Override public void onDestroy() {
     Log.d(TAG, "ShogiActivity destroyed");
     mController.destroy();
@@ -135,70 +137,69 @@ public class GameActivity extends Activity {
       super.onBackPressed();
     }
   }
-  
+
   @Override protected Dialog onCreateDialog(int id) {
     switch (id) {
-      case DIALOG_PROMOTE: 
-        mPromoteDialog = createPromoteDialog();
-        return mPromoteDialog;
-      case DIALOG_CONFIRM_QUIT:
-        return createConfirmQuitDialog();
-      default:    
-        return null;
+    case DIALOG_PROMOTE: 
+      mPromoteDialog = createPromoteDialog();
+      return mPromoteDialog;
+    case DIALOG_CONFIRM_QUIT:
+      return createConfirmQuitDialog();
+    default:    
+      return null;
     }
   }
 
   private final boolean isComputerPlayer(Player p) { 
     return p != Player.INVALID && !isHumanPlayer(p);
   }
-  
+
   private final boolean isHumanPlayer(Player p) {
     return mHumanPlayers.contains(p);
   }
 
   private final void saveInstanceState(Bundle b) {
-	  b.putLong("shogi_undos_remaining", mUndosRemaining);
-	  b.putLong("shogi_black_think_time_ms", mBlackThinkTimeMs);
-	  b.putLong("shogi_white_think_time_ms", mWhiteThinkTimeMs);	  
-	  b.putLong("shogi_black_think_start_ms", mBlackThinkStartMs);	  	  
-	  b.putLong("shogi_white_think_start_ms", mWhiteThinkStartMs);	  
+    b.putLong("shogi_undos_remaining", mUndosRemaining);
+    b.putLong("shogi_black_think_time_ms", mBlackThinkTimeMs);
+    b.putLong("shogi_white_think_time_ms", mWhiteThinkTimeMs);	  
+    b.putLong("shogi_black_think_start_ms", mBlackThinkStartMs);	  	  
+    b.putLong("shogi_white_think_start_ms", mWhiteThinkStartMs);	  
   }
   private final void initializeInstanceState(Bundle b) {
-	  SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
-			  getBaseContext());
-	  mUndosRemaining = (int)initializeLong(b, "shogi_undos_remaining", prefs, "max_undos", 0);
-	  mBlackThinkTimeMs = initializeLong(b, "shogi_black_think_time_ms", null, null, 0);
-	  mWhiteThinkTimeMs = initializeLong(b, "shogi_white_think_time_ms", null, null, 0);	  
-	  mBlackThinkStartMs = initializeLong(b, "shogi_black_think_start_ms", null, null, 0);
-	  mWhiteThinkStartMs = initializeLong(b, "shogi_white_think_start_ms", null, null, 0);
-	  
-	  mFlipScreen = prefs.getBoolean("flip_screen", false);
-	  mPlayerTypes = prefs.getString("player_types", "HC");
-	  Log.d(TAG, "onCreate " + mPlayerTypes);
-	  mHumanPlayers = new ArrayList<Player>();
-	  if (mPlayerTypes.charAt(0) == 'H') {
-		  mHumanPlayers.add(Player.BLACK);
-	  }
-	  if (mPlayerTypes.charAt(1) == 'H') {
-		  mHumanPlayers.add(Player.WHITE);      
-	  }
-	  mComputerLevel = Integer.parseInt(prefs.getString("computer_difficulty", "1"));
-	  mHandicap = Integer.parseInt(prefs.getString("handicap", "0"));
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
+        getBaseContext());
+    mUndosRemaining = (int)initializeLong(b, "shogi_undos_remaining", prefs, "max_undos", 0);
+    mBlackThinkTimeMs = initializeLong(b, "shogi_black_think_time_ms", null, null, 0);
+    mWhiteThinkTimeMs = initializeLong(b, "shogi_white_think_time_ms", null, null, 0);	  
+    mBlackThinkStartMs = initializeLong(b, "shogi_black_think_start_ms", null, null, 0);
+    mWhiteThinkStartMs = initializeLong(b, "shogi_white_think_start_ms", null, null, 0);
+
+    mFlipScreen = prefs.getBoolean("flip_screen", false);
+    mPlayerTypes = prefs.getString("player_types", "HC");
+    mHumanPlayers = new ArrayList<Player>();
+    if (mPlayerTypes.charAt(0) == 'H') {
+      mHumanPlayers.add(Player.BLACK);
+    }
+    if (mPlayerTypes.charAt(1) == 'H') {
+      mHumanPlayers.add(Player.WHITE);      
+    }
+    mComputerLevel = Integer.parseInt(prefs.getString("computer_difficulty", "1"));
+    mHandicap = Integer.parseInt(prefs.getString("handicap", "0"));
   }
-  
+
   private final long initializeLong(Bundle b, String bundle_key, SharedPreferences prefs, String pref_key, long dflt) {
-	  long v = dflt;
-	  if (b != null) {
-		  v = b.getLong(bundle_key, dflt);
-		  if (v != dflt) return v;
-	  }
-	  if (prefs != null) {
-		  return Integer.parseInt(prefs.getString(pref_key, String.valueOf(dflt)));
-	  } else {
-		  return v;
-	  }
+    long v = dflt;
+    if (b != null) {
+      v = b.getLong(bundle_key, dflt);
+      if (v != dflt) return v;
+    }
+    if (prefs != null) {
+      return Integer.parseInt(prefs.getString(pref_key, String.valueOf(dflt)));
+    } else {
+      return v;
+    }
   }
-  
+
   // 
   // Periodic status update
   //
@@ -225,14 +226,14 @@ public class GameActivity extends Activity {
     if (mCurrentPlayer == Player.WHITE && mWhiteThinkStartMs > 0) {
       mWhiteThinkTimeMs += (now - mWhiteThinkStartMs);
     }
-    
+
     // Switch the player, and start its timer.
     mCurrentPlayer = p;
     mBlackThinkStartMs = mWhiteThinkStartMs = 0;
     if (mCurrentPlayer == Player.BLACK) mBlackThinkStartMs = now;
     else if (mCurrentPlayer == Player.WHITE) mWhiteThinkStartMs = now;
   }
-  
+
   private final void schedulePeriodicTimer() {
     mEventHandler.postDelayed(mTimerHandler, 1000);
   }
@@ -267,7 +268,7 @@ public class GameActivity extends Activity {
           new Integer(mUndosRemaining)));
     }
   }  
-  
+
   //
   // Handling results from the Bonanza controller thread
   //
@@ -285,14 +286,14 @@ public class GameActivity extends Activity {
         mMoves.remove(mMoves.size() - 1);
         mMoveCookies.remove(mMoveCookies.size() - 1);
       }
-      
+
       mBoardView.update(r.gameState, r.board, r.nextPlayer);
       mStatusView.update(r.gameState,
           // Note: statusview needs the board state before the move
           // to compute the traditional move notation.
           mBoard,
           mMoves, r.nextPlayer, r.errorMessage);
-      
+
       mGameState = r.gameState;
       mBoard = r.board;
       if (isComputerPlayer(r.nextPlayer)) {
@@ -300,15 +301,15 @@ public class GameActivity extends Activity {
       }
     }
   };
-  
+
   //
   // Handling of move requests from BoardView
   //
-  
+
   // state kept during the run of promotion dialog
   private Player mSavedPlayerForPromotion;
   private Move mSavedMoveForPromotion;    
-  
+
   private final BoardView.EventListener mViewListener = new BoardView.EventListener() {
     public void onHumanMove(Player player, Move move) {
       setCurrentPlayer(Player.INVALID);  
@@ -321,7 +322,7 @@ public class GameActivity extends Activity {
       }
     }
   };
-  
+
   private final AlertDialog createPromoteDialog() {
     AlertDialog.Builder b = new AlertDialog.Builder(this);
     b.setTitle(R.string.promote_piece);
@@ -343,13 +344,13 @@ public class GameActivity extends Activity {
         new CharSequence[] {
             getResources().getString(R.string.promote), 
             getResources().getString(R.string.do_not_promote) },
-        new DialogInterface.OnClickListener() {
+            new DialogInterface.OnClickListener() {
           public void onClick(DialogInterface d, int item) {
             if (mSavedMoveForPromotion == null) {
               // A click event delivered twice?
               return;
             }
-            
+
             if (item == 0) {
               mSavedMoveForPromotion = new Move(
                   Board.promote(mSavedMoveForPromotion.getPiece()), 
@@ -363,13 +364,13 @@ public class GameActivity extends Activity {
         });
     return b.create();
   }
-  
+
   private static final boolean MoveAllowsForPromotion(Player player, Move move) {
     if (Board.isPromoted(move.getPiece())) return false;  // already promoted
-    
+
     final int type = Board.type(move.getPiece());
     if (type == Piece.KIN || type == Piece.OU) return false;
-    
+
     if (move.getFromX() < 0) return false;  // dropping a captured piece
     if (player == Player.WHITE && move.getFromY() < 6 && move.getToY() < 6) return false;
     if (player == Player.BLACK && move.getFromY() >= 3 && move.getToY() >= 3) return false;

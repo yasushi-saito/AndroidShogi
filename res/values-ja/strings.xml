@@ -23,5 +23,6 @@
     <string name="undos_remaining">待った(残り%d回)</string>
     <string name="max_undos">待った</string>
     <string name="piece_style">駒の種類</string>
+    <string name="pick_log">棋譜再生</string>
     <string name="handicap">駒落ち</string>
 </resources>

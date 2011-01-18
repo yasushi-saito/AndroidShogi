@@ -2,6 +2,7 @@ package com.ysaito.shogi.test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
@@ -15,11 +16,18 @@ import android.util.Log;
 
 public class GameLogTest extends InstrumentationTestCase {
   static final String TAG = "MoveLogTest";
-  private GameLog openFile(int id) throws ParseException, IOException {
-    Context context = getInstrumentation().getContext();
-    Resources resources = context.getResources();
+  private GameLog openKifFile(int id) throws ParseException, IOException {
+    Resources resources = getInstrumentation().getContext().getResources();
+    InputStreamReader in = new InputStreamReader(resources.openRawResource(id));
+    GameLog log = GameLog.fromKifStream(in);
+    in.close();
+    return log;
+  }
+  
+  private GameLog openHtmlFile(int id) throws ParseException, IOException {
+    Resources resources = getInstrumentation().getContext().getResources();
     InputStream in = resources.openRawResource(id);
-    GameLog log = GameLog.fromKif(in);
+    GameLog log = GameLog.fromKifHtml(in);
     in.close();
     return log;
   }
@@ -44,7 +52,7 @@ public class GameLogTest extends InstrumentationTestCase {
   
   public void testLoad() throws ParseException, IOException {
     Log.d(TAG, "StartTestLoad3");
-    GameLog log = openFile(R.raw.kifu2);
+    GameLog log = openKifFile(R.raw.kifu2);
     assertEquals(log.getAttr(GameLog.A_TITLE), "第60回NHK杯3回戦第6局");
     assertEquals(log.getAttr(GameLog.A_BLACK_PLAYER), "佐藤康光");
     assertEquals(log.getAttr(GameLog.A_WHITE_PLAYER), "久保利明");
@@ -56,10 +64,17 @@ public class GameLogTest extends InstrumentationTestCase {
  }
   
   public void testLoad3() throws ParseException, IOException {
-    GameLog log = openFile(R.raw.kifu3);
+    GameLog log = openKifFile(R.raw.kifu3);
   }
   
   public void testLoad4() throws ParseException, IOException {
-    GameLog log = openFile(R.raw.kifu4);
+    GameLog log = openKifFile(R.raw.kifu4);
+  }
+  
+  public void testHtml() throws ParseException, IOException {
+    GameLog log = openHtmlFile(R.raw.download1);
+    assertEquals(log.getAttr(GameLog.A_WHITE_PLAYER), "早川俊");
+    assertEquals(log.getMove(125).toCsaString(), "0085KY");
+    assertEquals(log.numMoves(), 134);
   }
 }

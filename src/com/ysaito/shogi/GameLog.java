@@ -1,6 +1,13 @@
 package com.ysaito.shogi;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.Serializable;
+import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
@@ -12,7 +19,7 @@ import java.util.regex.Pattern;
 
 import android.util.Log;
 
-public class GameLog {
+public class GameLog implements Serializable {
   public static final String TAG = "GameLog";
   
   // Common keys for mAttrs.
@@ -71,7 +78,55 @@ public class GameLog {
     mAttrPatterns.put(A_WHITE_PLAYER, Pattern.compile("後手[：:](.*)"));    
   }
 
-  static public GameLog fromKif(InputStream stream) throws ParseException {
+  private static final Pattern HTML_KIF_START_PATTERN = Pattern.compile(".*>(開始日時|棋戦|場所)[:：].*");
+  private static final Pattern HTML_KIF_END_PATTERN = Pattern.compile("([^<]*)<.*");
+
+  // Parse an embedded KIF file downloaded from http://wiki.optus.nu/.
+  // Such a file can be created by saving a "テキスト表示" link directly to a file.
+  //
+  // This method assumes that the file is encoded in EUC-JP.
+  public static GameLog fromKifHtml(InputStream stream) throws ParseException {
+    Reader in = null;
+    try {
+      in = new InputStreamReader(stream, "EUC_JP");
+    } catch (UnsupportedEncodingException e1) {
+      Log.e(TAG, "Failed to parse file (unsupported encoding): " + e1.getMessage());
+      return null;
+    }
+    try {
+      BufferedReader reader = new BufferedReader(in);
+      String line;
+      StringBuilder output = new StringBuilder();
+      boolean kifFound = false;
+      while ((line = reader.readLine()) != null && !kifFound) {
+        Matcher m = HTML_KIF_START_PATTERN.matcher(line);
+        if (m.matches()) {
+          output.append(m.group(1));
+          output.append('\n');
+          while ((line = reader.readLine()) != null) {
+            m = HTML_KIF_END_PATTERN.matcher(line);
+            if (m.matches()) {
+              output.append(m.group(1));
+              output.append('\n');
+              kifFound = true;
+              break;
+            } else {
+              output.append(line);
+              output.append('\n');
+            }
+          }
+          break;
+        }
+      }
+      if (!kifFound) return null;
+      return fromKifStream(new StringReader(output.toString()));
+    } catch (IOException e2) {
+      Log.e(TAG, "Failed to parse file: " + e2.getMessage());      
+      return null;
+    }
+  }
+  
+  public static GameLog fromKifStream(Readable stream) throws ParseException {
     GameLog l = new GameLog();
     Scanner scanner = new Scanner(stream);
     Move prevMove = null;
@@ -121,8 +176,6 @@ public class GameLog {
   public static long TEST_parseDate(String s) throws ParseException {
     return parseDate(s);
   }
-  
-  private static final Pattern JAPANESE_DATE_PATTERN = Pattern.compile("(\\d{4})/(\\d{1,2})/(\\d{1,2})\\s*(.*)");
   
   // Parse Japanese date string found in KIF file. Support format is:
   //    YYYY/MM/DD [HH[:MM[:SS.SSS]]]

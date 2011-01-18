@@ -2,7 +2,6 @@ package com.ysaito.shogi;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -15,8 +14,6 @@ import java.util.Locale;
  * last moves.
  */
 public class GameStatusView extends LinearLayout {
-  private final String TAG = "ShogiStatus";
-  
   class Timer {
     public Timer(TextView v) { mView = v; mLastThinkTimeSeconds = -1; }
     public void update(long thinkTimeMs) {

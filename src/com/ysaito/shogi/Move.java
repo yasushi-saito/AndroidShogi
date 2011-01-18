@@ -4,7 +4,6 @@ package com.ysaito.shogi;
 
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

@@ -23,6 +23,7 @@
     <string name="undos_remaining">Undo (%d remaining)</string>
     <string name="max_undos">Allow Undo</string>
     <string name="piece_style">Piece Style</string>
+    <string name="pick_log">Replay saved game</string>
     <string name="handicap">Handicap</string>
     <string name="default_download_source_url">http://www.ysaito.com/downloads/shogi-data.zip</string>
 </resources>

@@ -48,6 +48,12 @@ public class StartScreenActivity extends Activity {
     b.setOnClickListener(new Button.OnClickListener() {
       public void onClick(View v) { newGame(); }
     });
+    
+    b = (Button)findViewById(R.id.pick_log_button);
+    buttons.add(b);
+    b.setOnClickListener(new Button.OnClickListener() {
+      public void onClick(View v) { pickLog(); }
+    });
 
     b = (Button)findViewById(R.id.settings_button);
     buttons.add(b);    
@@ -190,6 +196,10 @@ public class StartScreenActivity extends Activity {
     } else {
       startActivity(new Intent(this, GameActivity.class));
     }
+  }
+
+  private void pickLog() {
+    startActivity(new Intent(this, PickLogActivity.class));
   }
   
   private void settings() {
