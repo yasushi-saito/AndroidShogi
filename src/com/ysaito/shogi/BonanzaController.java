@@ -1,7 +1,5 @@
 package com.ysaito.shogi;
 
-import java.util.ArrayList;
-
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -49,9 +47,9 @@ public class BonanzaController {
             doStart(msg.getData().getInt("resume_instance_id"));
             break;
           case C_HUMAN_MOVE:
-            doHumanMoves(
+            doHumanMove(
                 (Player)msg.getData().get("player"),
-                (ArrayList<Move>)msg.getData().get("moves"));
+                (Move)msg.getData().get("move"));
             break;  
           case C_COMPUTER_MOVE:
             doComputerMove((Player)msg.getData().get("player"));
@@ -151,26 +149,21 @@ public class BonanzaController {
     //
     // Possible combinations of values are:
     //
-    // 1. all the values are empty or 0. This happens when the last
+    // 1. all the values are null or 0. This happens when the last
     //    operation resulted in an error.
     //
-    // 2. move != null && cookies != null && move.size()==cookies.size() && undos == 0.
+    // 2. lastMove!=null && lastMoveCookie > 0 && undoMoves == 0.
     //    this happens after successful completion of humanMove or 
-    //    computerMove. 
+    //    computerMove.
     //
-    // 3. move==null && cookies==null && undos > 0
-    //    this happens after successful completion of undo1 or undo2.
-    //
-    // INVARIANT: (moves==null) <=> (cookies==null)
-    // INVARIANT: (moves!=null) => (cookies != null) && moves.size()==cookies.size()
-    public ArrayList<Move> moves;       // the move made by the request.
-    public ArrayList<Integer> cookies;  // cookie for lastMove. for future undos.
-    public int undos;       // number of moves to be rolled back
+    // 3. lastMove==null && lastMoveCookie == 0 && undoMoves > 0
+    //    this happens after successful completion of undo1 or undo2. 
+    public Move lastMove;       // the move made by the request.
+    public int lastMoveCookie;  // cookie for lastMove. for future undos.
+    public int undoMoves;       // number of moves to be rolled back
     
-    // The player that should play the next turn. 
-    // 
-    // INVARIANT: (gameState == ACTIVE) => nextPlayer==Player.INVALID 
-    // INVARIANT: (gameState != ACTIVE) => nextPlayer!=Player.INVALID     
+    // The player that should play the next turn. May be Player.INVALID when the
+    // the gameState != ACTIVE.
     public Player nextPlayer; 
     
     public GameState gameState;
@@ -185,29 +178,24 @@ public class BonanzaController {
     }
     
     static public Result fromJNI(
-        ArrayList<BonanzaJNI.Result> results,
+        BonanzaJNI.Result jr,
         Player curPlayer) {
       Result r = new Result();
-      r.moves = new ArrayList<Move>();
-      r.cookies = new ArrayList<Integer>();
-      for (int i = 0; i < results.size(); ++i) {
-        BonanzaJNI.Result jr = results.get(i);
-        r.board = jr.board;
-        if (jr.move != null) {
-          r.moves.add(Move.fromCsaString(jr.move));
-          r.cookies.add(jr.moveCookie);
-        }
-        r.errorMessage = jr.error;
-        if (jr.status >= 0) {
-          r.nextPlayer = Player.opponentOf(curPlayer);
-          r.gameState = GameState.ACTIVE;
-        } else {
-          // An error happened. 
-          Assert.isTrue(i == results.size() - 1);  // jr should be the last element
-          switch (jr.status) {
+      r.board = jr.board;
+      r.lastMove = (jr.move != null) ? Move.fromCsaString(jr.move) : null;
+      r.lastMoveCookie = jr.moveCookie;
+      r.errorMessage = jr.error;
+      
+      if (jr.status >= 0) {
+        r.nextPlayer = Player.opponentOf(curPlayer);
+        r.gameState = GameState.ACTIVE;
+      } else {
+        switch (jr.status) {
           case BonanzaJNI.R_ILLEGAL_MOVE:
             r.nextPlayer = curPlayer;
             r.gameState = GameState.ACTIVE;
+            r.lastMove = null;
+            r.lastMoveCookie = -1;
             break;
           case BonanzaJNI.R_CHECKMATE:
             r.nextPlayer = Player.INVALID;
@@ -228,7 +216,6 @@ public class BonanzaController {
             break;
           default:
             throw new AssertionError("Illegal jni_status: " + jr.status);
-          }
         }
       }
       return r;
@@ -248,11 +235,7 @@ public class BonanzaController {
     Bundle b = new Bundle();
     b.putInt("command", command);
     if (resumeInstanceId != 0) b.putInt("resume_instance_id", resumeInstanceId);
-    if (move != null) {
-      ArrayList<Move> moves = new ArrayList<Move>(1);
-      moves.add(move);
-      b.putSerializable("moves",  moves);
-    }
+    if (move != null) b.putSerializable("move",  move);
     if (curPlayer != null) b.putSerializable("player", curPlayer);
     if (cookie1 >= 0) b.putInt("cookie1", cookie1);
     if (cookie2 >= 0) b.putInt("cookie2", cookie2);    
@@ -282,22 +265,15 @@ public class BonanzaController {
     sendOutputMessage(r);
   }
 
-  private final void doHumanMoves(Player player, ArrayList<Move> moves) {
-    ArrayList<BonanzaJNI.Result> results = new ArrayList<BonanzaJNI.Result>();
-    for (int i = 0; i < moves.size(); ++i) {
-      BonanzaJNI.Result jr = new BonanzaJNI.Result();
-      BonanzaJNI.humanMove(mInstanceId, moves.get(i).toCsaString(), jr);
-      if (jr.status == BonanzaJNI.R_INSTANCE_DELETED) {
-        Log.d(TAG, "Instance deleted");
-        mThread.quit();
-        return;
-      }
-      results.add(jr);
-      if (jr.status < 0) {
-        break;    // Error, or end of game
-      }
+  private final void doHumanMove(Player player, Move move) {
+    BonanzaJNI.Result jr = new BonanzaJNI.Result();
+    BonanzaJNI.humanMove(mInstanceId, move.toCsaString(), jr);
+    if (jr.status == BonanzaJNI.R_INSTANCE_DELETED) {
+      Log.d(TAG, "Instance deleted");
+      mThread.quit();
+      return;
     }
-    sendOutputMessage(Result.fromJNI(results, player));
+    sendOutputMessage(Result.fromJNI(jr, player));
   }
 
   private final void doComputerMove(Player player) {
@@ -308,9 +284,7 @@ public class BonanzaController {
       mThread.quit();
       return;
     }
-    ArrayList<BonanzaJNI.Result> results = new ArrayList<BonanzaJNI.Result>();
-    results.add(jr);
-    sendOutputMessage(Result.fromJNI(results, player));
+    sendOutputMessage(Result.fromJNI(jr, player));
   }
 
   private final void doUndo(Player player, int cookie1, int cookie2) {
@@ -323,18 +297,12 @@ public class BonanzaController {
       return;
     }
     Result r;
-    ArrayList<BonanzaJNI.Result> results = new ArrayList<BonanzaJNI.Result>();
-    results.add(jr);
     if (cookie2 < 0) {
-      r = Result.fromJNI(results, player);
-      r.moves = null;
-      r.cookies = null;
-      r.undos = 1;
+      r = Result.fromJNI(jr, player);
+      r.undoMoves = 1;
     } else {
-      r = Result.fromJNI(results, Player.opponentOf(player));
-      r.moves = null;
-      r.cookies = null;
-      r.undos = 2;
+      r = Result.fromJNI(jr, Player.opponentOf(player));
+      r.undoMoves = 2;
     }
     sendOutputMessage(r);
   }   

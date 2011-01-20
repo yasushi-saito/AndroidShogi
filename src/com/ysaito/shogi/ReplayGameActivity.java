@@ -15,8 +15,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 
-import com.ysaito.shogi.BonanzaController;
-
 /**
  * The main activity that controls game play
  */
@@ -24,7 +22,6 @@ public class ReplayGameActivity extends Activity {
   private static final String TAG = "Replay"; 
 
   // View components
-  private BonanzaController mController;
   private BoardView mBoardView;
   private GameStatusView mStatusView;
   private Menu mMenu;
@@ -60,9 +57,6 @@ public class ReplayGameActivity extends Activity {
     mBoardView.initialize(mViewListener, 
 			  new ArrayList<Player>(),  // don't allow manipulation
 			  mFlipScreen);
-    mController = new BonanzaController(mEventHandler, 0, 0);
-    mController.start(savedInstanceState);
-    
     ImageButton b = (ImageButton)findViewById(R.id.replay_beginning_button);
     b.setOnClickListener(new ImageButton.OnClickListener() {
       public void onClick(View v) { doBeginning(); }
@@ -98,7 +92,6 @@ public class ReplayGameActivity extends Activity {
   @Override 
   public void onSaveInstanceState(Bundle bundle) {
     saveInstanceState(bundle);
-    mController.saveInstanceState(bundle);
   }
 
   @Override public boolean onOptionsItemSelected(MenuItem item) {
@@ -113,7 +106,6 @@ public class ReplayGameActivity extends Activity {
 
   @Override public void onDestroy() {
     Log.d(TAG, "ShogiActivity destroyed");
-    mController.destroy();
     super.onDestroy();
     mDestroyed = true;
   }
@@ -139,36 +131,6 @@ public class ReplayGameActivity extends Activity {
       return v;
     }
   }
-
-  //
-  // Handling results from the Bonanza controller thread
-  //
-  private final Handler mEventHandler = new Handler() {
-    @Override public void handleMessage(Message msg) {
-      BonanzaController.Result r = (BonanzaController.Result)(
-          msg.getData().get("result"));
-      if (r.moves != null) {
-        mMovesDone.addAll(r.moves);
-        mMoveCookies.addAll(r.cookies);
-      }
-      mCurrentPlayer = r.nextPlayer;
-      for (int i = 0; i < r.undos; ++i) {
-        Assert.isTrue(r.moves == null && r.cookies == null);
-        mMovesDone.remove(mMovesDone.size() - 1);
-        mMoveCookies.remove(mMoveCookies.size() - 1);
-      }
-
-      mBoardView.update(r.gameState, r.board, Player.INVALID);
-      mStatusView.update(r.gameState,
-          // Note: statusview needs the board state before the move
-          // to compute the traditional move notation.
-          mBoard,
-          mMovesDone, r.nextPlayer, r.errorMessage);
-
-      mGameState = r.gameState;
-      mBoard = r.board;
-    }
-  };
 
   private final BoardView.EventListener mViewListener = new BoardView.EventListener() {
     public void onHumanMove(Player player, Move move) {

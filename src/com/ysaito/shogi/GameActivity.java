@@ -276,13 +276,13 @@ public class GameActivity extends Activity {
     @Override public void handleMessage(Message msg) {
       BonanzaController.Result r = (BonanzaController.Result)(
           msg.getData().get("result"));
-      if (r.moves != null) {
-        mMoves.addAll(r.moves);
-        mMoveCookies.addAll(r.cookies);
+      if (r.lastMove != null) {
+        mMoves.add(r.lastMove);
+        mMoveCookies.add(r.lastMoveCookie);
       }
       setCurrentPlayer(r.nextPlayer);
-      for (int i = 0; i < r.undos; ++i) {
-        Assert.isTrue(r.moves== null && r.cookies == null);
+      for (int i = 0; i < r.undoMoves; ++i) {
+        Assert.isTrue(r.lastMove == null);
         mMoves.remove(mMoves.size() - 1);
         mMoveCookies.remove(mMoveCookies.size() - 1);
       }
