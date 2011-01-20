@@ -11,7 +11,7 @@ public enum Player {
   BLACK,
   WHITE;
   
-  public final static Player opponentOf(Player p) {
+  public static final Player opponentOf(Player p) {
     if (p == BLACK) return WHITE;
     if (p == WHITE) return BLACK;
     throw new AssertionError("Invalid player: " + p.toString());

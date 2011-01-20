@@ -29,16 +29,14 @@ public class ReplayGameActivity extends Activity {
 
   // State of the game
   private Board mBoard;            // current state of the board
-  private Player mCurrentPlayer;   // the next player to make a move 
+  private Player mNextPlayer;   // the next player to make a move 
   private GameState mGameState;    // is the game is active or finished?
   private boolean mDestroyed;      // onDestroy called?
 
   private GameLog mLog;
 
-  // History of moves made in the game. Even (resp. odd) entries are 
-  // moves by the black (resp. white) player.
-  private final ArrayList<Move> mMovesDone = new ArrayList<Move>();
-  private final ArrayList<Integer> mMoveCookies = new ArrayList<Integer>();
+  // Number of moves made so far. 0 means the beginning of the game.
+  private int mNextMove;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -46,6 +44,10 @@ public class ReplayGameActivity extends Activity {
     setContentView(R.layout.replay_game);
     initializeInstanceState(savedInstanceState);
 
+    mNextMove = 0;
+    mBoard = Board.newGame(Handicap.NONE);  // TODO
+    mNextPlayer = Player.BLACK;
+    
     mLog = (GameLog)getIntent().getSerializableExtra("gameLog");
     mStatusView = (GameStatusView)findViewById(R.id.replay_gamestatusview);
     mStatusView.initialize(mLog.getAttr(GameLog.A_BLACK_PLAYER),
@@ -71,13 +73,54 @@ public class ReplayGameActivity extends Activity {
     b.setOnClickListener(new ImageButton.OnClickListener() {
       public void onClick(View v) { doLast(); }
     });
-    
+    mBoardView.update(mGameState, mBoard, Player.INVALID);
   }
 
   private void doBeginning() { }
   private void doPrev() { }
-  private void doNext() { }
+  
+  private void doNext() { 
+    if (mNextMove >= mLog.numMoves()) return;
+    Move m = mLog.getMove(mNextMove);
+    ++mNextMove;
+    
+    applyMove(mNextPlayer, m, mBoard);
+    mNextPlayer = Player.opponentOf(mNextPlayer);
+    mBoardView.update(mGameState, mBoard, Player.INVALID);
+  }
   private void doLast() { }
+  
+  /**
+   *  Apply the move "m" by player "p" to the board.
+   */
+  private static final void applyMove(Player p, Move m, Board b) {
+    int oldPiece = Piece.EMPTY;
+    if (m.getFromX() < 0) { // dropping?
+      b.setPiece(m.getToX(), m.getToY(), m.getPiece());
+    } else {
+      b.setPiece(m.getFromX(), m.getFromY(), Piece.EMPTY);
+      oldPiece = b.getPiece(m.getToX(), m.getToY());
+      b.setPiece(m.getToX(), m.getToY(), m.getPiece());
+    }
+    if (oldPiece != Piece.EMPTY) {
+      oldPiece = -oldPiece; // now the piece is owned by the opponent
+      ArrayList<Board.CapturedPiece> captured = b.getCapturedPieces(p);
+      boolean found = false; 
+      for (int i = 0; i < captured.size(); ++i) {
+        Board.CapturedPiece c = captured.get(i);
+        if (c.piece == oldPiece) {
+          Board.CapturedPiece nc = new Board.CapturedPiece(oldPiece, c.n + 1);
+          captured.set(i, nc);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        captured.add(new Board.CapturedPiece(oldPiece, 1));
+      }
+      b.setCapturedPieces(p, captured);
+    }
+  }
   
   @Override 
   public boolean onCreateOptionsMenu(Menu menu) {

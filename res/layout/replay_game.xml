@@ -71,7 +71,7 @@
   />
  <LinearLayout
     android:orientation="horizontal"
-    android:gravity=""
+    android:gravity="center_horizontal"
     android:layout_width="fill_parent"
     android:layout_height="wrap_content">
    <ImageButton android:id="@+id/replay_beginning_button"

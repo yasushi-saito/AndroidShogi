@@ -14,7 +14,7 @@ public class FlippedImageButton extends ImageButton {
   public FlippedImageButton(Context context) {
     super(context);
   }
-  
+
   @Override protected void onDraw(Canvas canvas) {
     float px = getMeasuredWidth() / 2.15f;
     float py = getMeasuredHeight() / 2.15f;

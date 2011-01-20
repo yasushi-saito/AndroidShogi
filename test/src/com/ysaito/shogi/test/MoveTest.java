@@ -184,7 +184,7 @@ public class MoveTest extends AndroidTestCase {
       }
     }
     if (captured.size() > 0) {
-      b.TEST_setCapturedPieces(mPlayer, captured);
+      b.setCapturedPieces(mPlayer, captured);
     }
     return b;
   }

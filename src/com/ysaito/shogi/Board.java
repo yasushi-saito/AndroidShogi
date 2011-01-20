@@ -29,6 +29,31 @@ public class Board implements java.io.Serializable {
     mCapturedWhiteList = new ArrayList<CapturedPiece>(src.mCapturedWhite);
   }
 
+  public final static Board newGame(Handicap h) {
+    Board b = new Board();
+    for (int x = 0; x < Board.DIM; ++x) {
+      b.setPiece(x, 2, -Piece.FU);
+    }
+    b.setPiece(0, 0, -Piece.KYO);
+    b.setPiece(1, 0, -Piece.KEI);    
+    b.setPiece(2, 0, -Piece.GIN);        
+    b.setPiece(3, 0, -Piece.KIN);        
+    b.setPiece(4, 0, -Piece.OU);            
+    b.setPiece(5, 0, -Piece.KIN);            
+    b.setPiece(6, 0, -Piece.GIN);            
+    b.setPiece(7, 0, -Piece.KEI);        
+    b.setPiece(8, 0, -Piece.KYO);
+    b.setPiece(1, 1, -Piece.HI);
+    b.setPiece(7, 1, -Piece.KAKU);
+    
+    for (int x = 0; x < 9; ++x) {
+      for (int y = 0; y < 3; ++y) {
+        b.setPiece(8 - x, 8 - y, -b.getPiece(x, y));
+      }
+    }
+    return b;
+  }
+  
   // getPiece and setPiece will set the piece at coordinate <x, y>. The upper left 
   // corner is <0, 0>. A piece belonging to Player.BLACK will have a positive value of 
   // one of Piece.* (e.g., Piece.FU). A piece belonging to Player.WHITE will have a negative value.
@@ -88,8 +113,8 @@ public class Board implements java.io.Serializable {
   // For Player.WHITE, the values of CapturedPiece.piece will be still
   // positive.
   public final ArrayList<CapturedPiece> getCapturedPieces(Player p) {
-    // Note: The JNI code will set mCapturedBlack and mCapturedWhite.
-    // getCapturedPiece will translate them to a list.
+    // Note: The JNI code will update mCapturedBlack and mCapturedWhite.
+    // Translate them to a list.
     if (p == Player.BLACK) {
       if (mLastReadCapturedBlack != mCapturedBlack) {
         mLastReadCapturedBlack = mCapturedBlack;
@@ -104,6 +129,16 @@ public class Board implements java.io.Serializable {
       return mCapturedWhiteList;
     } else {
       throw new AssertionError("Invalid player");
+    }
+  }
+  
+  public void setCapturedPieces(Player p, ArrayList<Board.CapturedPiece> pieces) {
+    if (p == Player.BLACK) {
+      mCapturedBlackList = (ArrayList<Board.CapturedPiece>)pieces.clone();
+      mCapturedBlack = mLastReadCapturedBlack = 0;
+    } else {
+      mCapturedWhiteList = (ArrayList<Board.CapturedPiece>)pieces.clone();
+      mCapturedWhite = mLastReadCapturedWhite = 0;
     }
   }
   
@@ -125,16 +160,6 @@ public class Board implements java.io.Serializable {
     public final boolean multi;
   }
 
-  public void TEST_setCapturedPieces(Player p, ArrayList<Board.CapturedPiece> pieces) {
-    if (p == Player.BLACK) {
-      mCapturedBlackList = pieces;
-      mCapturedBlack = mLastReadCapturedBlack = 0;
-    } else {
-      mCapturedWhiteList = pieces;
-      mCapturedWhite = mLastReadCapturedWhite = 0;
-    }
-  }
-  
   private static final ArrayList<CapturedPiece> listCapturedPieces(
       Player player, int bits) {
     int sign = (player == Player.BLACK ? 1 : -1);
