@@ -81,10 +81,13 @@ public class BonanzaJNI {
       Result result);
   
   /**
-   *  Inform Bonanza that the human player made a move.
-   *   
+   *  Inform Bonanza that human player(s) made moves. 
+   *  
    * @param move CSA-format string, such as "7776FU".
    * @param result (output)
+   * @return The number of moves executed. The value is usually equal to move.length_,
+   *    but may be smaller whev move contains illegal moves (this method stops at the first
+   *    illegal move found).
    */
   static public native void humanMove(
       int instanceId,

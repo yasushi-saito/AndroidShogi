@@ -12,6 +12,8 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.ImageButton;
 
 import com.ysaito.shogi.BonanzaController;
 
@@ -60,8 +62,31 @@ public class ReplayGameActivity extends Activity {
 			  mFlipScreen);
     mController = new BonanzaController(mEventHandler, 0, 0);
     mController.start(savedInstanceState);
+    
+    ImageButton b = (ImageButton)findViewById(R.id.replay_beginning_button);
+    b.setOnClickListener(new ImageButton.OnClickListener() {
+      public void onClick(View v) { doBeginning(); }
+    });
+    b = (ImageButton)findViewById(R.id.replay_prev_button);
+    b.setOnClickListener(new ImageButton.OnClickListener() {
+      public void onClick(View v) { doPrev(); }
+    });
+    b = (ImageButton)findViewById(R.id.replay_next_button);
+    b.setOnClickListener(new ImageButton.OnClickListener() {
+      public void onClick(View v) { doNext(); }
+    });
+    b = (ImageButton)findViewById(R.id.replay_last_button);
+    b.setOnClickListener(new ImageButton.OnClickListener() {
+      public void onClick(View v) { doLast(); }
+    });
+    
   }
 
+  private void doBeginning() { }
+  private void doPrev() { }
+  private void doNext() { }
+  private void doLast() { }
+  
   @Override 
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
@@ -122,13 +147,13 @@ public class ReplayGameActivity extends Activity {
     @Override public void handleMessage(Message msg) {
       BonanzaController.Result r = (BonanzaController.Result)(
           msg.getData().get("result"));
-      if (r.lastMove != null) {
-        mMovesDone.add(r.lastMove);
-        mMoveCookies.add(r.lastMoveCookie);
+      if (r.moves != null) {
+        mMovesDone.addAll(r.moves);
+        mMoveCookies.addAll(r.cookies);
       }
       mCurrentPlayer = r.nextPlayer;
-      for (int i = 0; i < r.undoMoves; ++i) {
-        Assert.isTrue(r.lastMove == null);
+      for (int i = 0; i < r.undos; ++i) {
+        Assert.isTrue(r.moves == null && r.cookies == null);
         mMovesDone.remove(mMovesDone.size() - 1);
         mMoveCookies.remove(mMoveCookies.size() - 1);
       }

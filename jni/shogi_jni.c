@@ -422,11 +422,12 @@ void Java_com_ysaito_shogi_BonanzaJNI_humanMove(
     return;
   }
 
+  const char* error = NULL;
+  int status = R_OK;
+
   MoveBuf move_str_buf;
   char* move_str = NULL;
   unsigned int move = 0;
-  int status = R_OK;
-  const char* error = NULL;
   int r = ParseCsaMove(env, jmove_str, &move, move_str_buf);
   if (r < 0) {
     LOG_DEBUG("Failed to parse move: %s: %s", move_str, str_error);
@@ -434,9 +435,9 @@ void Java_com_ysaito_shogi_BonanzaJNI_humanMove(
     error = str_error;
   } else {
     r = make_move_root(&tree, move,
-                       (flag_history | flag_time | flag_rep
-                        | flag_detect_hang
-                        | flag_rejections));
+		       (flag_history | flag_time | flag_rep
+			| flag_detect_hang
+			| flag_rejections));
     if (r < 0) {
       LOG_DEBUG("Failed to make move: %s: %s", move_str_buf, str_error);
       move_str = NULL;
@@ -447,7 +448,6 @@ void Java_com_ysaito_shogi_BonanzaJNI_humanMove(
       LOG_DEBUG("Human: %s", move_str_buf);
       move_str = move_str_buf;
       status = GameStatusToReturnCode();
-      error = NULL;
     }
   }
   FillResult("Human", env, status, error, move_str, move, &tree, result);
