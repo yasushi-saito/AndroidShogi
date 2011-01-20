@@ -69,4 +69,25 @@
     android:layout_weight="1"
     android:layout_gravity="top|fill_vertical"
   />
-</LinearLayout>
+ <LinearLayout
+    android:orientation="horizontal"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content">
+   <ImageButton android:id="@+id/replay_beginning_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/ic_media_previous" />
+   <com.ysaito.shogi.FlippedImageButton android:id="@+id/replay_prev_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/ic_media_play" />
+   <ImageButton android:id="@+id/replay_next_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/ic_media_play" />
+   <ImageButton android:id="@+id/replay_last_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/ic_media_next" />
+  </LinearLayout>        
+ </LinearLayout>

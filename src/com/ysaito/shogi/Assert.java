@@ -1,7 +1,7 @@
 package com.ysaito.shogi;
 
 public class Assert {
-  static public final boolean ENABLED = false;
+  static public final boolean ENABLED = true;
   public static void isTrue(boolean v) {
     if (ENABLED && !v) {
       throw new AssertionError("true");
