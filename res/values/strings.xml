@@ -25,5 +25,6 @@
     <string name="piece_style">Piece Style</string>
     <string name="pick_log">Replay saved game</string>
     <string name="handicap">Handicap</string>
+    <string name="resume_play">Resume play</string>
     <string name="default_download_source_url">http://www.ysaito.com/downloads/shogi-data.zip</string>
 </resources>

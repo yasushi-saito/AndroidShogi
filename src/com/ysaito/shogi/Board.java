@@ -2,10 +2,14 @@ package com.ysaito.shogi;
 
 import java.util.ArrayList;
 
+import android.util.Log;
+
 /**
  * Store the state of a Shogi board.
  */
 public class Board implements java.io.Serializable {
+  private static final String TAG = "Board";
+  
   // X and Y dimensions of a board
   public static final int DIM = 9; 
 
@@ -25,33 +29,83 @@ public class Board implements java.io.Serializable {
     mSquares = src.mSquares.clone();
     mCapturedBlack = src.mCapturedBlack;
     mCapturedWhite = src.mCapturedWhite;
-    mCapturedBlackList = new ArrayList<CapturedPiece>(src.mCapturedBlack);
-    mCapturedWhiteList = new ArrayList<CapturedPiece>(src.mCapturedWhite);
+    mLastReadCapturedBlack = src.mLastReadCapturedBlack; 
+    mLastReadCapturedWhite = src.mLastReadCapturedWhite; 
+    
+    mCapturedBlackList = new ArrayList<CapturedPiece>(src.mCapturedBlackList);
+    mCapturedWhiteList = new ArrayList<CapturedPiece>(src.mCapturedWhiteList);
   }
 
-  public final static Board newGame(Handicap h) {
-    Board b = new Board();
-    for (int x = 0; x < Board.DIM; ++x) {
-      b.setPiece(x, 2, -Piece.FU);
+  public final void initialize(Handicap h) {
+    mCapturedBlackList.clear();
+    mCapturedWhiteList.clear();
+    mCapturedBlack = mLastReadCapturedBlack = 0;
+    mCapturedWhite = mLastReadCapturedWhite = 0;
+    
+    for (int y = 0; y < Board.DIM; ++y) {
+      for (int x = 0; x < Board.DIM; ++x) {
+        setPiece(x, y, Piece.EMPTY);
+      }
     }
-    b.setPiece(0, 0, -Piece.KYO);
-    b.setPiece(1, 0, -Piece.KEI);    
-    b.setPiece(2, 0, -Piece.GIN);        
-    b.setPiece(3, 0, -Piece.KIN);        
-    b.setPiece(4, 0, -Piece.OU);            
-    b.setPiece(5, 0, -Piece.KIN);            
-    b.setPiece(6, 0, -Piece.GIN);            
-    b.setPiece(7, 0, -Piece.KEI);        
-    b.setPiece(8, 0, -Piece.KYO);
-    b.setPiece(1, 1, -Piece.HI);
-    b.setPiece(7, 1, -Piece.KAKU);
+    
+    for (int x = 0; x < Board.DIM; ++x) {
+      setPiece(x, 2, -Piece.FU);
+    }
+    setPiece(0, 0, -Piece.KYO);
+    setPiece(1, 0, -Piece.KEI);    
+    setPiece(2, 0, -Piece.GIN);        
+    setPiece(3, 0, -Piece.KIN);        
+    setPiece(4, 0, -Piece.OU);            
+    setPiece(5, 0, -Piece.KIN);            
+    setPiece(6, 0, -Piece.GIN);            
+    setPiece(7, 0, -Piece.KEI);        
+    setPiece(8, 0, -Piece.KYO);
+    setPiece(1, 1, -Piece.HI);
+    setPiece(7, 1, -Piece.KAKU);
     
     for (int x = 0; x < 9; ++x) {
       for (int y = 0; y < 3; ++y) {
-        b.setPiece(8 - x, 8 - y, -b.getPiece(x, y));
+        setPiece(8 - x, 8 - y, -getPiece(x, y));
       }
     }
-    return b;
+
+    switch (h) {
+    case NONE: 
+	break;
+    case KYO: 
+	setPiece(0, 8, Piece.EMPTY); 
+	break;
+    case KAKU: 
+	setPiece(1, 7, Piece.EMPTY); 
+	break;
+    case HI: 
+	setPiece(7, 7, Piece.EMPTY); 
+	break;
+    case HI_KYO: 
+	setPiece(0, 8, Piece.EMPTY); 
+	setPiece(7, 7, Piece.EMPTY); 
+	break;
+    case HI_KAKU: 
+	setPiece(1, 7, Piece.EMPTY); 
+	setPiece(7, 7, Piece.EMPTY); 
+	break;
+    case FOUR: 
+	setPiece(1, 7, Piece.EMPTY); 
+	setPiece(7, 7, Piece.EMPTY); 
+	setPiece(0, 8, Piece.EMPTY); 
+	setPiece(8, 8, Piece.EMPTY); 
+	break;
+    case SIX: 
+	setPiece(1, 7, Piece.EMPTY); 
+	setPiece(7, 7, Piece.EMPTY); 
+	setPiece(0, 8, Piece.EMPTY); 
+	setPiece(1, 8, Piece.EMPTY); 
+	setPiece(7, 8, Piece.EMPTY); 
+	setPiece(8, 8, Piece.EMPTY); 
+	break;
+    default:
+	throw new AssertionError("??? " + h.toString());
+    }
   }
   
   // getPiece and setPiece will set the piece at coordinate <x, y>. The upper left 
@@ -117,15 +171,19 @@ public class Board implements java.io.Serializable {
     // Translate them to a list.
     if (p == Player.BLACK) {
       if (mLastReadCapturedBlack != mCapturedBlack) {
+        Log.d(TAG, "XXX +" + mLastReadCapturedBlack + "/" + mCapturedBlack);
         mLastReadCapturedBlack = mCapturedBlack;
         mCapturedBlackList = listCapturedPieces(Player.BLACK, mCapturedBlack);
       }
+      Log.d(TAG, "XXX2 +" + mCapturedBlackList.size());
       return mCapturedBlackList;
     } else if (p == Player.WHITE) {
       if (mLastReadCapturedWhite != mCapturedWhite) {
+        Log.d(TAG, "YYY +" + mLastReadCapturedBlack + "/" + mCapturedBlack);      
         mLastReadCapturedWhite = mCapturedWhite;
         mCapturedWhiteList = listCapturedPieces(Player.WHITE, mCapturedWhite);
       }
+      Log.d(TAG, "XXX3 +" + mCapturedWhiteList.size());      
       return mCapturedWhiteList;
     } else {
       throw new AssertionError("Invalid player");
@@ -133,11 +191,12 @@ public class Board implements java.io.Serializable {
   }
   
   public void setCapturedPieces(Player p, ArrayList<Board.CapturedPiece> pieces) {
+    Log.d(TAG, "SET: " + pieces.size());
     if (p == Player.BLACK) {
-      mCapturedBlackList = (ArrayList<Board.CapturedPiece>)pieces.clone();
+      mCapturedBlackList = new ArrayList<Board.CapturedPiece>(pieces);
       mCapturedBlack = mLastReadCapturedBlack = 0;
     } else {
-      mCapturedWhiteList = (ArrayList<Board.CapturedPiece>)pieces.clone();
+      mCapturedWhiteList = new ArrayList<Board.CapturedPiece>(pieces);
       mCapturedWhite = mLastReadCapturedWhite = 0;
     }
   }

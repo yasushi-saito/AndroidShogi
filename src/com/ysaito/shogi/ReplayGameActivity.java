@@ -38,6 +38,10 @@ public class ReplayGameActivity extends Activity {
   // Number of moves made so far. 0 means the beginning of the game.
   private int mNextMove;
 
+  private final void initializeBoard() {
+    mBoard.initialize(Handicap.NONE);  // TODO: support handicap
+  }
+  
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -45,7 +49,8 @@ public class ReplayGameActivity extends Activity {
     initializeInstanceState(savedInstanceState);
 
     mNextMove = 0;
-    mBoard = Board.newGame(Handicap.NONE);  // TODO
+    mBoard = new Board();
+    initializeBoard();
     mNextPlayer = Player.BLACK;
     
     mLog = (GameLog)getIntent().getSerializableExtra("gameLog");
@@ -59,52 +64,85 @@ public class ReplayGameActivity extends Activity {
 			  mFlipScreen);
     ImageButton b = (ImageButton)findViewById(R.id.replay_beginning_button);
     b.setOnClickListener(new ImageButton.OnClickListener() {
-      public void onClick(View v) { doBeginning(); }
+      public void onClick(View v) { replayUpTo(0); }
     });
     b = (ImageButton)findViewById(R.id.replay_prev_button);
     b.setOnClickListener(new ImageButton.OnClickListener() {
-      public void onClick(View v) { doPrev(); }
+      public void onClick(View v) { 
+        if (mNextMove > 0) replayUpTo(mNextMove - 1);
+      }
     });
     b = (ImageButton)findViewById(R.id.replay_next_button);
     b.setOnClickListener(new ImageButton.OnClickListener() {
-      public void onClick(View v) { doNext(); }
+      public void onClick(View v) { 
+        if (mNextMove >= mLog.numMoves()) return;
+        Move m = mLog.getMove(mNextMove);
+        ++mNextMove;
+        
+        applyMove(mNextPlayer, m, mBoard);
+        mNextPlayer = Player.opponentOf(mNextPlayer);
+        mBoardView.update(mGameState, mBoard, Player.INVALID);
+      }
     });
     b = (ImageButton)findViewById(R.id.replay_last_button);
     b.setOnClickListener(new ImageButton.OnClickListener() {
-      public void onClick(View v) { doLast(); }
+      public void onClick(View v) {
+        replayUpTo(mLog.numMoves() - 1);
+      }
     });
     mBoardView.update(mGameState, mBoard, Player.INVALID);
   }
 
-  private void doBeginning() { }
-  private void doPrev() { }
-  
-  private void doNext() { 
-    if (mNextMove >= mLog.numMoves()) return;
-    Move m = mLog.getMove(mNextMove);
-    ++mNextMove;
-    
-    applyMove(mNextPlayer, m, mBoard);
-    mNextPlayer = Player.opponentOf(mNextPlayer);
+  /**
+   *  Play the game up to "numMoves" moves. numMoves==0 will initialize the board, and
+   *  numMoves==mLog.numMoves-1 will recreate the final game state.
+   */ 
+  private final void replayUpTo(int numMoves) {
+    initializeBoard();
+    mNextPlayer = Player.BLACK;
+    for (int i = 0; i < numMoves; ++i) {
+      applyMove(mNextPlayer, mLog.getMove(i), mBoard);
+      mNextPlayer = Player.opponentOf(mNextPlayer);
+    }
+    mNextMove = numMoves;
     mBoardView.update(mGameState, mBoard, Player.INVALID);
   }
-  private void doLast() { }
+  
   
   /**
-   *  Apply the move "m" by player "p" to the board.
+   *  Apply the move "m" by player "p" to the board. 
+   *  Does not update the screen; for that, the caller must call mBoardView.update.
    */
   private static final void applyMove(Player p, Move m, Board b) {
     int oldPiece = Piece.EMPTY;
-    if (m.getFromX() < 0) { // dropping?
+    boolean capturedChanged = false;
+    ArrayList<Board.CapturedPiece> captured = b.getCapturedPieces(p);
+    
+    if (m.getFromX() < 0) { // dropping
       b.setPiece(m.getToX(), m.getToY(), m.getPiece());
+      capturedChanged = true;
+      for (int i = 0; i < captured.size(); ++i) {
+        Board.CapturedPiece c = captured.get(i);
+        if (c.piece == m.getPiece()) {
+          if (c.n == 1) {
+            captured.remove(i);
+          } else {
+            captured.set(i, new Board.CapturedPiece(c.piece, c.n - 1));
+          }
+          break;
+        }
+      }
     } else {
       b.setPiece(m.getFromX(), m.getFromY(), Piece.EMPTY);
       oldPiece = b.getPiece(m.getToX(), m.getToY());
       b.setPiece(m.getToX(), m.getToY(), m.getPiece());
     }
     if (oldPiece != Piece.EMPTY) {
+      capturedChanged = true;
       oldPiece = -oldPiece; // now the piece is owned by the opponent
-      ArrayList<Board.CapturedPiece> captured = b.getCapturedPieces(p);
+      if (Board.isPromoted(oldPiece)) {
+        oldPiece = Board.unpromote(oldPiece);
+      }
       boolean found = false; 
       for (int i = 0; i < captured.size(); ++i) {
         Board.CapturedPiece c = captured.get(i);
@@ -118,14 +156,14 @@ public class ReplayGameActivity extends Activity {
       if (!found) {
         captured.add(new Board.CapturedPiece(oldPiece, 1));
       }
-      b.setCapturedPieces(p, captured);
     }
+    if (capturedChanged) b.setCapturedPieces(p, captured);
   }
   
   @Override 
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
-    inflater.inflate(R.menu.game_menu, menu);
+    inflater.inflate(R.menu.replay_game_menu, menu);
     mMenu = menu;
     return true;
   }
