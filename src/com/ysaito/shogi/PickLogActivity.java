@@ -69,7 +69,9 @@ public class PickLogActivity extends ListActivity  {
     // of strings to TextViews
     setListAdapter(mAdapter);
     
-    mLogLister = new LogLister(new LogLister.EventListener() {
+    mLogLister = new LogLister(
+        this,
+        new LogLister.EventListener() {
       public void onNewGameLog(GameLog log) {
         mLogs.add(log);
         mAdapter.notifyDataSetChanged();
@@ -77,7 +79,7 @@ public class PickLogActivity extends ListActivity  {
       public void onFinish(String error) {
         ;
       }
-    }, null);
+    });
     mLogLister.start();
   }
   

@@ -250,6 +250,56 @@ public class Board implements java.io.Serializable {
     }
     return pieces;
   }
+
+  /**
+   *  Apply the move "m" by player "p" to the board. Does not check if the move is legal. 
+   */
+  public final void applyMove(Player p, Move m) {
+    int oldPiece = Piece.EMPTY;
+    boolean capturedChanged = false;
+    ArrayList<CapturedPiece> captured = getCapturedPieces(p);
+
+    if (m.getFromX() < 0) { // dropping
+      setPiece(m.getToX(), m.getToY(), m.getPiece());
+      capturedChanged = true;
+      for (int i = 0; i < captured.size(); ++i) {
+        Board.CapturedPiece c = captured.get(i);
+        if (c.piece == m.getPiece()) {
+          if (c.n == 1) {
+            captured.remove(i);
+          } else {
+            captured.set(i, new Board.CapturedPiece(c.piece, c.n - 1));
+          }
+          break;
+        }
+      }
+    } else {
+      setPiece(m.getFromX(), m.getFromY(), Piece.EMPTY);
+      oldPiece = getPiece(m.getToX(), m.getToY());
+      setPiece(m.getToX(), m.getToY(), m.getPiece());
+    }
+    if (oldPiece != Piece.EMPTY) {
+      capturedChanged = true;
+      oldPiece = -oldPiece; // now the piece is owned by the opponent
+      if (Board.isPromoted(oldPiece)) {
+        oldPiece = Board.unpromote(oldPiece);
+      }
+      boolean found = false; 
+      for (int i = 0; i < captured.size(); ++i) {
+        Board.CapturedPiece c = captured.get(i);
+        if (c.piece == oldPiece) {
+          Board.CapturedPiece nc = new Board.CapturedPiece(oldPiece, c.n + 1);
+          captured.set(i, nc);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        captured.add(new Board.CapturedPiece(oldPiece, 1));
+      }
+    }
+    if (capturedChanged) setCapturedPieces(p, captured);
+  }
   
   /**
    * Generate the list of board positions that a piece at <fromX, fromY> can
@@ -299,7 +349,6 @@ public class Board implements java.io.Serializable {
 
     // Return the computed list of move targets.
     public final ArrayList<Position> getTargets() { return mTargets; }
-
 
     private final boolean tryMoveTo(int x, int y) {
       // Disallow moving outside the board

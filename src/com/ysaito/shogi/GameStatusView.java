@@ -133,27 +133,12 @@ public class GameStatusView extends LinearLayout {
     mBlackTime.update(black);
     mWhiteTime.update(white);
   }
+  
   private final String traditionalMoveNotation(Board board, Move m) {
     if (!Locale.getDefault().getLanguage().equals("ja")) {
+      return m.toTraditionalNotation(board).toJapaneseString();
+    } else {
       return m.toCsaString();
     }
-    Move.TraditionalNotation n = m.toTraditionalNotation(board);
-    String s = String.format("%d%s%s%s",
-        n.x, Move.japaneseNumbers[n.y], Piece.japaneseNames[n.piece],
-        modifiersToJapanese(n.modifier));
-    return s;
-  }
-  
-  private static final String modifiersToJapanese(int modifiers) {
-    String s = "";
-    if ((modifiers & Move.DROP) != 0) s += "打";
-    if ((modifiers & Move.PROMOTE) != 0) s += "成";    
-    if ((modifiers & Move.FORWARD) != 0) s += "上";        
-    if ((modifiers & Move.BACKWARD) != 0) s += "引";            
-    if ((modifiers & Move.SIDEWAYS) != 0) s += "寄";          
-    if ((modifiers & Move.RIGHT) != 0) s += "右";                    
-    if ((modifiers & Move.LEFT) != 0) s += "左";                        
-    if ((modifiers & Move.CENTER) != 0) s += "直";                            
-    return s;
   }
 }

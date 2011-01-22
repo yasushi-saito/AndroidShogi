@@ -3,8 +3,12 @@ package com.ysaito.shogi.test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.Map;
+import java.util.Set;
 
 import com.ysaito.shogi.GameLog;
 import com.ysaito.shogi.ParseException;
@@ -19,7 +23,7 @@ public class GameLogTest extends InstrumentationTestCase {
   private GameLog openKifFile(int id) throws ParseException, IOException {
     Resources resources = getInstrumentation().getContext().getResources();
     InputStreamReader in = new InputStreamReader(resources.openRawResource(id));
-    GameLog log = GameLog.fromKifStream(in);
+    GameLog log = GameLog.fromKif(in);
     in.close();
     return log;
   }
@@ -27,7 +31,7 @@ public class GameLogTest extends InstrumentationTestCase {
   private GameLog openHtmlFile(int id) throws ParseException, IOException {
     Resources resources = getInstrumentation().getContext().getResources();
     InputStream in = resources.openRawResource(id);
-    GameLog log = GameLog.fromHtmlStream(in);
+    GameLog log = GameLog.fromHtml(in);
     in.close();
     return log;
   }
@@ -82,7 +86,30 @@ public class GameLogTest extends InstrumentationTestCase {
     GameLog log = openHtmlFile(R.raw.download2);
     assertEquals(log.getAttr(GameLog.A_WHITE_PLAYER), "上野裕和");
     assertEquals(log.getAttr(GameLog.A_BLACK_PLAYER), "稲葉陽");    
-    assertEquals(log.getMove(64).toCsaString(), "7785KY");
-    assertEquals(log.numMoves(), 120);
+    assertEquals(log.getMove(64).toCsaString(), "7785KE");
+    assertEquals(log.numMoves(), 121);
+  }
+  
+  public void testToKif() throws ParseException, IOException {
+    GameLog log = openKifFile(R.raw.kifu4);
+    StringWriter w = new StringWriter();
+    log.toKif(w);
+    Log.d(TAG, "TESTSTART");
+    StringReader r = new StringReader(w.toString());
+    GameLog log2 = GameLog.fromKif(r);
+    assertLogEquals(log, log2);
+  }
+  
+  private void assertLogEquals(GameLog l1, GameLog l2) {
+    assertEquals(l1.getAttrs().size(), l2.getAttrs().size());
+    
+    for (Map.Entry<String, String> e: l1.getAttrs()) {
+      assertEquals(l2.getAttr(e.getKey()), e.getValue());
+    }
+    
+    assertEquals(l1.numMoves(), l2.numMoves());
+    for (int i = 0; i < l1.numMoves(); ++i) {
+      assertTrue(l1.getMove(i).equals(l2.getMove(i)));
+    }
   }
 }

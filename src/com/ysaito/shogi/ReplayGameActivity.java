@@ -33,7 +33,6 @@ public class ReplayGameActivity extends Activity {
   private Board mBoard;            // current state of the board
   private Player mNextPlayer;   // the next player to make a move 
   private GameState mGameState;    // is the game is active or finished?
-  private boolean mDestroyed;      // onDestroy called?
 
   private GameLog mLog;
   // Number of moves made so far. 0 means the beginning of the game.
@@ -85,7 +84,7 @@ public class ReplayGameActivity extends Activity {
         Move m = mLog.getMove(mNextMove);
         ++mNextMove;
         
-        applyMove(mNextPlayer, m, mBoard);
+        mBoard.applyMove(mNextPlayer, m);
         mNextPlayer = Player.opponentOf(mNextPlayer);
         mBoardView.update(mGameState, mBoard, Player.INVALID);
         mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
@@ -129,64 +128,12 @@ public class ReplayGameActivity extends Activity {
     initializeBoard();
     mNextPlayer = Player.BLACK;
     for (int i = 0; i < numMoves; ++i) {
-      applyMove(mNextPlayer, mLog.getMove(i), mBoard);
+      mBoard.applyMove(mNextPlayer, mLog.getMove(i));
       mNextPlayer = Player.opponentOf(mNextPlayer);
     }
     mNextMove = numMoves;
     mBoardView.update(mGameState, mBoard, Player.INVALID);
     mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
-  }
-  
-  
-  /**
-   *  Apply the move "m" by player "p" to the board. 
-   *  Does not update the screen; for that, the caller must call mBoardView.update.
-   */
-  private static final void applyMove(Player p, Move m, Board b) {
-    int oldPiece = Piece.EMPTY;
-    boolean capturedChanged = false;
-    ArrayList<Board.CapturedPiece> captured = b.getCapturedPieces(p);
-    
-    if (m.getFromX() < 0) { // dropping
-      b.setPiece(m.getToX(), m.getToY(), m.getPiece());
-      capturedChanged = true;
-      for (int i = 0; i < captured.size(); ++i) {
-        Board.CapturedPiece c = captured.get(i);
-        if (c.piece == m.getPiece()) {
-          if (c.n == 1) {
-            captured.remove(i);
-          } else {
-            captured.set(i, new Board.CapturedPiece(c.piece, c.n - 1));
-          }
-          break;
-        }
-      }
-    } else {
-      b.setPiece(m.getFromX(), m.getFromY(), Piece.EMPTY);
-      oldPiece = b.getPiece(m.getToX(), m.getToY());
-      b.setPiece(m.getToX(), m.getToY(), m.getPiece());
-    }
-    if (oldPiece != Piece.EMPTY) {
-      capturedChanged = true;
-      oldPiece = -oldPiece; // now the piece is owned by the opponent
-      if (Board.isPromoted(oldPiece)) {
-        oldPiece = Board.unpromote(oldPiece);
-      }
-      boolean found = false; 
-      for (int i = 0; i < captured.size(); ++i) {
-        Board.CapturedPiece c = captured.get(i);
-        if (c.piece == oldPiece) {
-          Board.CapturedPiece nc = new Board.CapturedPiece(oldPiece, c.n + 1);
-          captured.set(i, nc);
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        captured.add(new Board.CapturedPiece(oldPiece, 1));
-      }
-    }
-    if (capturedChanged) b.setCapturedPieces(p, captured);
   }
   
   @Override 
@@ -195,11 +142,6 @@ public class ReplayGameActivity extends Activity {
     inflater.inflate(R.menu.replay_game_menu, menu);
     mMenu = menu;
     return true;
-  }
-
-  @Override 
-  public void onSaveInstanceState(Bundle bundle) {
-    saveInstanceState(bundle);
   }
 
   @Override public boolean onOptionsItemSelected(MenuItem item) {
@@ -212,32 +154,10 @@ public class ReplayGameActivity extends Activity {
     }
   }
 
-  @Override public void onDestroy() {
-    Log.d(TAG, "ShogiActivity destroyed");
-    super.onDestroy();
-    mDestroyed = true;
-  }
-
-  private final void saveInstanceState(Bundle b) {
-  }
-
   private final void initializeInstanceState(Bundle b) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
         getBaseContext());
     mFlipScreen = prefs.getBoolean("flip_screen", false);
-  }
-
-  private final long initializeLong(Bundle b, String bundle_key, SharedPreferences prefs, String pref_key, long dflt) {
-    long v = dflt;
-    if (b != null) {
-      v = b.getLong(bundle_key, dflt);
-      if (v != dflt) return v;
-    }
-    if (prefs != null) {
-      return Integer.parseInt(prefs.getString(pref_key, String.valueOf(dflt)));
-    } else {
-      return v;
-    }
   }
 
   private final BoardView.EventListener mViewListener = new BoardView.EventListener() {

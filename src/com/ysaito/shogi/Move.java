@@ -46,6 +46,18 @@ public class Move implements java.io.Serializable {
   public final int getToX() { return mToX; }
   public final int getToY() { return mToY; }  
   
+  @Override public boolean equals(Object o) {
+    Move m = (Move)o;
+    return (m != null &&
+        m.mPiece == mPiece &&
+        m.mFromX == mFromX && m.mFromY == mFromY &&
+        m.mToX == mToX && m.mToY == mToY);
+  }
+  
+  @Override public int hashCode() {
+    throw new AssertionError("hashCode not supported");
+  }
+  
   @Override public String toString() {
     return String.format("%d%d%d%d:%d", mFromX, mFromY, mToX, mToY, mPiece);
   }
@@ -192,6 +204,28 @@ public class Move implements java.io.Serializable {
     
     @Override public String toString() {
       return String.format("%d <%d,%d>/%x", piece, x, y, modifier);
+    }
+    
+    public String toJapaneseString() {
+      Log.d(TAG, "JAPJAP: " + toString());
+      return String.format("%d%s%s%s",
+          x, 
+          Move.japaneseNumbers[y], 
+          Piece.japaneseNames[Board.type(piece)],
+          modifiersToJapanese(modifier));
+    }
+  
+    private static final String modifiersToJapanese(int modifiers) {
+      String s = "";
+      if ((modifiers & Move.DROP) != 0) s += "打";
+      if ((modifiers & Move.PROMOTE) != 0) s += "成";    
+      if ((modifiers & Move.FORWARD) != 0) s += "上";        
+      if ((modifiers & Move.BACKWARD) != 0) s += "引";            
+      if ((modifiers & Move.SIDEWAYS) != 0) s += "寄";          
+      if ((modifiers & Move.RIGHT) != 0) s += "右";                    
+      if ((modifiers & Move.LEFT) != 0) s += "左";                        
+      if ((modifiers & Move.CENTER) != 0) s += "直";
+      return s;
     }
     
     public final int piece; // Piece type. Negative for Player.WHITE. Never promoted.
