@@ -27,7 +27,7 @@ public class GameLogTest extends InstrumentationTestCase {
   private GameLog openHtmlFile(int id) throws ParseException, IOException {
     Resources resources = getInstrumentation().getContext().getResources();
     InputStream in = resources.openRawResource(id);
-    GameLog log = GameLog.fromKifHtml(in);
+    GameLog log = GameLog.fromHtmlStream(in);
     in.close();
     return log;
   }
@@ -76,5 +76,13 @@ public class GameLogTest extends InstrumentationTestCase {
     assertEquals(log.getAttr(GameLog.A_WHITE_PLAYER), "早川俊");
     assertEquals(log.getMove(125).toCsaString(), "0085KY");
     assertEquals(log.numMoves(), 134);
+  }
+  
+  public void testHtml2() throws ParseException, IOException {
+    GameLog log = openHtmlFile(R.raw.download2);
+    assertEquals(log.getAttr(GameLog.A_WHITE_PLAYER), "上野裕和");
+    assertEquals(log.getAttr(GameLog.A_BLACK_PLAYER), "稲葉陽");    
+    assertEquals(log.getMove(64).toCsaString(), "7785KY");
+    assertEquals(log.numMoves(), 120);
   }
 }

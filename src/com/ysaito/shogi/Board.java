@@ -171,19 +171,15 @@ public class Board implements java.io.Serializable {
     // Translate them to a list.
     if (p == Player.BLACK) {
       if (mLastReadCapturedBlack != mCapturedBlack) {
-        Log.d(TAG, "XXX +" + mLastReadCapturedBlack + "/" + mCapturedBlack);
         mLastReadCapturedBlack = mCapturedBlack;
         mCapturedBlackList = listCapturedPieces(Player.BLACK, mCapturedBlack);
       }
-      Log.d(TAG, "XXX2 +" + mCapturedBlackList.size());
       return mCapturedBlackList;
     } else if (p == Player.WHITE) {
       if (mLastReadCapturedWhite != mCapturedWhite) {
-        Log.d(TAG, "YYY +" + mLastReadCapturedBlack + "/" + mCapturedBlack);      
         mLastReadCapturedWhite = mCapturedWhite;
         mCapturedWhiteList = listCapturedPieces(Player.WHITE, mCapturedWhite);
       }
-      Log.d(TAG, "XXX3 +" + mCapturedWhiteList.size());      
       return mCapturedWhiteList;
     } else {
       throw new AssertionError("Invalid player");

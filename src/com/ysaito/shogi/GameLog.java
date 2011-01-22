@@ -78,14 +78,14 @@ public class GameLog implements Serializable {
     mAttrPatterns.put(A_WHITE_PLAYER, Pattern.compile("後手[：:](.*)"));    
   }
 
-  private static final Pattern HTML_KIF_START_PATTERN = Pattern.compile(".*>(開始日時|棋戦|場所)[:：].*");
+  private static final Pattern HTML_KIF_START_PATTERN = Pattern.compile(".*>\\s*(開始日時|棋戦|場所|表題|手合割|先手|後手)[:：].*");
   private static final Pattern HTML_KIF_END_PATTERN = Pattern.compile("([^<]*)<.*");
 
   // Parse an embedded KIF file downloaded from http://wiki.optus.nu/.
   // Such a file can be created by saving a "テキスト表示" link directly to a file.
   //
   // This method assumes that the file is encoded in EUC-JP.
-  public static GameLog fromKifHtml(InputStream stream) throws ParseException {
+  public static GameLog fromHtmlStream(InputStream stream) throws ParseException {
     Reader in = null;
     try {
       in = new InputStreamReader(stream, "EUC_JP");
@@ -99,6 +99,7 @@ public class GameLog implements Serializable {
       StringBuilder output = new StringBuilder();
       boolean kifFound = false;
       while ((line = reader.readLine()) != null && !kifFound) {
+        Log.d(TAG, "Read: " + line);
         Matcher m = HTML_KIF_START_PATTERN.matcher(line);
         if (m.matches()) {
           output.append(m.group(1));

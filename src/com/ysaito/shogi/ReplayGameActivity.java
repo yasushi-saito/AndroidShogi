@@ -12,6 +12,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.SeekBar;
 
 /**
  * The main activity that controls game play
@@ -22,6 +23,7 @@ public class ReplayGameActivity extends Activity {
   // View components
   private BoardView mBoardView;
   private GameStatusView mStatusView;
+  private SeekBar mSeekBar;
   private Menu mMenu;
 
   // Game preferences
@@ -34,10 +36,11 @@ public class ReplayGameActivity extends Activity {
   private boolean mDestroyed;      // onDestroy called?
 
   private GameLog mLog;
-
   // Number of moves made so far. 0 means the beginning of the game.
   private int mNextMove;
 
+  private static final int MAX_PROGRESS = 1000; 
+  
   private final void initializeBoard() {
     mBoard.initialize(Handicap.NONE);  // TODO: support handicap
   }
@@ -54,6 +57,8 @@ public class ReplayGameActivity extends Activity {
     mNextPlayer = Player.BLACK;
     
     mLog = (GameLog)getIntent().getSerializableExtra("gameLog");
+    Assert.isTrue(mLog.numMoves() > 0);
+    
     mStatusView = (GameStatusView)findViewById(R.id.replay_gamestatusview);
     mStatusView.initialize(mLog.getAttr(GameLog.A_BLACK_PLAYER),
 			     mLog.getAttr(GameLog.A_WHITE_PLAYER));
@@ -62,10 +67,11 @@ public class ReplayGameActivity extends Activity {
     mBoardView.initialize(mViewListener, 
 			  new ArrayList<Player>(),  // don't allow manipulation
 			  mFlipScreen);
-    ImageButton b = (ImageButton)findViewById(R.id.replay_beginning_button);
-    b.setOnClickListener(new ImageButton.OnClickListener() {
-      public void onClick(View v) { replayUpTo(0); }
-    });
+    ImageButton b;
+    // b = (ImageButton)findViewById(R.id.replay_beginning_button);
+    //  b.setOnClickListener(new ImageButton.OnClickListener() {
+    //    public void onClick(View v) { replayUpTo(0); }
+    //  });
     b = (ImageButton)findViewById(R.id.replay_prev_button);
     b.setOnClickListener(new ImageButton.OnClickListener() {
       public void onClick(View v) { 
@@ -82,14 +88,36 @@ public class ReplayGameActivity extends Activity {
         applyMove(mNextPlayer, m, mBoard);
         mNextPlayer = Player.opponentOf(mNextPlayer);
         mBoardView.update(mGameState, mBoard, Player.INVALID);
+        mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
       }
-    });
-    b = (ImageButton)findViewById(R.id.replay_last_button);
-    b.setOnClickListener(new ImageButton.OnClickListener() {
-      public void onClick(View v) {
-        replayUpTo(mLog.numMoves() - 1);
+    });    
+    //  b = (ImageButton)findViewById(R.id.replay_last_button);
+    //  b.setOnClickListener(new ImageButton.OnClickListener() {
+    //    public void onClick(View v) {
+    //      replayUpTo(mLog.numMoves() - 1);
+    //    }
+    //  });
+
+    mSeekBar = (SeekBar)findViewById(R.id.replay_seek_bar);
+    mSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+      public void onProgressChanged(SeekBar seekBar, int progress, boolean fromTouch) {
+        if (fromTouch) {
+          final int maxMoves = mLog.numMoves() - 1;
+          int move = 0;
+          if (progress >= MAX_PROGRESS) {
+            move = maxMoves;
+          } else if (progress <= 0) {
+            move = 0;
+          } else {
+            move = (int)(maxMoves * (progress / (float)MAX_PROGRESS));
+          }
+          replayUpTo(move);
+        }
       }
+      public void onStartTrackingTouch(SeekBar seekBar) { }
+      public void onStopTrackingTouch(SeekBar seekBar) { }
     });
+    
     mBoardView.update(mGameState, mBoard, Player.INVALID);
   }
 
@@ -106,6 +134,7 @@ public class ReplayGameActivity extends Activity {
     }
     mNextMove = numMoves;
     mBoardView.update(mGameState, mBoard, Player.INVALID);
+    mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
   }
   
   

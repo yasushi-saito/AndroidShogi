@@ -98,7 +98,7 @@ public class LogLister {
         try {
           Log.d(TAG, "Try: " + child.getAbsolutePath());
           InputStream in = new FileInputStream(child);
-          GameLog log = GameLog.fromKifHtml(in);
+          GameLog log = GameLog.fromHtmlStream(in);
           if (log != null) publishProgress(log);
         } catch (IOException e) {
           Log.d(TAG, child.getAbsolutePath() + ": I/O error: " + e.getMessage()); 
