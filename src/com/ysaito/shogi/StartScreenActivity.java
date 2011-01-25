@@ -20,6 +20,7 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -194,7 +195,13 @@ public class StartScreenActivity extends Activity {
           "Please download the shogi database files first",
           Toast.LENGTH_LONG).show();
     } else {
-      startActivity(new Intent(this, GameActivity.class));
+      Intent intent = new Intent(this, GameActivity.class);
+      Board b = new Board();
+      Handicap h = Handicap.parseInt(Integer.parseInt(mPrefs.getString("handicap", "0")));
+      b.initialize(h);
+      intent.putExtra("initial_board", (Serializable)b);
+      
+      startActivity(intent);
     }
   }
 

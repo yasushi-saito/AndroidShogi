@@ -25,4 +25,9 @@
     <string name="piece_style">駒の種類</string>
     <string name="pick_log">棋譜再生</string>
     <string name="handicap">駒落ち</string>
+    <string name="reload">再読み込み</string>
+    <string name="log_properties">棋譜情報</string>
+    <string name="sort_by_date">日時順リスト</string>
+    <string name="sort_by_player">対局者順リスト</string>    
+
 </resources>

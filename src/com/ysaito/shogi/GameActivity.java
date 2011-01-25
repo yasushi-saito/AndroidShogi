@@ -48,7 +48,6 @@ public class GameActivity extends Activity {
   private Menu mMenu;
 
   // Game preferences
-  private int mHandicap;           // BonanzaController.H_XXXX
   private int mComputerLevel;      // 0 .. 4
   private String mPlayerTypes;     // "HC", "CH", "HH", "CC"
   private boolean mFlipScreen;
@@ -81,8 +80,11 @@ public class GameActivity extends Activity {
 
     mBoardView = (BoardView)findViewById(R.id.boardview);
     mBoardView.initialize(mViewListener, mHumanPlayers, mFlipScreen);
-    mController = new BonanzaController(mEventHandler, mHandicap, mComputerLevel);
-    mController.start(savedInstanceState);
+    mController = new BonanzaController(mEventHandler, mComputerLevel);
+    
+    Board initialBoard = (Board)getIntent().getSerializableExtra("initial_board");
+    mController.start(savedInstanceState, initialBoard);
+    
     schedulePeriodicTimer();
     // mController will call back via mControllerHandler when Bonanza is 
     // initialized. mControllerHandler will cause mBoardView to start accepting
@@ -106,17 +108,16 @@ public class GameActivity extends Activity {
 
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
-    case R.id.undo:
+    case R.id.menu_undo:
       undo();
       return true;
-    case R.id.flip_screen:
+    case R.id.menu_flip_screen:
       mBoardView.flipScreen();
       return true;
     default:    
       return super.onOptionsItemSelected(item);
     }
   }
-
 
   private final String playerName(char type, int level) {
     if (type == 'H') return getResources().getString(R.string.human);
@@ -184,7 +185,6 @@ public class GameActivity extends Activity {
       mHumanPlayers.add(Player.WHITE);      
     }
     mComputerLevel = Integer.parseInt(prefs.getString("computer_difficulty", "1"));
-    mHandicap = Integer.parseInt(prefs.getString("handicap", "0"));
   }
 
   private final long initializeLong(Bundle b, String bundle_key, SharedPreferences prefs, String pref_key, long dflt) {
@@ -256,7 +256,7 @@ public class GameActivity extends Activity {
   }
 
   private final void updateUndoMenu() {
-    mMenu.setGroupEnabled(R.id.undo_group, (mUndosRemaining > 0));
+    mMenu.setGroupEnabled(R.id.menu_undo_group, (mUndosRemaining > 0));
     MenuItem item = mMenu.getItem(0);
     if (mUndosRemaining <= 0) {
       item.setTitle(R.string.undo_disallowed);

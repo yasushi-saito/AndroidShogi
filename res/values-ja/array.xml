@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string-array name="player_types">
-    <item>先:人 後:計算機</item>
-    <item>先:計算機 後:人</item>
-    <item>先:人 後:人</item>
-    <item>先:計算機 後:計算機</item>
+    <item>▲人 △コンピュータ</item>
+    <item>▲コンピュータ △人</item>
+    <item>▲人 △人</item>
+    <item>▲コンピュータ △コンピュータ</item>
   </string-array>
 
   <string-array name="computer_levels">

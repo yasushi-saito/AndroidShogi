@@ -74,7 +74,7 @@ public class BonanzaJNI {
    */
   static public native int startGame(
       int resumeInstanceId,
-      int handicap,
+      Board initialBoard,  
       int difficulty,
       int total_think_time_secs,    
       int per_turn_think_time_secs,

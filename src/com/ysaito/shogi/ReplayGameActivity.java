@@ -1,8 +1,10 @@
 package com.ysaito.shogi;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -59,8 +61,8 @@ public class ReplayGameActivity extends Activity {
     Assert.isTrue(mLog.numMoves() > 0);
     
     mStatusView = (GameStatusView)findViewById(R.id.replay_gamestatusview);
-    mStatusView.initialize(mLog.getAttr(GameLog.A_BLACK_PLAYER),
-			     mLog.getAttr(GameLog.A_WHITE_PLAYER));
+    mStatusView.initialize(mLog.attr(GameLog.A_BLACK_PLAYER),
+			     mLog.attr(GameLog.A_WHITE_PLAYER));
 
     mBoardView = (BoardView)findViewById(R.id.replay_boardview);
     mBoardView.initialize(mViewListener, 
@@ -81,7 +83,7 @@ public class ReplayGameActivity extends Activity {
     b.setOnClickListener(new ImageButton.OnClickListener() {
       public void onClick(View v) { 
         if (mNextMove >= mLog.numMoves()) return;
-        Move m = mLog.getMove(mNextMove);
+        Move m = mLog.move(mNextMove);
         ++mNextMove;
         
         mBoard.applyMove(mNextPlayer, m);
@@ -128,7 +130,7 @@ public class ReplayGameActivity extends Activity {
     initializeBoard();
     mNextPlayer = Player.BLACK;
     for (int i = 0; i < numMoves; ++i) {
-      mBoard.applyMove(mNextPlayer, mLog.getMove(i));
+      mBoard.applyMove(mNextPlayer, mLog.move(i));
       mNextPlayer = Player.opponentOf(mNextPlayer);
     }
     mNextMove = numMoves;
@@ -146,8 +148,13 @@ public class ReplayGameActivity extends Activity {
 
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
-    case R.id.flip_screen:
+    case R.id.menu_flip_screen:
       mBoardView.flipScreen();
+      return true;
+    case R.id.menu_resume:
+      Intent intent = new Intent(this, GameActivity.class);
+      intent.putExtra("initial_board", (Serializable)mBoard);
+      startActivity(intent);
       return true;
     default:    
       return super.onOptionsItemSelected(item);

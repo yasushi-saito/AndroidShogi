@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-  <item android:id="@+id/resume_play" android:title="@string/resume_play" />
-  <item android:id="@+id/flip_screen" android:title="@string/flip_screen" />
+  <item android:id="@+id/menu_resume" android:title="@string/resume_play" />
+  <item android:id="@+id/menu_flip_screen" android:title="@string/flip_screen" />
+  <item android:id="@+id/menu_log_properties" android:title="@string/log_properties" />
 </menu>

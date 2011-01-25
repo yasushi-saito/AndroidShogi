@@ -278,40 +278,8 @@ static void ClearBoard(int x, int y, min_posi_t* pos) {
   pos->asquare[x + y * nfile] = 0;
 }
 
-static void GenerateInitialBoardConfiguration(int handicap, min_posi_t* pos) {
-  *pos = min_posi_no_handicap;
-
-  switch (handicap) {
-    case H_NONE:
-      break;
-    case H_KYO:
-      ClearBoard(0, 8, pos);
-      break;
-    case H_KAKU:
-      ClearBoard(1, 7, pos);
-      break;
-    case H_HI:
-      ClearBoard(7, 7, pos);
-      break;
-    case H_HI_KYO:
-      ClearBoard(0, 8, pos);
-      ClearBoard(7, 7, pos);
-      break;
-    case H_HI_KAKU_KEI_KYO:
-      ClearBoard(1, 8, pos);
-      ClearBoard(7, 8, pos);
-      // FALLTHROUGH
-    case H_HI_KAKU_KYO:
-      ClearBoard(0, 8, pos);
-      ClearBoard(8, 8, pos);
-      // FALLTHROUGH
-    case H_HI_KAKU:
-      ClearBoard(1, 7, pos);
-      ClearBoard(7, 7, pos);
-      break;
-    default:
-      LOG_DEBUG("Unknown handicap config: %d", handicap);
-  }
+static void GenerateInitialBoardConfiguration(jintArray jarray,
+					      min_posi_t* pos) {
 }
 
 static int GameStatusToReturnCode() {
@@ -352,7 +320,7 @@ jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
     JNIEnv *env,
     jclass unused_bonanza_class,
     jint resume_instance_id,
-    jint handicap,
+    jobject initial_board,
     jint difficulty,
     jint total_think_time_secs,
     jint per_turn_think_time_secs,
@@ -373,11 +341,22 @@ jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
     instance_id = resume_instance_id;
   } else {
     instance_id = ++g_instance_id;
-    LOG_DEBUG("Starting game: h=%d, d=%d t=%d p=%d",
-              handicap, difficulty,
+    LOG_DEBUG("Starting game: d=%d t=%d p=%d",
+              difficulty,
               total_think_time_secs, per_turn_think_time_secs);
-    min_posi_t initial_pos;
-    GenerateInitialBoardConfiguration(handicap, &initial_pos);
+
+    jclass board_class = (*env)->GetObjectClass(env, initial_board);
+    jfieldID fid = (*env)->GetFieldID(env, board_class, "mSquares", "[I");
+    jintArray jarray = (jintArray)((*env)->GetObjectField(
+        env, initial_board, fid));
+
+    min_posi_t initial_pos = min_posi_no_handicap;
+    jint tmp_array[nsquare];
+    (*env)->GetIntArrayRegion(env,  jarray, 0, nsquare, tmp_array);
+    for (int i = 0; i < nsquare; ++i) {
+      initial_pos.asquare[i] = tmp_array[i];
+    }
+
     if (ini_game(&tree, &initial_pos, flag_history, NULL, NULL) < 0) {
       LOG_FATAL("Failed to initialize game: %s", str_error);
     }

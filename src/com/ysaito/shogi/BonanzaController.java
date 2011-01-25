@@ -17,7 +17,6 @@ import android.util.Log;
  */
 public class BonanzaController {
   private static final String TAG = "BonanzaController";
-  private final int mHandicap;
   private final int mComputerDifficulty;
   private Handler mOutputHandler;  // for reporting status to the caller
   private Handler mInputHandler;   // for sending commands to the controller thread 
@@ -31,9 +30,8 @@ public class BonanzaController {
   private static final int C_UNDO = 3;
   private static final int C_DESTROY = 4;
   
-  public BonanzaController(Handler handler, int handicap, int difficulty) {
+  public BonanzaController(Handler handler, int difficulty) {
     mOutputHandler = handler;
-    mHandicap = handicap;
     mComputerDifficulty = difficulty;
     mInstanceId = -1;
     mThread = new HandlerThread("BonanzaController");
@@ -44,7 +42,8 @@ public class BonanzaController {
         int command = msg.getData().getInt("command");
         switch (command) {
           case C_START:
-            doStart(msg.getData().getInt("resume_instance_id"));
+            doStart(msg.getData().getInt("resume_instance_id"),
+                (Board)msg.getData().get("initial_board"));
             break;
           case C_HUMAN_MOVE:
             doHumanMove(
@@ -75,15 +74,16 @@ public class BonanzaController {
       bundle.putInt("bonanza_instance_id", mInstanceId);
     }
   }
-  
-  private final int NO_INSTANCE_ID = 0;
+
+  public final void start(Bundle bundle, Board board) {
+    Bundle b = new Bundle();
     
-  public final void start(Bundle bundle) {
-    int instanceId = 0;
     if (bundle != null) {
-      instanceId = bundle.getInt("bonanza_instance_id", 0);
+      final int instanceId = bundle.getInt("bonanza_instance_id", 0);
+      b.putInt("resume_instance_id", instanceId);
     }
-    sendInputMessage(C_START, instanceId, null, null, -1, -1);
+    b.putSerializable("initial_board", board);
+    sendInputMessage(C_START, b);
   }
 
   /** 
@@ -91,7 +91,7 @@ public class BonanzaController {
    * abandonding this object.
    */
   public final void destroy() {
-    sendInputMessage(C_DESTROY, NO_INSTANCE_ID, null, null, -1, -1);
+    sendInputMessage(C_DESTROY, new Bundle());
   }
 
   /** 
@@ -102,7 +102,10 @@ public class BonanzaController {
    *  report back Result.nextPlayer.
    */   
   public final void humanMove(Player player, Move move) {
-    sendInputMessage(C_HUMAN_MOVE, NO_INSTANCE_ID, player, move, -1, -1);
+    Bundle b = new Bundle();
+    b.putSerializable("player", player);
+    b.putSerializable("move", move);    
+    sendInputMessage(C_HUMAN_MOVE, b);
   }
   
   /** 
@@ -113,7 +116,9 @@ public class BonanzaController {
    * report back Result.nextPlayer.
    */
   public final void computerMove(Player player) {
-    sendInputMessage(C_COMPUTER_MOVE, NO_INSTANCE_ID, player, null, -1, -1);
+    Bundle b = new Bundle();
+    b.putSerializable("player", player);
+    sendInputMessage(C_COMPUTER_MOVE, b);
   }
 
   /**
@@ -122,7 +127,10 @@ public class BonanzaController {
    * @param cookie The last move made in the game.
    */
   public final void undo1(Player player, int cookie) {
-    sendInputMessage(C_UNDO, NO_INSTANCE_ID, player, null, cookie, -1);
+    Bundle b = new Bundle();
+    b.putSerializable("player", player);
+    b.putSerializable("cookie1", cookie);
+    sendInputMessage(C_UNDO, b);
   }
   
   /**
@@ -132,7 +140,11 @@ public class BonanzaController {
    * @param cookie2 the penultimate move made in the game.
    */
   public final void undo2(Player player, int cookie1, int cookie2) {
-    sendInputMessage(C_UNDO, NO_INSTANCE_ID, player, null, cookie1, cookie2);
+    Bundle b = new Bundle();
+    b.putSerializable("player", player);
+    b.putSerializable("cookie1", cookie1);
+    b.putSerializable("cookie2", cookie2);    
+    sendInputMessage(C_UNDO, b);
   }
   
   /**
@@ -225,24 +237,14 @@ public class BonanzaController {
   //
   // Implementation details
   //
-  private final void sendInputMessage(
-      int command, 
-      int resumeInstanceId,
-      Player curPlayer, 
-      Move move,
-      int cookie1, int cookie2) {
+
+  private final void sendInputMessage(int command, Bundle bundle) {
+    bundle.putInt("command", command);
     Message msg = mInputHandler.obtainMessage();
-    Bundle b = new Bundle();
-    b.putInt("command", command);
-    if (resumeInstanceId != 0) b.putInt("resume_instance_id", resumeInstanceId);
-    if (move != null) b.putSerializable("move",  move);
-    if (curPlayer != null) b.putSerializable("player", curPlayer);
-    if (cookie1 >= 0) b.putInt("cookie1", cookie1);
-    if (cookie2 >= 0) b.putInt("cookie2", cookie2);    
-    msg.setData(b);
+    msg.setData(bundle);
     mInputHandler.sendMessage(msg);
   }
-
+  
   private final void sendOutputMessage(Result result) {
     Message msg = mOutputHandler.obtainMessage();
     Bundle b = new Bundle();
@@ -251,10 +253,13 @@ public class BonanzaController {
     mOutputHandler.sendMessage(msg);
   }
 
-  private final void doStart(int resumeInstanceId) {
+  private final void doStart(int resumeInstanceId, Board board) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
+    if (board==null) {
+      throw new AssertionError("BOARD==null");
+    }
     mInstanceId = BonanzaJNI.startGame(
-        resumeInstanceId, mHandicap, mComputerDifficulty, 60, 1, jr);
+        resumeInstanceId, board, mComputerDifficulty, 60, 1, jr);
     if (jr.status != BonanzaJNI.R_OK) {
       throw new AssertionError(String.format("startGame failed: %d %s", jr.status, jr.error));
     }

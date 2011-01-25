@@ -18,6 +18,7 @@ import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeMap;
@@ -41,10 +42,14 @@ public class GameLog implements Serializable {
   public static final String A_WHITE_PLAYER = "whiteplayer";
   public static final String A_HANDICAP = "handicap";
   
+  // mFlag values.
+  public static final int FLAG_ON_SDCARD = (1 << 0);  // log is stored on sdcard
+  
   // List of attributes (player names, etc) found in the log. This field
   // must be an ordered map so that digest() can compute a deterministic value.
   private final TreeMap<String, String> mAttrs;
   
+  private int mFlag;
   private long mDate;  // UTC in millisec
   private final ArrayList<Move> mMoves;
   private String mDigest;  // cached value of getDigest().
@@ -63,16 +68,17 @@ public class GameLog implements Serializable {
     throw new AssertionError("hashCode not implemented");
   }
 
-  private GameLog() { 
+  private GameLog() {
+    mFlag = 0;
     mAttrs = new TreeMap<String, String>();
     mMoves = new ArrayList<Move>();
   }
   
-  public final String getAttr(String key) {
+  public final String attr(String key) {
     return mAttrs.get(key);
   }
   
-  public final Set<Map.Entry<String, String>> getAttrs() {
+  public final Set<Map.Entry<String, String>> attrs() {
     return mAttrs.entrySet();
   }
 
@@ -101,14 +107,16 @@ public class GameLog implements Serializable {
     return mDigest;
   }
   
+  public final int getFlag() { return mFlag; }
   public final long getDate() { return mDate; }
   
-  public final Move getMove(int n) { return mMoves.get(n); }
+  public final Move move(int n) { return mMoves.get(n); }
   public final int numMoves() { return mMoves.size(); }
   
   private static final Pattern DATE_PATTERN = Pattern.compile("開始日時[：:](.*)");
   private static final Pattern MOVE_PATTERN = Pattern.compile("\\s*[0-9]+\\s+(.*)");  
-
+  private static final Pattern OPTIONAL_DAY_OF_WEEK_PATTERN = Pattern.compile("[(（][月火水木金土日][）)]");
+  
   // English key name (e.g., A_TITLE) to japanese KIF key name (e.g., 表題) 
   private static final HashMap<String, String> mAttrNames;
   private static final HashMap<String, Pattern> mAttrPatterns;
@@ -129,7 +137,7 @@ public class GameLog implements Serializable {
     }
   }
 
-  private static final Pattern HTML_KIF_START_PATTERN = Pattern.compile(".*>\\s*(開始日時|棋戦|場所|表題|手合割|先手|後手)[:：].*");
+  private static final Pattern HTML_KIF_START_PATTERN = Pattern.compile(".*>\\s*((開始日時|棋戦|場所|表題|手合割|先手|後手)[:：].*)");
   private static final Pattern HTML_KIF_END_PATTERN = Pattern.compile("([^<]*)<.*");
 
   /** Parse an embedded KIF file downloaded from http://wiki.optus.nu/.
@@ -137,7 +145,7 @@ public class GameLog implements Serializable {
    * 
    * This method assumes that the file is encoded in EUC-JP.
    */
-  public static GameLog fromHtml(InputStream stream) throws ParseException {
+  public static GameLog parseHtml(InputStream stream) throws ParseException {
     Reader in = null;
     try {
       in = new InputStreamReader(stream, "EUC_JP");
@@ -171,7 +179,7 @@ public class GameLog implements Serializable {
         }
       }
       if (!kifFound) return null;
-      return fromKif(new StringReader(output.toString()));
+      return parseKif(new StringReader(output.toString()));
     } catch (IOException e2) {
       Log.e(TAG, "Failed to parse file: " + e2.getMessage());      
       return null;
@@ -213,8 +221,10 @@ public class GameLog implements Serializable {
    * Given a KIF file encoded in UTF-8, parse it. If this method doesn't throw 
    * an exception, it always return a non-null GameLog object.
    */
-  public static GameLog fromKif(Readable stream) throws ParseException {
+  public static GameLog parseKif(Readable stream) throws ParseException {
     GameLog l = new GameLog();
+    l.mFlag = FLAG_ON_SDCARD;
+    
     Scanner scanner = new Scanner(stream);
     Move prevMove = null;
     Player curPlayer = Player.BLACK;
@@ -224,6 +234,7 @@ public class GameLog implements Serializable {
       for (Map.Entry<String, Pattern> e: mAttrPatterns.entrySet()) {
         Matcher matcher = e.getValue().matcher(line);  
         if (matcher.matches()) {
+          Log.d(TAG, "MATCH: " + e.getKey() + "=>" + matcher.group(1));
           l.mAttrs.put(e.getKey(), matcher.group(1));
           matched = true;
           break;
@@ -235,12 +246,11 @@ public class GameLog implements Serializable {
         l.mDate = parseDate(matcher.group(1));
         continue;
       }
-      if (line.startsWith("手数")) {
-        continue;
-      }
-      if (line.startsWith("まで")) {
-        continue;
-      }
+      
+      // Skip lines that don't contain information
+      if (line.startsWith("手数")) continue;
+      if (line.startsWith("まで")) continue;
+      
       matcher = MOVE_PATTERN.matcher(line);
       if (matcher.matches()) {
         String moveString = matcher.group(1);
@@ -278,24 +288,35 @@ public class GameLog implements Serializable {
   //    YYYY/MM/DD [HH[:MM[:SS]]]
   private static long parseDate(String s) throws ParseException {
     Scanner scanner = new Scanner(s);
-    scanner.useDelimiter("[/\\s　]");
+    scanner.useDelimiter("[/\\s　(（]");
 
-    if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse year");
-    final int year = Integer.parseInt(scanner.next());
-    if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse month");
-    final int month = Integer.parseInt(scanner.next());
-    if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse day");
-    final int day = Integer.parseInt(scanner.next());
-    
+    int year = 0;
+    int month = 0;
+    int day = 0;
     int hour = 0;
     int minute = 0;
     int sec = 0;
     
-    scanner.useDelimiter("[:\\s　]");    
-    if (scanner.hasNext()) hour = Integer.parseInt(scanner.next());
-    if (scanner.hasNext()) minute = Integer.parseInt(scanner.next());
-    if (scanner.hasNext()) sec = Integer.parseInt(scanner.next());
-
+    try {
+      if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse year");
+      year = Integer.parseInt(scanner.next());
+      if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse month");
+      month = Integer.parseInt(scanner.next());
+      if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse day");
+      day = Integer.parseInt(scanner.next());
+    
+      try {
+        scanner.skip(OPTIONAL_DAY_OF_WEEK_PATTERN);
+      } catch (NoSuchElementException e) {
+        ;
+      }
+      scanner.useDelimiter("[:\\s　]");    
+      if (scanner.hasNext()) hour = Integer.parseInt(scanner.next());
+      if (scanner.hasNext()) minute = Integer.parseInt(scanner.next());
+      if (scanner.hasNext()) sec = Integer.parseInt(scanner.next());
+    } catch (NumberFormatException e) {
+      Log.e(TAG, "Failed to parse "+ s + ": " + e.getMessage());
+    }
     // TODO(saito) support multiple timezones
     Calendar c = new GregorianCalendar();
     c.set(year, month, day, hour, minute, sec);
