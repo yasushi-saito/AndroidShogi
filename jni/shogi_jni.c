@@ -357,6 +357,11 @@ jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
       initial_pos.asquare[i] = tmp_array[i];
     }
 
+    fid = (*env)->GetFieldID(env, board_class, "mCapturedBlack", "I");
+    initial_pos.hand_black = (*env)->GetIntField(env, initial_board, fid);
+    fid = (*env)->GetFieldID(env, board_class, "mCapturedWhite", "I");
+    initial_pos.hand_white = (*env)->GetIntField(env, initial_board, fid);
+    
     if (ini_game(&tree, &initial_pos, flag_history, NULL, NULL) < 0) {
       LOG_FATAL("Failed to initialize game: %s", str_error);
     }

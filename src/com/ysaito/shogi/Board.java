@@ -186,14 +186,34 @@ public class Board implements java.io.Serializable {
     }
   }
   
-  public void setCapturedPieces(Player p, ArrayList<Board.CapturedPiece> pieces) {
-    Log.d(TAG, "SET: " + pieces.size());
-    if (p == Player.BLACK) {
+  public void setCapturedPieces(Player player, ArrayList<Board.CapturedPiece> pieces) {
+    int bits = 0;
+    for (Board.CapturedPiece p: pieces) {
+      final int piece = Board.type(p.piece);
+      if (piece == Piece.FU) {
+        bits |= p.n;
+      } else if (piece == Piece.KYO) {
+        bits |= (p.n << 5);
+      } else if (piece == Piece.KEI) {
+        bits |= (p.n << 8);
+      } else if (piece == Piece.GIN) {
+        bits |= (p.n << 11);
+      } else if (piece == Piece.KIN) {
+        bits |= (p.n << 14);
+      } else if (piece == Piece.KAKU) {
+        bits |= (p.n << 17);
+      } else if (piece == Piece.HI) {
+        bits |= (p.n << 19);
+      } else {
+        throw new AssertionError("Invalid piece: " + piece);
+      }
+    }
+    if (player == Player.BLACK) {
       mCapturedBlackList = new ArrayList<Board.CapturedPiece>(pieces);
-      mCapturedBlack = mLastReadCapturedBlack = 0;
+      mCapturedBlack = mLastReadCapturedBlack = bits;
     } else {
       mCapturedWhiteList = new ArrayList<Board.CapturedPiece>(pieces);
-      mCapturedWhite = mLastReadCapturedWhite = 0;
+      mCapturedWhite = mLastReadCapturedWhite = bits;
     }
   }
   
@@ -470,7 +490,7 @@ public class Board implements java.io.Serializable {
   private static final int numCapturedKin(int c) { return (c >> 14) & 0x07; }
   private static final int numCapturedKaku(int c) { return (c >> 17) & 3; }
   private static final int numCapturedHi(int c) { return (c >> 19); }
-
+  
   // mSquares is a 81-entry array. mSquares[X + 9 * Y] stores the piece at coordinate <X, Y>. 
   // <0, 0> is at the upper left corner of the board. 
   // 
