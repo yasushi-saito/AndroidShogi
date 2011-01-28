@@ -31,4 +31,6 @@
     <string name="log_properties">Properties</string>
     <string name="sort_by_date">Sort by date</string>
     <string name="sort_by_player">Sort by player</string>    
+    <string name="game_log_properties">Log information</string>        
+    <string name="alert_dialog_ok">Ok</string>        
 </resources>

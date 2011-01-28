@@ -4,6 +4,9 @@ import java.io.Serializable;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -146,6 +149,8 @@ public class ReplayGameActivity extends Activity {
     return true;
   }
 
+  private static final int DIALOG_LOG_PROPERTIES = 1;
+  
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
     case R.id.menu_flip_screen:
@@ -156,11 +161,31 @@ public class ReplayGameActivity extends Activity {
       intent.putExtra("initial_board", (Serializable)mBoard);
       startActivity(intent);
       return true;
+    case R.id.menu_log_properties:
+      showDialog(DIALOG_LOG_PROPERTIES);
+      return true;
     default:    
       return super.onOptionsItemSelected(item);
     }
   }
 
+  @Override protected Dialog onCreateDialog(int id) {
+    switch (id) {
+    case DIALOG_LOG_PROPERTIES:
+      final GameLogPropertiesView view = new GameLogPropertiesView(this);
+      view.initialize(mLog);
+      
+      return new AlertDialog.Builder(this)
+      .setTitle(R.string.game_log_properties)
+      .setView(view)
+      .setPositiveButton(R.string.alert_dialog_ok, new DialogInterface.OnClickListener() {
+        public void onClick(DialogInterface dialog, int whichButton) { }
+      }).create();
+    default:
+      return null;
+    }
+  }
+  
   private final void initializeInstanceState(Bundle b) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
         getBaseContext());

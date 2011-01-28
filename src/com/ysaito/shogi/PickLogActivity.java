@@ -88,7 +88,7 @@ public class PickLogActivity extends ListActivity  {
   }
 
   private MyAdapter mAdapter;
-  private LogLister mLogLister;
+  private LogList mLogLister;
 
   private final Comparator<GameLog> BY_DATE = new Comparator<GameLog>() {
     public int compare(GameLog g1, GameLog g2) { 
@@ -152,21 +152,24 @@ public class PickLogActivity extends ListActivity  {
     // Use an existing ListAdapter that will map an array
     // of strings to TextViews
     setListAdapter(mAdapter);
-    
-    mLogLister = new LogLister(
+    startListingLogs(LogList.Mode.READ_SAVED_SUMMARY);
+  }
+  
+  private void startListingLogs(LogList.Mode mode) {
+    LogList.startListing(
         this,
-        new LogLister.EventListener() {
-      public void onNewGameLogs(GameLog[] logs) {
-        for (GameLog log: logs) mLogs.add(log);
-        mLogsIterator = null;
-        mLogsArray.clear();
-        mAdapter.notifyDataSetChanged();
-      }
-      public void onFinish(String error) {
-        ;
-      }
-    });
-    mLogLister.start(LogLister.Mode.READ_SAVED_SUMMARY);
+        new LogList.EventListener() {
+          public void onNewGameLogs(GameLog[] logs) {
+            for (GameLog log: logs) mLogs.add(log);
+            mLogsIterator = null;
+            mLogsArray.clear();
+            mAdapter.notifyDataSetChanged();
+          }
+          public void onFinish(String error) {
+            ;
+          }
+        },
+        mode);
   }
 
   @Override 
@@ -195,14 +198,14 @@ public class PickLogActivity extends ListActivity  {
         mLogs = new TreeSet<GameLog>(mLogSorter);
         mLogsIterator = null;
         mLogsArray.clear();
-        mLogLister.start(LogLister.Mode.READ_SAVED_SUMMARY);
+        startListingLogs(LogList.Mode.READ_SAVED_SUMMARY);
     }
   }
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
     case R.id.menu_reload:
       mLogs.clear();
-      mLogLister.start(LogLister.Mode.CLEAR_SAVED_SUMMARY);
+      startListingLogs(LogList.Mode.CLEAR_SAVED_SUMMARY);
       return true;
     case R.id.menu_sort_by_date:
       sortLogs(BY_DATE);

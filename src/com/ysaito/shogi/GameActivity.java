@@ -1,6 +1,8 @@
 package com.ysaito.shogi;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.TreeMap;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -53,11 +55,12 @@ public class GameActivity extends Activity {
   private boolean mFlipScreen;
 
   // State of the game
+  private long mStartTimeMs;       // Time the game started (UTC millisec)
   private Board mBoard;            // current state of the board
   private Player mCurrentPlayer;   // the next player to make a move 
   private GameState mGameState;    // is the game is active or finished?
   private long mBlackThinkTimeMs;  // Cumulative # of think time (millisec)
-  private long mBlackThinkStartMs; // -1, or ms since epoch
+  private long mBlackThinkStartMs; // -1, or ms since epoch =
   private long mWhiteThinkTimeMs;  // Cumulative # of think time (millisec)
   private long mWhiteThinkStartMs; // -1, or ms since epoch
   private boolean mDestroyed;      // onDestroy called?
@@ -66,7 +69,7 @@ public class GameActivity extends Activity {
   // moves by the black (resp. white) player.
   private final ArrayList<Move> mMoves = new ArrayList<Move>();
   private final ArrayList<Integer> mMoveCookies = new ArrayList<Integer>();
-
+  
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -84,7 +87,7 @@ public class GameActivity extends Activity {
     
     Board initialBoard = (Board)getIntent().getSerializableExtra("initial_board");
     mController.start(savedInstanceState, initialBoard);
-    
+
     schedulePeriodicTimer();
     // mController will call back via mControllerHandler when Bonanza is 
     // initialized. mControllerHandler will cause mBoardView to start accepting
@@ -164,7 +167,8 @@ public class GameActivity extends Activity {
     b.putLong("shogi_black_think_time_ms", mBlackThinkTimeMs);
     b.putLong("shogi_white_think_time_ms", mWhiteThinkTimeMs);	  
     b.putLong("shogi_black_think_start_ms", mBlackThinkStartMs);	  	  
-    b.putLong("shogi_white_think_start_ms", mWhiteThinkStartMs);	  
+    b.putLong("shogi_white_think_start_ms", mWhiteThinkStartMs);
+    b.putLong("shogi_start_time_ms", mStartTimeMs);
   }
   private final void initializeInstanceState(Bundle b) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
@@ -174,6 +178,7 @@ public class GameActivity extends Activity {
     mWhiteThinkTimeMs = initializeLong(b, "shogi_white_think_time_ms", null, null, 0);	  
     mBlackThinkStartMs = initializeLong(b, "shogi_black_think_start_ms", null, null, 0);
     mWhiteThinkStartMs = initializeLong(b, "shogi_white_think_start_ms", null, null, 0);
+    mStartTimeMs = initializeLong(b, "shogi_start_time_ms", null, null, System.currentTimeMillis());
 
     mFlipScreen = prefs.getBoolean("flip_screen", false);
     mPlayerTypes = prefs.getString("player_types", "HC");
@@ -299,6 +304,11 @@ public class GameActivity extends Activity {
       if (isComputerPlayer(r.nextPlayer)) {
         mController.computerMove(r.nextPlayer);
       }
+      if (mGameState != GameState.ACTIVE && 
+          (true || mMoves.size() >= 30) &&
+          !mPlayerTypes.equals("CC")) { 
+        saveGame();
+      }
     }
   };
 
@@ -323,6 +333,28 @@ public class GameActivity extends Activity {
     }
   };
 
+  private void saveGame() {
+    TreeMap<String, String> attrs = new TreeMap<String, String>();
+    attrs.put(GameLog.A_BLACK_PLAYER, blackPlayerName());
+    attrs.put(GameLog.A_WHITE_PLAYER, whitePlayerName());
+    Log.d(TAG, "SAVING");
+    LogList.addGameLog(GameLog.newLog(mStartTimeMs, attrs, mMoves));
+  }
+  
+  private String blackPlayerName() {
+    if (mPlayerTypes.charAt(0) == 'H') {
+      return getResources().getText(R.string.human).toString();
+    }
+    return String.format("Lv%d", mComputerLevel);
+  }
+  
+  private String whitePlayerName() {
+    if (mPlayerTypes.charAt(1) == 'H') {
+      return getResources().getText(R.string.human).toString();
+    }
+    return String.format("Lv%d", mComputerLevel);
+  }
+  
   private final AlertDialog createPromoteDialog() {
     AlertDialog.Builder b = new AlertDialog.Builder(this);
     b.setTitle(R.string.promote_piece);
@@ -386,6 +418,7 @@ public class GameActivity extends Activity {
     builder.setCancelable(false);
     builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
       public void onClick(DialogInterface d, int id) {
+        saveGame();
         finish();
       }
     });

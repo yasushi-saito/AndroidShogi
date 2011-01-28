@@ -29,5 +29,5 @@
     <string name="log_properties">棋譜情報</string>
     <string name="sort_by_date">日時順リスト</string>
     <string name="sort_by_player">対局者順リスト</string>    
-
+    <string name="game_log_properties">棋譜情報</string>        
 </resources>

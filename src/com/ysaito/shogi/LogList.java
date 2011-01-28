@@ -17,13 +17,14 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.io.StreamCorruptedException;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
  * @author saito@google.com (Your Name Here)
  *
  */
-public class LogLister {
+public class LogList {
   public interface EventListener {
     /**
      * Called multiple times to report progress.
@@ -38,19 +39,6 @@ public class LogLister {
     public void onFinish(String error);  
   };
 
-  /**
-   * @param listener Used to report download status to the caller
-   * @param externalDir The directory to store the downloaded file.
-   * The basename of the file will be the same as the one in the sourceUrl.
-   * @param manager The system-wide download manager.
-   */
-  public LogLister(
-      Context context,
-      EventListener listener) {
-    mContext = context;
-    mListener = listener;
-  }
-
   private static String SUMMARY_PATH = "log_summary";
   
   public enum Mode {
@@ -63,34 +51,49 @@ public class LogLister {
   };
   
   /**
-   * Must be called once to start downloading
-   * @param sourceUrl The location of the file.
+   * @param listener Used to report download status to the caller
+   * @param externalDir The directory to store the downloaded file.
+   * The basename of the file will be the same as the one in the sourceUrl.
+   * @param manager The system-wide download manager.
    */
-  public void start(Mode mode) {
+  public static void startListing(Context context, EventListener listener, Mode mode) {
     if (mTask != null) {
       mTask.cancel(true);
     }
-    mTask = new ListerTask(mode);
+    mTask = new ListerTask(context, listener, mode);
     mTask.execute();
   }
 
+  // mNewLogs may be accessed by both the UI thread and the lister thread, so
+  // mark the method synchronized.
+  public static synchronized void addGameLog(GameLog log) {
+    if (mNewLogs == null) mNewLogs = new ArrayList<GameLog>();
+    mNewLogs.add(log);
+  }
+  
+  private static synchronized ArrayList<GameLog> getAndClearGameLogs() {
+    ArrayList<GameLog> logs = mNewLogs;
+    mNewLogs = null;
+    return logs;
+  }
+  
   /**
    * Must be called to stop the download thread.
    */
-  public void destroy() {
+  public static void stopListing() {
     Log.d(TAG, "Destroy");
-    mTask.cancel(false);
+    if (mTask != null) mTask.cancel(false);
   }
 
   // 
   // Implementation details
   //
   private static final String TAG = "ShogiLogLister";
-  private final Context mContext;
-  private final EventListener mListener;
-  private ListerTask mTask;
-  private String mError;
+  private static ListerTask mTask;
 
+  // The accesses to the following variable must be synchronized.
+  private static ArrayList<GameLog> mNewLogs;
+    
   private static class LogSummary implements Serializable {
     public LogSummary() {
       lastScanTimeMs = 0;
@@ -103,11 +106,16 @@ public class LogLister {
     public final HashMap<String, GameLog> logs;
   }
 
-  private class ListerTask extends AsyncTask<Void, GameLog, String> {
+  private static class ListerTask extends AsyncTask<Void, GameLog, String> {
+    private final Context mContext;
+    private final EventListener mListener;
     private final Mode mMode;
+    private String mError;
     
-    public ListerTask(Mode mode) {
+    public ListerTask(Context context, EventListener listener, Mode mode) {
       super();
+      mContext = context;
+      mListener = listener;
       mMode = mode;
     }
     
@@ -116,10 +124,13 @@ public class LogLister {
       if (mMode == Mode.READ_SAVED_SUMMARY) summary = readSummary();
       if (summary == null) {
         summary = new LogSummary();
-      } else {
-        for (GameLog log: summary.logs.values()) {
-          publishProgress(log);
-        }
+      } 
+      ArrayList<GameLog> newLogs = getAndClearGameLogs();
+      if (newLogs != null) {
+        for (GameLog log: newLogs) summary.logs.put(log.digest(), log);
+      }
+      for (GameLog log: summary.logs.values()) {
+        publishProgress(log);
       }
       long scanStartTimeMs = System.currentTimeMillis();
       scanHtmlFiles(summary);
