@@ -1,6 +1,5 @@
 package com.ysaito.shogi;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
 import android.app.Activity;
@@ -11,7 +10,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -23,13 +21,10 @@ import android.widget.SeekBar;
  * The main activity that controls game play
  */
 public class ReplayGameActivity extends Activity {
-  private static final String TAG = "Replay"; 
-
   // View components
   private BoardView mBoardView;
   private GameStatusView mStatusView;
   private SeekBar mSeekBar;
-  private Menu mMenu;
 
   // Game preferences
   private boolean mFlipScreen;
@@ -145,7 +140,6 @@ public class ReplayGameActivity extends Activity {
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
     inflater.inflate(R.menu.replay_game_menu, menu);
-    mMenu = menu;
     return true;
   }
 
@@ -158,7 +152,7 @@ public class ReplayGameActivity extends Activity {
       return true;
     case R.id.menu_resume:
       Intent intent = new Intent(this, GameActivity.class);
-      intent.putExtra("initial_board", (Serializable)mBoard);
+      intent.putExtra("initial_board", mBoard);
       startActivity(intent);
       return true;
     case R.id.menu_log_properties:

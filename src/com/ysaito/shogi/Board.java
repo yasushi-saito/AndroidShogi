@@ -2,14 +2,10 @@ package com.ysaito.shogi;
 
 import java.util.ArrayList;
 
-import android.util.Log;
-
 /**
  * Store the state of a Shogi board.
  */
 public class Board implements java.io.Serializable {
-  private static final String TAG = "Board";
-  
   // X and Y dimensions of a board
   public static final int DIM = 9; 
 
@@ -17,7 +13,7 @@ public class Board implements java.io.Serializable {
     public CapturedPiece(int p, int _n) { piece = p; n = _n; }
     public final int piece;  // one of Piece.*
     public final int n;      // number of pieces of the same type
-  };
+  }
   
   public Board() {
     mSquares = new int[DIM * DIM];  // initialized to zero

@@ -1,6 +1,5 @@
 package com.ysaito.shogi;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
@@ -88,7 +87,6 @@ public class PickLogActivity extends ListActivity  {
   }
 
   private MyAdapter mAdapter;
-  private LogList mLogLister;
 
   private final Comparator<GameLog> BY_DATE = new Comparator<GameLog>() {
     public int compare(GameLog g1, GameLog g2) { 
@@ -101,7 +99,6 @@ public class PickLogActivity extends ListActivity  {
       // if (x != 0) return x;
       return g1.digest().compareTo(g2.digest());
     }
-    public boolean equals(Object o) { return o == this; }
   };
 
   private final Comparator<GameLog> BY_PLAYER = new Comparator<GameLog>() {
@@ -113,8 +110,6 @@ public class PickLogActivity extends ListActivity  {
       
       return BY_DATE.compare(g1, g2);
     }
-    public boolean equals(Object o) { return o == this; }
-    
   };
   
   private static final String getMinPlayer(GameLog g) {
@@ -165,9 +160,7 @@ public class PickLogActivity extends ListActivity  {
             mLogsArray.clear();
             mAdapter.notifyDataSetChanged();
           }
-          public void onFinish(String error) {
-            ;
-          }
+          public void onFinish(String error) { }
         },
         mode);
   }
@@ -180,8 +173,7 @@ public class PickLogActivity extends ListActivity  {
     }
     GameLog log = getNthLog(position);
     Intent intent = new Intent(this, ReplayGameActivity.class);
-    Serializable ss = (Serializable)log;
-    intent.putExtra("gameLog", ss);
+    intent.putExtra("gameLog", log);
     startActivity(intent);
   }
   

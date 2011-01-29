@@ -64,8 +64,7 @@ public class BonanzaJNI {
    * 
    * @param resumeInstanceId if != 0, resume the game specified by this value.
    * If this game is not active any more, start a new game.
-   * @param handicap The value of R.array.handicap_type_values. FGor example
-   *  if handicap==1, then the black player will remove left kyo.
+   * @param initialBoard Initial state of the board.
    * @param difficulty 1==weak, 5==strong
    * @param result (output)  filled with the initial board configuration.
    * @return The game's instance ID. When the game has resumed 

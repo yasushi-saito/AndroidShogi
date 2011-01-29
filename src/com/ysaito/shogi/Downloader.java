@@ -54,13 +54,12 @@ public class Downloader {
      * @param error null on success. Contains an error message on error. 
      */
     public void onFinish(String error);  
-  };
+  }
   
   /**
    * @param listener Used to report download status to the caller
    * @param externalDir The directory to store the downloaded file.
    * The basename of the file will be the same as the one in the sourceUrl.
-   * @param manager The system-wide download manager.
    */
   public Downloader(
       EventListener listener,

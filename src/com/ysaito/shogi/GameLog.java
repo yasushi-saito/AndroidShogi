@@ -312,7 +312,6 @@ public class GameLog implements Serializable {
       try {
         scanner.skip(OPTIONAL_DAY_OF_WEEK_PATTERN);
       } catch (NoSuchElementException e) {
-        ;
       }
       scanner.useDelimiter("[:\\s　]");    
       if (scanner.hasNext()) hour = Integer.parseInt(scanner.next());

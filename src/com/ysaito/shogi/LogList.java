@@ -16,7 +16,6 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.io.StreamCorruptedException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -28,7 +27,6 @@ public class LogList {
   public interface EventListener {
     /**
      * Called multiple times to report progress.
-     * @param message Download status
      */
     public void onNewGameLogs(GameLog[] logs);
 
@@ -37,7 +35,7 @@ public class LogList {
      * @param error null on success. Contains an error message on error. 
      */
     public void onFinish(String error);  
-  };
+  }
 
   private static String SUMMARY_PATH = "log_summary";
   
@@ -48,13 +46,11 @@ public class LogList {
     // Do not read the summary SUMMARY_PATH. Read and parse files
     // in /download and 
     CLEAR_SAVED_SUMMARY,
-  };
+  }
   
   /**
+   * @param context Used to access the internal storage.
    * @param listener Used to report download status to the caller
-   * @param externalDir The directory to store the downloaded file.
-   * The basename of the file will be the same as the one in the sourceUrl.
-   * @param manager The system-wide download manager.
    */
   public static void startListing(Context context, EventListener listener, Mode mode) {
     if (mTask != null) {
@@ -110,7 +106,6 @@ public class LogList {
     private final Context mContext;
     private final EventListener mListener;
     private final Mode mMode;
-    private String mError;
     
     public ListerTask(Context context, EventListener listener, Mode mode) {
       super();
@@ -174,10 +169,8 @@ public class LogList {
           fout.close();
         }
       } catch (FileNotFoundException e) {
-        ;
       } catch (IOException e) {
         Log.d(TAG, SUMMARY_PATH + ": IOException: " + e.getMessage());
-        ;
       }
     }
     private void scanHtmlFiles(LogSummary summary) {
@@ -219,12 +212,6 @@ public class LogList {
     @Override public void onPostExecute(String status) {
       if (isCancelled()) return;
       mListener.onFinish(status);
-    }
-
-
-    private void setError(String m) {
-      Log.d(TAG, "Error: " + m);
-      if (mError == null) mError = m;  // take only the first message
     }
   }
 }

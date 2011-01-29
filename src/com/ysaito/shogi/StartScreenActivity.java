@@ -20,7 +20,6 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -196,11 +195,11 @@ public class StartScreenActivity extends Activity {
           Toast.LENGTH_LONG).show();
     } else {
       Intent intent = new Intent(this, GameActivity.class);
-      Board b = new Board();
-      Handicap h = Handicap.parseInt(Integer.parseInt(mPrefs.getString("handicap", "0")));
-      b.initialize(h);
-      intent.putExtra("initial_board", (Serializable)b);
-      
+      Board board = new Board();
+      Handicap h = Handicap.parseInt(
+          Integer.parseInt(mPrefs.getString("handicap", "0")));
+      board.initialize(h);
+      intent.putExtra("initial_board", board);
       startActivity(intent);
     }
   }
