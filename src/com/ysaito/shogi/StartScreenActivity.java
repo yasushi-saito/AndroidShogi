@@ -165,7 +165,7 @@ public class StartScreenActivity extends Activity {
       if (status == null) {  // success
         mDownloadDialog.dismiss();
       } else {
-        mDownloadDialog.setMessage(status);
+        mDownloadDialog.setMessage(status + ". Please retry later.");
       }
       if (mDownloadController != null) {
         mDownloadController.destroy();

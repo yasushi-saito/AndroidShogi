@@ -86,7 +86,11 @@ public class BoardView extends View implements View.OnTouchListener {
   private static final int S_CAPTURED = 2;
   private static final int S_MOVE_DESTINATION = 3;
 
+  /** 
+   * Helper class for finding a piece that the user is intending to move.
+   */
   static private class NearestSquareFinder {
+    // sx and sy are screen location of the touch event, in pixels.
     public NearestSquareFinder(ScreenLayout layout, float sx, float sy) {
       mLayout = layout;
       mSx = sx;
@@ -97,6 +101,8 @@ public class BoardView extends View implements View.OnTouchListener {
       mType = S_INVALID;
     }
 
+    // Find empty spots at which "player" can drop "pieceToDrop". If such spots are
+    // found, remember the one nearest to <mSx, mSy>.
     public final void findNearestEmptySquareOnBoard(
         Board board, Player player, int pieceToDrop) { 
       int px = mLayout.boardX(mSx);
@@ -117,6 +123,7 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
 
+    // Remember the piece owned by "player" and is nearest to <mSx, mSy>. 
     public final void findNearestPlayersPieceOnBoard(Board board, Player player) { 
       int px = mLayout.boardX(mSx);
       int py = mLayout.boardY(mSy);
@@ -126,7 +133,10 @@ public class BoardView extends View implements View.OnTouchListener {
           int y = py + j;
           if (x >= 0 && x < Board.DIM && y >= 0 && y < Board.DIM) {
             if (Board.player(board.getPiece(x, y)) == player) {
-              tryScreenPosition(mLayout.screenX(x), mLayout.screenY(y), x, y, S_PIECE);
+              ArrayList<Board.Position> dests = board.possibleMoveDestinations(x, y);
+              if (!dests.isEmpty()) {
+                tryScreenPosition(mLayout.screenX(x), mLayout.screenY(y), x, y, S_PIECE);
+              }
             }
           }
         }

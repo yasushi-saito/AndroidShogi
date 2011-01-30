@@ -8,9 +8,11 @@ import android.os.AsyncTask;
 import android.util.Log;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -110,19 +112,41 @@ public class Downloader {
   private String mError;
 
   private class DownloadThread extends AsyncTask<Uri, String, String> {
+    // The zip file is split into 4MB chunks (11 total) to allow for easy restarts.
+    // The first chunk is shogi-data.zip.aa, the second is shogi-data.zip.ab, so on.
+    
+    // Number of zip splits in the source site. "shogi-data.zip.aa" .. "shogi-data.zip.ak".
+    private static final int NUM_ZIP_SHARDS = 11;
+    
+    // The source uri without any shard suffix, i.e., "http://foo.bar.com/dir/shogi-data.zip".
     private Uri mSourceUri;
-    private String mZipBaseName;
-
+    
+    // The destination (unsharded) zip file.
+    private File mZipPath;
+    
+    private boolean mCorruptionFound;
+    
     @Override protected String doInBackground(Uri... sourceUri) {
+      mError = null;
+      mCorruptionFound = false;
       mSourceUri = sourceUri[0];
 
       List<String> segments = mSourceUri.getPathSegments();
       if (segments.size() == 0) {
         return "No file specified in " + mSourceUri;
       }
-      mZipBaseName = segments.get(segments.size() - 1);
-
-      downloadFile();
+      String zipBaseName = segments.get(segments.size() - 1);
+      mZipPath = new File(mExternalDir, zipBaseName);
+      
+      if (!mZipPath.exists()) {
+        // Note: if the file exists but is corrupt, extractZipFiles() will
+        // return an error, and deleteOldFiles() will delete the file.
+        // A retry by the user will start from a clean slate.
+        downloadZipShards();
+        if (mError == null) {
+          concatenateZipShards();
+        }
+      }
       if (mError == null) {
         extractZipFiles();
       }
@@ -130,11 +154,12 @@ public class Downloader {
         if (!hasRequiredFiles(mExternalDir)) {
           mError = String.format("Failed to download required files to %s:", mExternalDir);
           for (String s: REQUIRED_FILES) mError += " " + s;
+          mCorruptionFound = true;
         }
       }
       
       Log.d(TAG, "Download thread exiting : " + mError);
-      if (mError != null) {
+      if (mCorruptionFound) {
         deleteOldFiles();
         return mError;
       } else {
@@ -161,56 +186,94 @@ public class Downloader {
       }
     }
 
-    private void downloadFile() {
-      File dest = new File(mExternalDir, mZipBaseName);
-      if (dest.exists()) {
-        // Note: if the file exists but is corrupt, extractZipFiles() will
-        // return an error, and deleteOldFiles() will delete the file.
-        // A retry by the user will start from a clean slate.
-        return;
+    private void downloadZipShards() {
+      int shard = 0;  // 0=="aa", 1=="ab", etc.
+      while (shard < NUM_ZIP_SHARDS) {
+        String suffix = shardToSuffix(shard);
+        File dstShardPath = new File(mExternalDir, mZipPath.getName() + suffix);
+        if (!dstShardPath.exists()) {
+          if (!downloadShard(mSourceUri.toString() + shardToSuffix(shard), dstShardPath)) {
+            return;
+          }
+        } else {
+          Log.d(TAG, dstShardPath.getName() + " already exists");
+        }
+        ++shard;
       }
+    }
+
+    private void concatenateZipShards() {
+      FileOutputStream out = null;
+      FileInputStream in = null;
+      try {
+        try {
+          out = new FileOutputStream(mZipPath);
+          for (int shard = 0; shard < NUM_ZIP_SHARDS; ++shard) {
+            File srcShardPath = new File(mExternalDir, mZipPath.getName() + shardToSuffix(shard));
+            in = new FileInputStream(srcShardPath);
+            copyStream(srcShardPath.getName() + ": %d bytes copied", in, out, 1<<20);
+            FileInputStream tmpIn = in;
+            in = null;
+            tmpIn.close();
+          }
+        } finally {
+          if (out != null) out.close();
+          if (in != null) in.close();
+        }
+      } catch (IOException e) {
+        setError("download " + e.toString());
+      }
+    }
+    
+    private String shardToSuffix(int shard) {
+      // We assume that shard < 26
+      return String.format(".a%c", shard + 'a'); 
+    }
+    
+    private boolean downloadShard(String sourceUri, File dstPath) {
       InputStream in = null;
       FileOutputStream out = null;
       AndroidHttpClient httpclient = null;
-      int cumulative = 0;
+      
+      // Download to a tmp file, then rename to dstFile so that
+      // we won't leave partially downloaded file around.
+      File tmpPath = new File(mExternalDir, "download-tmp");
+      if (tmpPath.exists()) tmpPath.delete();
+      
+      Log.d(TAG, "Start download: " + sourceUri + "->" + dstPath.getName());
+      publishProgress(dstPath.getName() + ": start downloading");
+      
       try {
         try {
           httpclient = AndroidHttpClient.newInstance("Mozilla/5.0 (Android)");
-          HttpResponse response = httpclient.execute(new HttpGet(mSourceUri.toString()));
+          HttpResponse response = httpclient.execute(new HttpGet(sourceUri.toString()));
           in = response.getEntity().getContent();
+          out = new FileOutputStream(tmpPath);
+          copyStream(dstPath.getName() + ": %d bytes downloaded", in, out, 64<<10);
+
+          FileOutputStream tmpStream = out;
+          out = null;
+          tmpStream.close();
           
-          out = new FileOutputStream(dest);
-          
-          byte[] buf = new byte[32768];
-          int len = 0;
-          int lastReported = 0;
-          while ((len = in.read(buf)) > 0) {
-            out.write(buf, 0, len);
-            cumulative += len;
-            if (cumulative - lastReported >= (1<<20)) {
-              publishProgress(cumulative + " bytes downloaded");
-              lastReported = cumulative;
-            }
-            if (isCancelled()) {
-              throw new IOException("Download cancelled by user");
-            }
-          }
+          if (dstPath.exists()) dstPath.delete();
+          tmpPath.renameTo(dstPath);
         } finally {
-          Log.d(TAG, "Download done, " + cumulative + " bytes downloaded");
+          Log.d(TAG, dstPath.getName() + " done");
           if (httpclient != null) httpclient.close();
           if (in != null) in.close();
           if (out != null) out.close();
         }
       } catch (IOException e) {
         setError("download " + e.toString());
+        return false;
       }
+      return true;
     }
 
     private void extractZipFiles() {
       ZipEntry e = null;
       try {
-        File zipPath = new File(mExternalDir, mZipBaseName);
-        ZipFile zip = new ZipFile(zipPath);
+        ZipFile zip = new ZipFile(mZipPath);
         Enumeration<? extends ZipEntry> entries = zip.entries();
         while (entries.hasMoreElements()) {
           e = entries.nextElement();
@@ -221,6 +284,7 @@ public class Downloader {
         String msg = "Failed to extract file: " + ex.toString(); 
         if (e != null) msg += " for zip: " + e.toString();
         setError(msg);
+        mCorruptionFound = true;
       }
     }
 
@@ -233,24 +297,29 @@ public class Downloader {
         File outPath = new File(mExternalDir, e.getName());
         out = new FileOutputStream(outPath);
         in = zip.getInputStream(e);
-        byte[] buf = new byte[65536];
-        int n;
-        long cumulative = 0;
-        long lastReported = 0;
-        while ((n = in.read(buf)) > 0) {
-          out.write(buf, 0, n);
-          cumulative += n;
-          if (cumulative - lastReported >= (1 << 20)) {
-            publishProgress(e.getName() + ": " + cumulative + " bytes extracted");
-            lastReported = cumulative;
-          }
-          if (isCancelled()) {
-            throw new IOException("Extraction cancelled by user");
-          }
-        }
+        copyStream(e.getName() + ": %d bytes extracted", in, out, 1<<20);
       } finally {
         if (in != null) in.close();
         if (out != null) out.close();
+      }
+    }
+
+    private final byte[] mBuf = new byte[65536];
+    
+    private void copyStream(String format, InputStream in, OutputStream out, int reportInterval) throws IOException {
+      long cumulative = 0;
+      long lastReported = 0;
+      int n;
+      while ((n = in.read(mBuf)) > 0) {
+        out.write(mBuf, 0, n);
+        cumulative += n;
+        if (cumulative - lastReported >= reportInterval) {
+          publishProgress(String.format(format, cumulative));
+          lastReported = cumulative;
+        }
+        if (isCancelled()) {
+          throw new IOException("Extraction cancelled by user");
+        }
       }
     }
   }
