@@ -67,8 +67,19 @@ public class GameStatusView extends LinearLayout {
     mWhiteStatus.setText(mWhitePlayerName);    
   }
   
+  /**
+   * Update the state of the game and redraw widgets.
+   * 
+   * @param gameState
+   * @param lastBoard State of the board before the last move
+   * @param board The uptodate state of the board
+   * @param moves The list of moves leading up to "board"
+   * @param currentPlayer The player to hold the next turn. 
+   * @param errorMessage
+   */
   public final void update(
       GameState gameState,
+      Board lastBoard,
       Board board,
       ArrayList<Move> moves,
       Player currentPlayer,
@@ -89,12 +100,12 @@ public class GameStatusView extends LinearLayout {
     } 
     while (moves.size() > mMoveList.size()) {
       // Generally, moves is just one larger than mMoveList, in which case
-      // we can use "board" to compute the display string of the last move.
+      // we can use "lastBoard" to compute the display string of the last move.
       // If moves.size() > mMovesList.size() + 1, then moves other than the last
-      // may be inaccurately displayed since "board" may not correspond to the
+      // may be inaccurately displayed since "lastBoard" may not correspond to the
       // state before these moves are made.
       Move m = moves.get(mMoveList.size());
-      mMoveList.add(traditionalMoveNotation(board, m));
+      mMoveList.add(traditionalMoveNotation(lastBoard, m));
     }
     
     // Handle undos

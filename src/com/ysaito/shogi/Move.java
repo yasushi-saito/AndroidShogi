@@ -40,6 +40,7 @@ public class Move implements java.io.Serializable {
     mToY = ty;
   }
 
+  public final boolean isDroppingPiece() { return mFromX < 0; }
   public final int getPiece() { return mPiece; }
   public final int getFromX() { return mFromX; }
   public final int getFromY() { return mFromY; }  
@@ -84,7 +85,7 @@ public class Move implements java.io.Serializable {
         Piece.csaNames[p]);
   }
   
-  public static Move fromCsaString(String csa) {
+  public static Move fromCsaString(String csa, Player player) {
     int tmp = csa.charAt(0) - '0';
     int fromX, fromY;
     if (tmp > 0) {
@@ -99,6 +100,7 @@ public class Move implements java.io.Serializable {
     int toY = csa.charAt(3) - '0' - 1;
     
     int piece = Piece.fromCsaName(csa.substring(4));
+    if (player == Player.WHITE) piece = -piece;
     
     return new Move(
         piece, fromX, fromY, toX, toY);

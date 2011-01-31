@@ -85,8 +85,8 @@ public class GameActivity extends Activity {
     mBoardView.initialize(mViewListener, mHumanPlayers, mFlipScreen);
     mController = new BonanzaController(mEventHandler, mComputerLevel);
     
-    Board initialBoard = (Board)getIntent().getSerializableExtra("initial_board");
-    mController.start(savedInstanceState, initialBoard);
+    mBoard = (Board)getIntent().getSerializableExtra("initial_board");
+    mController.start(savedInstanceState, mBoard);
 
     schedulePeriodicTimer();
     // mController will call back via mControllerHandler when Bonanza is 
@@ -135,7 +135,7 @@ public class GameActivity extends Activity {
   }
 
   @Override public void onBackPressed() { 
-    if (mGameState == GameState.ACTIVE) {
+    if (mGameState == GameState.ACTIVE && !mMoves.isEmpty()) {
       showDialog(DIALOG_CONFIRM_QUIT);
     } else {
       super.onBackPressed();
@@ -292,11 +292,10 @@ public class GameActivity extends Activity {
         mMoveCookies.remove(mMoveCookies.size() - 1);
       }
 
-      mBoardView.update(r.gameState, r.board, r.nextPlayer);
+      mBoardView.update(
+          r.gameState, mBoard, r.board, r.nextPlayer, r.lastMove);
       mStatusView.update(r.gameState,
-          // Note: statusview needs the board state before the move
-          // to compute the traditional move notation.
-          mBoard,
+          mBoard, r.board,
           mMoves, r.nextPlayer, r.errorMessage);
 
       mGameState = r.gameState;
@@ -366,7 +365,7 @@ public class GameActivity extends Activity {
               // Event delivered twice?
             } else {
               setCurrentPlayer(mSavedPlayerForPromotion);
-              mBoardView.update(mGameState, mBoard, mCurrentPlayer);
+              mBoardView.update(mGameState, null, mBoard, mCurrentPlayer, null);
               mSavedMoveForPromotion = null;
               mSavedPlayerForPromotion = null;
             }
@@ -403,7 +402,7 @@ public class GameActivity extends Activity {
     final int type = Board.type(move.getPiece());
     if (type == Piece.KIN || type == Piece.OU) return false;
 
-    if (move.getFromX() < 0) return false;  // dropping a captured piece
+    if (move.isDroppingPiece()) return false;
     if (player == Player.WHITE && move.getFromY() < 6 && move.getToY() < 6) return false;
     if (player == Player.BLACK && move.getFromY() >= 3 && move.getToY() >= 3) return false;
     return true;

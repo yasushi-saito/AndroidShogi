@@ -20,7 +20,6 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Toast;
 
 import com.ysaito.shogi.Board;
 
@@ -67,14 +66,30 @@ public class BoardView extends View implements View.OnTouchListener {
 
   /**
    *  Update the state of the board as well as players' turn.
+   *  
+   *  @param lastBoard The previous state of the board
+   *  
+   *  @param board The new state of the board
+   *  
+   *  @param currentPlayer The next player that's allowed to move a piece next.
+   *  Note that this may not be equal to the player with the next turn. Rather, it is
+   *  the player that can touch the screen
+   *  and make a move. Thus, for a computer-vs-computer game,
+   *  currentPlayer will always be Player.INVALID.
    */
   public final void update(
       GameState gameState,
+      Board lastBoard,
       Board board,
-      Player currentPlayer) {
+      Player currentPlayer,
+      Move lastMove) {
     mCurrentPlayer = currentPlayer;
+    mLastBoard = null;
+    if (lastBoard != null) mLastBoard = new Board(lastBoard);
     mBoard = new Board(board);
-    mBoardInitialized = true;
+    
+    mAnimatedMove = lastMove;
+    mAnimationStartTime = mNextAnimationTime = System.currentTimeMillis();
     invalidate();
   }
 
@@ -263,6 +278,10 @@ public class BoardView extends View implements View.OnTouchListener {
     return true;
   }
 
+  private static final int ANIM_DRAW_LAST_BOARD = 1;
+  private static final int ANIM_HIDE_PIECE_FROM = 2;
+  private static final int ANIM_HIGHLIGHT_PIECE_TO = 8;
+
   //
   // Screen drawing
   //
@@ -273,11 +292,38 @@ public class BoardView extends View implements View.OnTouchListener {
 
     drawEmptyBoard(canvas, layout);
 
+    long now = System.currentTimeMillis();
+    int animation = 0;
+    
+    if (mAnimatedMove != null && mNextAnimationTime <= now) {
+      int seq = (int)((now - mAnimationStartTime) / ANIMATION_INTERVAL);
+      switch (seq) {
+      case 0:
+      case 2:
+        animation |= ANIM_HIDE_PIECE_FROM | ANIM_DRAW_LAST_BOARD;
+        break;
+      case 1:
+        animation |= ANIM_DRAW_LAST_BOARD;
+        break;
+      default:
+        // Stop animation
+        mAnimatedMove = null;
+      }
+      ++seq;
+    }
+    
     // Draw pieces
+    final Board board = ((animation & ANIM_DRAW_LAST_BOARD) != 0 ? mLastBoard : mBoard);
+    
     for (int y = 0; y < Board.DIM; ++y) {
       for (int x = 0; x < Board.DIM; ++x) {
-        int v = mBoard.getPiece(x, y);
-        if (v == 0) continue;
+        int piece = board.getPiece(x, y);
+        if ((animation & ANIM_HIDE_PIECE_FROM) != 0 &&
+            x == mAnimatedMove.getFromX() && 
+            y == mAnimatedMove.getFromY()) {
+          piece = 0;
+        }
+        if (piece == 0) continue;
         int alpha = 255;
         
         // A piece that the user is trying to move will be draw with a bit of
@@ -286,10 +332,19 @@ public class BoardView extends View implements View.OnTouchListener {
           PositionOnBoard p = (PositionOnBoard)mMoveFrom;
           if (x == p.x && y == p.y) alpha = 64;
         }
-        drawPiece(canvas, layout, v, layout.screenX(x), layout.screenY(y), alpha);
+        drawPiece(canvas, layout, piece, layout.screenX(x), layout.screenY(y), alpha);
       }
     }
 
+    if ((animation & ANIM_HIGHLIGHT_PIECE_TO) != 0) {
+      Paint cp = new Paint();
+      float cx = layout.screenX(mAnimatedMove.getToX()) + squareDim / 2.0f;
+      float cy = layout.screenY(mAnimatedMove.getToY()) + squareDim / 2.0f;
+      float radius = squareDim * 0.9f;
+      cp.setShader(new RadialGradient(cx, cy, 20, 0xffb8860b, 0x00b8860b, Shader.TileMode.MIRROR));
+      canvas.drawCircle(cx, cy, radius, cp);
+    }
+    
     drawCapturedPieces(canvas, layout, Player.BLACK);
     drawCapturedPieces(canvas, layout, Player.WHITE);
 
@@ -338,16 +393,9 @@ public class BoardView extends View implements View.OnTouchListener {
       cp.setShader(new RadialGradient(cx, cy, radius, 0xffb8860b, 0x00b8860b, Shader.TileMode.MIRROR));
       canvas.drawCircle(cx, cy, radius, cp);
     }
-    if (!mBoardInitialized) {
-      if (mInitializingToast == null) {
-        mInitializingToast = Toast.makeText(getContext(), "Initializing",
-            Toast.LENGTH_LONG);
-      }
-      mInitializingToast.show();
-    } else {
-      if (mInitializingToast != null) {
-        mInitializingToast.cancel();
-      }
+    
+    if (mAnimatedMove != null) {
+      postInvalidateDelayed(ANIMATION_INTERVAL);
     }
   }
 
@@ -362,9 +410,8 @@ public class BoardView extends View implements View.OnTouchListener {
 
   private boolean mFlipped;        // if true, flip the board upside down.
   private Player mCurrentPlayer;   // Player currently holding the turn
+  private Board mLastBoard;        // Last state of the board 
   private Board mBoard;            // Current state of the board
-  private boolean mBoardInitialized; 
-  private Toast mInitializingToast;
 
   // Position represents a logical position of a piece. It is either a
   // coordinate on the board (PositionOnBoard), or a captured piece (CapturedPiece).
@@ -530,6 +577,11 @@ public class BoardView extends View implements View.OnTouchListener {
   // @invariant mMoveTo== null || (0,0) <= mMoveTo < (Board.DIM, Board.DIM)
   private PositionOnBoard mMoveTo;
 
+  private Move mAnimatedMove;
+  private long mAnimationStartTime;
+  private long mNextAnimationTime;
+  private final int ANIMATION_INTERVAL = 120;
+  
   private EventListener mListener;
   private ArrayList<Player> mHumanPlayers;
 

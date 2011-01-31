@@ -29,7 +29,6 @@ public class ReplayGameActivity extends Activity {
   private BoardView mBoardView;
   private GameStatusView mStatusView;
   private SeekBar mSeekBar;
-  private Menu mMenu;
 
   // Game preferences
   private boolean mFlipScreen;
@@ -89,9 +88,10 @@ public class ReplayGameActivity extends Activity {
         Move m = mLog.move(mNextMove);
         ++mNextMove;
         
+        Board lastBoard = new Board(mBoard);
         mBoard.applyMove(mNextPlayer, m);
         mNextPlayer = Player.opponentOf(mNextPlayer);
-        mBoardView.update(mGameState, mBoard, Player.INVALID);
+        mBoardView.update(mGameState, lastBoard, mBoard, Player.INVALID, null);
         mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
       }
     });    
@@ -122,7 +122,7 @@ public class ReplayGameActivity extends Activity {
       public void onStopTrackingTouch(SeekBar seekBar) { }
     });
     
-    mBoardView.update(mGameState, mBoard, Player.INVALID);
+    mBoardView.update(mGameState, mBoard, mBoard, Player.INVALID, null);
   }
 
   /**
@@ -137,7 +137,7 @@ public class ReplayGameActivity extends Activity {
       mNextPlayer = Player.opponentOf(mNextPlayer);
     }
     mNextMove = numMoves;
-    mBoardView.update(mGameState, mBoard, Player.INVALID);
+    mBoardView.update(mGameState, mBoard, mBoard, Player.INVALID, null);
     mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
   }
   
@@ -145,7 +145,6 @@ public class ReplayGameActivity extends Activity {
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
     inflater.inflate(R.menu.replay_game_menu, menu);
-    mMenu = menu;
     return true;
   }
 

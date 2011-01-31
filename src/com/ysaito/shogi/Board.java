@@ -279,7 +279,7 @@ public class Board implements java.io.Serializable {
     boolean capturedChanged = false;
     ArrayList<CapturedPiece> captured = getCapturedPieces(p);
 
-    if (m.getFromX() < 0) { // dropping
+    if (m.isDroppingPiece()) {
       setPiece(m.getToX(), m.getToY(), m.getPiece());
       capturedChanged = true;
       for (int i = 0; i < captured.size(); ++i) {

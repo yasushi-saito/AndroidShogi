@@ -194,7 +194,7 @@ public class BonanzaController {
         Player curPlayer) {
       Result r = new Result();
       r.board = jr.board;
-      r.lastMove = (jr.move != null) ? Move.fromCsaString(jr.move) : null;
+      r.lastMove = (jr.move != null) ? Move.fromCsaString(jr.move, curPlayer) : null;
       r.lastMoveCookie = jr.moveCookie;
       r.errorMessage = jr.error;
       

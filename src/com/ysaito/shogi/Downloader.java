@@ -161,10 +161,8 @@ public class Downloader {
       Log.d(TAG, "Download thread exiting : " + mError);
       if (mCorruptionFound) {
         deleteOldFiles();
-        return mError;
-      } else {
-        return null;  // null means success
       }
+      return mError;  // null means success
     }
 
     @Override public void onProgressUpdate(String... status) {
@@ -187,8 +185,7 @@ public class Downloader {
     }
 
     private void downloadZipShards() {
-      int shard = 0;  // 0=="aa", 1=="ab", etc.
-      while (shard < NUM_ZIP_SHARDS) {
+      for (int shard = 0; shard < NUM_ZIP_SHARDS; ++shard) {
         String suffix = shardToSuffix(shard);
         File dstShardPath = new File(mExternalDir, mZipPath.getName() + suffix);
         if (!dstShardPath.exists()) {
@@ -198,7 +195,6 @@ public class Downloader {
         } else {
           Log.d(TAG, dstShardPath.getName() + " already exists");
         }
-        ++shard;
       }
     }
 
@@ -235,7 +231,7 @@ public class Downloader {
       FileOutputStream out = null;
       AndroidHttpClient httpclient = null;
       
-      // Download to a tmp file, then rename to dstFile so that
+      // Download to a tmp file first, then rename to dstPath so that
       // we won't leave partially downloaded file around.
       File tmpPath = new File(mExternalDir, "download-tmp");
       if (tmpPath.exists()) tmpPath.delete();
