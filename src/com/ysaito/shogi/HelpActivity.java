@@ -15,8 +15,8 @@ public class HelpActivity extends Activity {
   private final String helpString() {
     StringBuilder b = new StringBuilder();
     b.append("<html><body>");
-    b.append("<h2>Shogi version 1.5</h2>");
-    b.append("Released Jan 17, 2011.");
+    b.append("<h2>Shogi version 1.6</h2>");
+    b.append("Released Jan 30, 2011.");
     b.append("<p>Copyright(c) 2011 Yasushi Saito<br>All rights reserved<br>");
     b.append("This program is distributed under Apache 2.0 license.");
     b.append("<h3>What are Shogi Database files?</h3>");
@@ -43,10 +43,16 @@ public class HelpActivity extends Activity {
     b.append("For more information about Bonanza, visit ");
     appendHref(b, "http://www.geocities.jp/bonanza_shogi/");
     b.append(".");
-    b.append("<li>Bitmaps for shogi pieces are from ");
+    b.append("<li>Japanese bitmaps for shogi pieces are from ");
     appendHref(b, "http://mucho.girly.jp/bona/");
+    b.append("<li>Western bitmaps for shogi pieces are by Fergus Duniho and Armando Marroquin, and are ");
+    b.append("available at ");
+    appendHref(b, "http://www.chessvariants.org/graphics.dir/wshogi/");
     b.append(". </ul>");
 
+    b.append("<h3>Looking for Help!</h3>");
+    b.append("The author is looking for bitmaps for good western (chess-style) shogi pieces. ");
+    b.append("Drop email to yasushi.saito@gmail.com if you have one.");
     b.append("<h3>Source Code</h3>");
     b.append("The source code for this program is available at ");
     appendHref(b, "https://github.com/yasushi-saito/AndroidShogi");

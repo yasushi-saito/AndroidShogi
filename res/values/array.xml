@@ -79,11 +79,13 @@
   <string-array name="piece_style">
     <item>Kinki</item>
     <item>Kinki (simple)</item>
+    <item>Western (Duniho/Marroquin)</item>
   </string-array>
 
   <string-array name="piece_style_values">
     <item>kinki</item>
     <item>kinki_simple</item>
+    <item>dm</item>
   </string-array>
 
 </resources>
