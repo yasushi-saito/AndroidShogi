@@ -87,8 +87,8 @@ public class BoardView extends View implements View.OnTouchListener {
     mLastBoard = null;
     if (lastBoard != null) mLastBoard = new Board(lastBoard);
     mBoard = new Board(board);
-    
-    mAnimatedMove = lastMove;
+
+    mLastMove = lastMove;
     mAnimationStartTime = mNextAnimationTime = System.currentTimeMillis();
     invalidate();
   }
@@ -116,8 +116,8 @@ public class BoardView extends View implements View.OnTouchListener {
       mType = S_INVALID;
     }
 
-    // Find empty spots at which "player" can drop "pieceToDrop". If such spots are
-    // found, remember the one nearest to <mSx, mSy>.
+    // Find empty spots near <mSx, mSy> at which "player" can drop
+    // "pieceToDrop". Remember the best spot in <mPx, mPy, mType>.
     public final void findNearestEmptySquareOnBoard(
         Board board, Player player, int pieceToDrop) { 
       int px = mLayout.boardX(mSx);
@@ -138,7 +138,8 @@ public class BoardView extends View implements View.OnTouchListener {
       }
     }
 
-    // Remember the piece owned by "player" and is nearest to <mSx, mSy>. 
+    // Find a piece that's near <mSx, mSy>, owned by "player", and can move elsewhere.
+    // Remember the best piece in <mPx, mPy>.
     public final void findNearestPlayersPieceOnBoard(Board board, Player player) { 
       int px = mLayout.boardX(mSx);
       int py = mLayout.boardY(mSy);
@@ -185,6 +186,8 @@ public class BoardView extends View implements View.OnTouchListener {
     public final int nearestY() { return mPy; }
 
     private ScreenLayout mLayout;
+
+    // Screen pixel position of the touch event
     private float mSx;
     private float mSy;
 
@@ -225,8 +228,9 @@ public class BoardView extends View implements View.OnTouchListener {
       return true;
     }
 
+    boolean needInvalidation = false;
     if (mMoveFrom != null) {
-      PositionOnBoard to = null;
+      // Compute move destination
       if (mMoveFrom instanceof PositionOnBoard) {
         PositionOnBoard from = (PositionOnBoard)mMoveFrom;
         ArrayList<Board.Position> dests = mBoard.possibleMoveDestinations(from.x, from.y);
@@ -242,15 +246,15 @@ public class BoardView extends View implements View.OnTouchListener {
         CapturedPiece p = (CapturedPiece)mMoveFrom;
         finder.findNearestEmptySquareOnBoard(mBoard, mCurrentPlayer, p.piece);
       }
+
       if (finder.nearestType() != S_INVALID) {
-        to = new PositionOnBoard(finder.nearestX(), finder.nearestY());
+	final PositionOnBoard to = new PositionOnBoard(finder.nearestX(), finder.nearestY());
+	needInvalidation = !to.equals(mMoveTo);
+	mMoveTo = to;
+      } else {
+	needInvalidation = (mMoveTo != null);
+	mMoveTo = null;
       }
-      // If "to" is different from the currently selected square, redraw
-      if ((to == null && mMoveTo != null) ||
-          (to != null && !to.equals(mMoveTo))) {
-        invalidate();
-      }
-      mMoveTo = to;
     }
     if (action == MotionEvent.ACTION_UP) {
       if (mMoveTo != null && !mMoveFrom.equals(mMoveTo)) {
@@ -273,8 +277,9 @@ public class BoardView extends View implements View.OnTouchListener {
       }
       mMoveTo = null;
       mMoveFrom = null;
-      invalidate();
+      needInvalidation = true;
     }
+    if (needInvalidation) invalidate();
     return true;
   }
 
@@ -291,11 +296,10 @@ public class BoardView extends View implements View.OnTouchListener {
     int squareDim = layout.getSquareDim();
 
     drawEmptyBoard(canvas, layout);
-
-    long now = System.currentTimeMillis();
+    final long now = System.currentTimeMillis(); 
     int animation = 0;
     
-    if (mAnimatedMove != null && mNextAnimationTime <= now) {
+    if (mLastMove != null && mNextAnimationTime <= now) {
       int seq = (int)((now - mAnimationStartTime) / ANIMATION_INTERVAL);
       switch (seq) {
       case 0:
@@ -305,13 +309,14 @@ public class BoardView extends View implements View.OnTouchListener {
       case 1:
         animation |= ANIM_DRAW_LAST_BOARD;
         break;
-      default:
-        // Stop animation
-        mAnimatedMove = null;
       }
       ++seq;
     }
-    
+
+    if (animation == 0 && mLastMove != null) {
+      darkenSquare(canvas, layout, mLastMove.getToX(), mLastMove.getToY());
+    }
+
     // Draw pieces
     final Board board = ((animation & ANIM_DRAW_LAST_BOARD) != 0 ? mLastBoard : mBoard);
     
@@ -319,8 +324,8 @@ public class BoardView extends View implements View.OnTouchListener {
       for (int x = 0; x < Board.DIM; ++x) {
         int piece = board.getPiece(x, y);
         if ((animation & ANIM_HIDE_PIECE_FROM) != 0 &&
-            x == mAnimatedMove.getFromX() && 
-            y == mAnimatedMove.getFromY()) {
+            x == mLastMove.getFromX() && 
+            y == mLastMove.getFromY()) {
           piece = 0;
         }
         if (piece == 0) continue;
@@ -338,8 +343,8 @@ public class BoardView extends View implements View.OnTouchListener {
 
     if ((animation & ANIM_HIGHLIGHT_PIECE_TO) != 0) {
       Paint cp = new Paint();
-      float cx = layout.screenX(mAnimatedMove.getToX()) + squareDim / 2.0f;
-      float cy = layout.screenY(mAnimatedMove.getToY()) + squareDim / 2.0f;
+      float cx = layout.screenX(mLastMove.getToX()) + squareDim / 2.0f;
+      float cy = layout.screenY(mLastMove.getToY()) + squareDim / 2.0f;
       float radius = squareDim * 0.9f;
       cp.setShader(new RadialGradient(cx, cy, 20, 0xffb8860b, 0x00b8860b, Shader.TileMode.MIRROR));
       canvas.drawCircle(cx, cy, radius, cp);
@@ -394,7 +399,7 @@ public class BoardView extends View implements View.OnTouchListener {
       canvas.drawCircle(cx, cy, radius, cp);
     }
     
-    if (mAnimatedMove != null) {
+    if (animation != 0) {
       postInvalidateDelayed(ANIMATION_INTERVAL);
     }
   }
@@ -433,6 +438,16 @@ public class BoardView extends View implements View.OnTouchListener {
   
   @Override public int hashCode() {
     throw new AssertionError("hashCode not supported");
+  }
+
+  private void darkenSquare(Canvas canvas, ScreenLayout layout, int px, int py) {
+    Paint paint = new Paint();
+    float sx = layout.screenX(px);
+    float sy = layout.screenY(py);
+    paint.setColor(0x30000000);
+    final int squareDim = layout.getSquareDim();
+    Log.d(TAG, String.format("LASTMOVE %d %d %f %f", px, py, sx, sy));
+    canvas.drawRect(sx, sy, sx + squareDim, sy + squareDim, paint);
   }
   
   // Point to a captured piece
@@ -577,7 +592,7 @@ public class BoardView extends View implements View.OnTouchListener {
   // @invariant mMoveTo== null || (0,0) <= mMoveTo < (Board.DIM, Board.DIM)
   private PositionOnBoard mMoveTo;
 
-  private Move mAnimatedMove;
+  private Move mLastMove;
   private long mAnimationStartTime;
   private long mNextAnimationTime;
   private final int ANIMATION_INTERVAL = 120;
