@@ -1,7 +1,6 @@
 package com.ysaito.shogi;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.TreeMap;
 
 import android.app.Activity;
@@ -293,7 +292,9 @@ public class GameActivity extends Activity {
       }
 
       mBoardView.update(
-          r.gameState, mBoard, r.board, r.nextPlayer, r.lastMove);
+          r.gameState, mBoard, r.board, r.nextPlayer, 
+          r.lastMove,
+          !isComputerPlayer(r.nextPlayer)); /* animate if lastMove was made by the computer player */
       mStatusView.update(r.gameState,
           mBoard, r.board,
           mMoves, r.nextPlayer, r.errorMessage);
@@ -334,8 +335,8 @@ public class GameActivity extends Activity {
 
   private void saveGame() {
     TreeMap<String, String> attrs = new TreeMap<String, String>();
-    attrs.put(GameLog.A_BLACK_PLAYER, blackPlayerName());
-    attrs.put(GameLog.A_WHITE_PLAYER, whitePlayerName());
+    attrs.put(GameLog.ATTR_BLACK_PLAYER, blackPlayerName());
+    attrs.put(GameLog.ATTR_WHITE_PLAYER, whitePlayerName());
     Log.d(TAG, "SAVING");
     LogList.addGameLog(GameLog.newLog(mStartTimeMs, attrs, mMoves));
   }
@@ -365,7 +366,7 @@ public class GameActivity extends Activity {
               // Event delivered twice?
             } else {
               setCurrentPlayer(mSavedPlayerForPromotion);
-              mBoardView.update(mGameState, null, mBoard, mCurrentPlayer, null);
+              mBoardView.update(mGameState, null, mBoard, mCurrentPlayer, null, false);
               mSavedMoveForPromotion = null;
               mSavedPlayerForPromotion = null;
             }

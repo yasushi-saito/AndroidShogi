@@ -199,7 +199,7 @@ public class LogList {
             if (log != null) {
               if (summary.logs.put(log.digest(), log) == null) {
                 publishProgress(log);
-                Log.d(TAG, "ADD: " + log.digest() + "//" + log.attr(GameLog.A_BLACK_PLAYER));
+                Log.d(TAG, "ADD: " + log.digest() + "//" + log.attr(GameLog.ATTR_BLACK_PLAYER));
               }
             }
           }

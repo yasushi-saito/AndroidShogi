@@ -8,12 +8,10 @@ import java.io.StringWriter;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Map;
-import java.util.Set;
 
 import com.ysaito.shogi.GameLog;
 import com.ysaito.shogi.ParseException;
 
-import android.content.Context;
 import android.content.res.Resources;
 import android.test.InstrumentationTestCase;
 import android.util.Log;
@@ -57,13 +55,13 @@ public class GameLogTest extends InstrumentationTestCase {
   public void testLoad() throws ParseException, IOException {
     Log.d(TAG, "StartTestLoad3");
     GameLog log = openKifFile(R.raw.kifu2);
-    assertEquals(log.attr(GameLog.A_TITLE), "第60回NHK杯3回戦第6局");
-    assertEquals(log.attr(GameLog.A_BLACK_PLAYER), "佐藤康光");
-    assertEquals(log.attr(GameLog.A_WHITE_PLAYER), "久保利明");
-    assertEquals(log.attr(GameLog.A_HANDICAP), "平手");
-    assertEquals(log.attr(GameLog.A_TOURNAMENT), "ＮＨＫ杯");
-    assertEquals(log.move(4).toCsaString(), "2625FU");
-    assertEquals(log.move(94).toCsaString(), "7765KE");
+    assertEquals(log.attr(GameLog.ATTR_TITLE), "第60回NHK杯3回戦第6局");
+    assertEquals(log.attr(GameLog.ATTR_BLACK_PLAYER), "佐藤康光");
+    assertEquals(log.attr(GameLog.ATTR_WHITE_PLAYER), "久保利明");
+    assertEquals(log.attr(GameLog.ATTR_HANDICAP), "平手");
+    assertEquals(log.attr(GameLog.ATTR_TOURNAMENT), "ＮＨＫ杯");
+    assertEquals(log.getMove(4).toCsaString(), "2625FU");
+    assertEquals(log.getMove(94).toCsaString(), "7765KE");
     assertEquals(log.numMoves(), 157);
  }
   
@@ -77,16 +75,16 @@ public class GameLogTest extends InstrumentationTestCase {
   
   public void testHtml() throws ParseException, IOException {
     GameLog log = openHtmlFile(R.raw.download1);
-    assertEquals(log.attr(GameLog.A_WHITE_PLAYER), "早川俊");
-    assertEquals(log.move(125).toCsaString(), "0085KY");
+    assertEquals(log.attr(GameLog.ATTR_WHITE_PLAYER), "早川俊");
+    assertEquals(log.getMove(125).toCsaString(), "0085KY");
     assertEquals(log.numMoves(), 134);
   }
   
   public void testHtml2() throws ParseException, IOException {
     GameLog log = openHtmlFile(R.raw.download2);
-    assertEquals(log.attr(GameLog.A_WHITE_PLAYER), "上野裕和");
-    assertEquals(log.attr(GameLog.A_BLACK_PLAYER), "稲葉陽");    
-    assertEquals(log.move(64).toCsaString(), "7785KE");
+    assertEquals(log.attr(GameLog.ATTR_WHITE_PLAYER), "上野裕和");
+    assertEquals(log.attr(GameLog.ATTR_BLACK_PLAYER), "稲葉陽");    
+    assertEquals(log.getMove(64).toCsaString(), "7785KE");
     assertEquals(log.numMoves(), 121);
   }
   
@@ -94,7 +92,6 @@ public class GameLogTest extends InstrumentationTestCase {
     GameLog log = openKifFile(R.raw.kifu4);
     StringWriter w = new StringWriter();
     log.toKif(w);
-    Log.d(TAG, "TESTSTART");
     StringReader r = new StringReader(w.toString());
     GameLog log2 = GameLog.parseKif(r);
     assertLogEquals(log, log2);
@@ -109,7 +106,10 @@ public class GameLogTest extends InstrumentationTestCase {
     
     assertEquals(l1.numMoves(), l2.numMoves());
     for (int i = 0; i < l1.numMoves(); ++i) {
-      assertTrue(l1.move(i).equals(l2.move(i)));
+      Log.d(TAG, String.format("MOVE: %d %s %s",
+          i, l1.getMove(i).toString(),
+          l2.getMove(i).toString()));
+      assertTrue(l1.getMove(i).equals(l2.getMove(i)));
     }
   }
 }

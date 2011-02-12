@@ -66,16 +66,16 @@ public class PickLogActivity extends ListActivity  {
             mTmpCalendar.get(Calendar.MONTH) - Calendar.JANUARY + 1,
             mTmpCalendar.get(Calendar.DAY_OF_MONTH)));
       }
-      String v = log.attr(GameLog.A_BLACK_PLAYER);
+      String v = log.attr(GameLog.ATTR_BLACK_PLAYER);
       if (v != null) b.append(v);
       b.append("/");
-      v = log.attr(GameLog.A_WHITE_PLAYER);
+      v = log.attr(GameLog.ATTR_WHITE_PLAYER);
       if (v != null) b.append(v);
-      v = log.attr(GameLog.A_TOURNAMENT);
+      v = log.attr(GameLog.ATTR_TOURNAMENT);
       if (v != null) {
         b.append("/").append(v);
       } else {
-        v = log.attr(GameLog.A_TITLE);
+        v = log.attr(GameLog.ATTR_TITLE);
         if (v != null) {
           b.append("/").append(v);
         }
@@ -118,9 +118,9 @@ public class PickLogActivity extends ListActivity  {
   };
   
   private static final String getMinPlayer(GameLog g) {
-    String black = g.attr(GameLog.A_BLACK_PLAYER);
+    String black = g.attr(GameLog.ATTR_BLACK_PLAYER);
     if (black == null) black = "";
-    String white = g.attr(GameLog.A_WHITE_PLAYER);
+    String white = g.attr(GameLog.ATTR_WHITE_PLAYER);
     if (white == null) white = "";
     return (black.compareTo(white) <= 0) ? black : white;
   }

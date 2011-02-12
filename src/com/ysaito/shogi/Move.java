@@ -209,7 +209,6 @@ public class Move implements java.io.Serializable {
     }
     
     public String toJapaneseString() {
-      Log.d(TAG, "JAPJAP: " + toString());
       return String.format("%d%s%s%s",
           x, 
           Move.japaneseNumbers[y], 

@@ -13,8 +13,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Scanner;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -111,6 +115,45 @@ public class Downloader {
   private DownloadThread mThread;
   private String mError;
 
+  private static class Summary {
+    public static class File {
+      public String path;
+      public byte[] sha1Digest;
+    }
+    public ArrayList<File> files;
+
+    public static Summary parseFile(java.io.File input) throws IOException, NumberFormatException {
+      Summary s = new Summary();
+      s.files = new ArrayList<File>();
+
+      Scanner scanner = new Scanner(input);
+      while (scanner.hasNextLine()) {
+        String l = scanner.nextLine();
+        if (Pattern.matches("\\s*#", l)) continue;
+
+        File f = new File();
+        Scanner line = new Scanner(l);
+        line.useDelimiter(",");
+        f.path = line.next();
+        Log.d(TAG, String.format("PATH=%s", f.path));
+
+        byte digest[] = new byte[128];  // SHA1 digest is 20 bytes long, so 128 should be long enough
+        int numBytes = 0;
+        while (line.hasNext("..")) {
+          String hex = line.next("..");
+          Log.d(TAG, String.format("D=%s", hex));
+          digest[numBytes++] = (byte)Integer.parseInt(hex, 16);
+        }
+        f.sha1Digest = new byte[numBytes];
+        for (int i = 0; i < numBytes; ++i) {
+          f.sha1Digest[i] = digest[i];
+        }
+        s.files.add(f);
+      }
+      return s;
+    }
+  }
+
   private class DownloadThread extends AsyncTask<Uri, String, String> {
     // The zip file is split into 4MB chunks (11 total) to allow for easy restarts.
     // The first chunk is shogi-data.zip.aa, the second is shogi-data.zip.ab, so on.
@@ -139,12 +182,15 @@ public class Downloader {
       mZipPath = new File(mExternalDir, zipBaseName);
       
       if (!mZipPath.exists()) {
-        // Note: if the file exists but is corrupt, extractZipFiles() will
-        // return an error, and deleteOldFiles() will delete the file.
-        // A retry by the user will start from a clean slate.
-        downloadZipShards();
+        Summary summary = downloadSummary();
         if (mError == null) {
-          concatenateZipShards();
+          // Note: if the file exists but is corrupt, extractZipFiles() will
+          // return an error, and deleteOldFiles() will delete the file.
+          // A retry by the user will start from a clean slate.
+          downloadZipShards(summary);
+        }
+        if (mError == null) {
+          concatenateZipShards(summary);
         }
       }
       if (mError == null) {
@@ -183,13 +229,29 @@ public class Downloader {
         }
       }
     }
+    
+    private Summary downloadSummary() {
+      File dstPath = new File(mExternalDir, mZipPath.getName() + ".summary");
+      if (!downloadFile(mSourceUri.toString() + ".summary", dstPath)) {
+        return null;
+      }
+      try {
+        return Summary.parseFile(dstPath);
+      } catch (IOException e) {
+        setError("downloadSummary: " + e.getMessage());
+        return null;
+      } catch (NumberFormatException e) {
+        setError("downloadSummary: " + e.getMessage());
+        return null;
+      }
+    }
 
-    private void downloadZipShards() {
+    private void downloadZipShards(Summary summary) {
       for (int shard = 0; shard < NUM_ZIP_SHARDS; ++shard) {
         String suffix = shardToSuffix(shard);
         File dstShardPath = new File(mExternalDir, mZipPath.getName() + suffix);
         if (!dstShardPath.exists()) {
-          if (!downloadShard(mSourceUri.toString() + shardToSuffix(shard), dstShardPath)) {
+          if (!downloadFile(mSourceUri.toString() + shardToSuffix(shard), dstShardPath)) {
             return;
           }
         } else {
@@ -198,7 +260,7 @@ public class Downloader {
       }
     }
 
-    private void concatenateZipShards() {
+    private void concatenateZipShards(Summary summary) {
       FileOutputStream out = null;
       FileInputStream in = null;
       try {
@@ -226,7 +288,7 @@ public class Downloader {
       return String.format(".a%c", shard + 'a'); 
     }
     
-    private boolean downloadShard(String sourceUri, File dstPath) {
+    private boolean downloadFile(String sourceUri, File dstPath) {
       InputStream in = null;
       FileOutputStream out = null;
       AndroidHttpClient httpclient = null;

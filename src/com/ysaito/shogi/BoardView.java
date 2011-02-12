@@ -82,14 +82,18 @@ public class BoardView extends View implements View.OnTouchListener {
       Board lastBoard,
       Board board,
       Player currentPlayer,
-      Move lastMove) {
+      Move lastMove,
+      boolean animateMove) {
     mCurrentPlayer = currentPlayer;
     mLastBoard = null;
     if (lastBoard != null) mLastBoard = new Board(lastBoard);
     mBoard = new Board(board);
 
     mLastMove = lastMove;
-    mAnimationStartTime = mNextAnimationTime = System.currentTimeMillis();
+    mAnimationStartTime = mNextAnimationTime = -1;
+    if (animateMove) {
+      mAnimationStartTime = mNextAnimationTime = System.currentTimeMillis();
+    } 
     invalidate();
   }
 
@@ -299,7 +303,7 @@ public class BoardView extends View implements View.OnTouchListener {
     final long now = System.currentTimeMillis(); 
     int animation = 0;
     
-    if (mLastMove != null && mNextAnimationTime <= now) {
+    if (mLastMove != null && mNextAnimationTime >= 0 && mNextAnimationTime <= now) {
       int seq = (int)((now - mAnimationStartTime) / ANIMATION_INTERVAL);
       switch (seq) {
       case 0:
@@ -440,13 +444,13 @@ public class BoardView extends View implements View.OnTouchListener {
     throw new AssertionError("hashCode not supported");
   }
 
+  // Draw a dark square at board position <px, py>.
   private void darkenSquare(Canvas canvas, ScreenLayout layout, int px, int py) {
     Paint paint = new Paint();
     float sx = layout.screenX(px);
     float sy = layout.screenY(py);
     paint.setColor(0x30000000);
     final int squareDim = layout.getSquareDim();
-    Log.d(TAG, String.format("LASTMOVE %d %d %f %f", px, py, sx, sy));
     canvas.drawRect(sx, sy, sx + squareDim, sy + squareDim, paint);
   }
   

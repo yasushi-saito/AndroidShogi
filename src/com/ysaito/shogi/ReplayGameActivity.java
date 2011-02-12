@@ -63,8 +63,8 @@ public class ReplayGameActivity extends Activity {
     Assert.isTrue(mLog.numMoves() > 0);
     
     mStatusView = (GameStatusView)findViewById(R.id.replay_gamestatusview);
-    mStatusView.initialize(mLog.attr(GameLog.A_BLACK_PLAYER),
-			     mLog.attr(GameLog.A_WHITE_PLAYER));
+    mStatusView.initialize(mLog.attr(GameLog.ATTR_BLACK_PLAYER),
+			     mLog.attr(GameLog.ATTR_WHITE_PLAYER));
 
     mBoardView = (BoardView)findViewById(R.id.replay_boardview);
     mBoardView.initialize(mViewListener, 
@@ -85,13 +85,13 @@ public class ReplayGameActivity extends Activity {
     b.setOnClickListener(new ImageButton.OnClickListener() {
       public void onClick(View v) { 
         if (mNextMove >= mLog.numMoves()) return;
-        Move m = mLog.move(mNextMove);
+        Move m = mLog.getMove(mNextMove);
         ++mNextMove;
         
         Board lastBoard = new Board(mBoard);
         mBoard.applyMove(mNextPlayer, m);
         mNextPlayer = Player.opponentOf(mNextPlayer);
-        mBoardView.update(mGameState, lastBoard, mBoard, Player.INVALID, null);
+        mBoardView.update(mGameState, lastBoard, mBoard, Player.INVALID, m, false);
         mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
       }
     });    
@@ -122,7 +122,7 @@ public class ReplayGameActivity extends Activity {
       public void onStopTrackingTouch(SeekBar seekBar) { }
     });
     
-    mBoardView.update(mGameState, mBoard, mBoard, Player.INVALID, null);
+    mBoardView.update(mGameState, mBoard, mBoard, Player.INVALID, null, false);
   }
 
   /**
@@ -132,12 +132,14 @@ public class ReplayGameActivity extends Activity {
   private final void replayUpTo(int numMoves) {
     initializeBoard();
     mNextPlayer = Player.BLACK;
+    Move move = null;
     for (int i = 0; i < numMoves; ++i) {
-      mBoard.applyMove(mNextPlayer, mLog.move(i));
+      move = mLog.getMove(i);
+      mBoard.applyMove(mNextPlayer, move);
       mNextPlayer = Player.opponentOf(mNextPlayer);
     }
     mNextMove = numMoves;
-    mBoardView.update(mGameState, mBoard, mBoard, Player.INVALID, null);
+    mBoardView.update(mGameState, mBoard, mBoard, Player.INVALID, move, false);
     mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
   }
   
