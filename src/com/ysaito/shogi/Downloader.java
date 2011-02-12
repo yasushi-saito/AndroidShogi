@@ -13,8 +13,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Scanner;
@@ -40,9 +40,6 @@ import org.apache.http.client.methods.HttpGet;
  * 
  */
 public class Downloader {
-  public static final String[] REQUIRED_FILES = {
-    "book.bin", "fv.bin", "hash.bin"
-  };
   public static final int DOWNLOADING = 1; 
   public static final int EXTRACTING = 2;
   public static final int SUCCESS = 3;
@@ -76,6 +73,17 @@ public class Downloader {
     mThread = new DownloadThread();
   }
 
+  static void deleteFilesInDir(File dir) {
+    String[] children = dir.list();
+    if (children != null) {
+      for (String child: children) {
+        File f = new File(dir, child);
+        Log.d(TAG, "Deleting " + f.getAbsolutePath());
+        f.delete();
+      }
+    }
+  }
+  
   /**
    * Must be called once to start downloading
    * @param sourceUrl The location of the file.
@@ -92,20 +100,6 @@ public class Downloader {
     mThread.cancel(false);
   }
 
-  /**
-   * See if all the files required to run Bonanza are present in externalDir.
-   */
-  public static boolean hasRequiredFiles(File externalDir) {
-    for (String basename: REQUIRED_FILES) {
-      File file = new File(externalDir, basename);
-      if (!file.exists()) {
-        Log.d(TAG, file.getAbsolutePath() + " not found");
-        return false;
-      }
-    }
-    return true;
-  }
-
   // 
   // Implementation details
   //
@@ -117,7 +111,7 @@ public class Downloader {
 
   private static class Summary {
     public static class File {
-      public String path;
+      public String suffix;
       public byte[] sha1Digest;
     }
     public ArrayList<File> files;
@@ -129,37 +123,46 @@ public class Downloader {
       Scanner scanner = new Scanner(input);
       while (scanner.hasNextLine()) {
         String l = scanner.nextLine();
-        if (Pattern.matches("\\s*#", l)) continue;
+        if (Pattern.matches("\\s*#.*", l)) continue;
 
         File f = new File();
         Scanner line = new Scanner(l);
         line.useDelimiter(",");
-        f.path = line.next();
-        Log.d(TAG, String.format("PATH=%s", f.path));
+        if (!line.hasNext()) {
+          throw new NumberFormatException(l + ": Illegal summary line");
+        }
+        f.suffix = line.next();
+        Log.d(TAG, String.format("SUFFIX=%s", f.suffix));
 
-        byte digest[] = new byte[128];  // SHA1 digest is 20 bytes long, so 128 should be long enough
-        int numBytes = 0;
-        while (line.hasNext("..")) {
-          String hex = line.next("..");
-          Log.d(TAG, String.format("D=%s", hex));
-          digest[numBytes++] = (byte)Integer.parseInt(hex, 16);
+        if (!line.hasNext()) {
+          throw new NumberFormatException(l + ": Illegal summary line");
         }
-        f.sha1Digest = new byte[numBytes];
-        for (int i = 0; i < numBytes; ++i) {
-          f.sha1Digest[i] = digest[i];
-        }
+        f.sha1Digest = parseHexDigest(line.next());
         s.files.add(f);
       }
       return s;
+    }
+    
+    private static byte[] parseHexDigest(String input) throws NumberFormatException {
+      Log.d(TAG, String.format("DIGEST=%s", input));
+      final int length = input.length();
+      if (length % 2 != 0) {
+        throw new NumberFormatException(input + ": unparsable digest");
+      }
+      int n = 0;
+      byte[] b = new byte[length / 2];
+      
+      for (int i = 0; i < length / 2; ++i) {
+        String hex = input.substring(i * 2, i * 2 + 2);
+        b[n++] = (byte)Integer.parseInt(hex, 16);
+      }
+      return b;
     }
   }
 
   private class DownloadThread extends AsyncTask<Uri, String, String> {
     // The zip file is split into 4MB chunks (11 total) to allow for easy restarts.
     // The first chunk is shogi-data.zip.aa, the second is shogi-data.zip.ab, so on.
-    
-    // Number of zip splits in the source site. "shogi-data.zip.aa" .. "shogi-data.zip.ak".
-    private static final int NUM_ZIP_SHARDS = 11;
     
     // The source uri without any shard suffix, i.e., "http://foo.bar.com/dir/shogi-data.zip".
     private Uri mSourceUri;
@@ -190,44 +193,30 @@ public class Downloader {
           downloadZipShards(summary);
         }
         if (mError == null) {
+          checksumZipShards(summary);
+        }
+        if (mError == null) {
           concatenateZipShards(summary);
         }
       }
       if (mError == null) {
         extractZipFiles();
       }
-      if (mError == null) {
-        if (!hasRequiredFiles(mExternalDir)) {
-          mError = String.format("Failed to download required files to %s:", mExternalDir);
-          for (String s: REQUIRED_FILES) mError += " " + s;
-          mCorruptionFound = true;
-        }
-      }
-      
       Log.d(TAG, "Download thread exiting : " + mError);
       if (mCorruptionFound) {
-        deleteOldFiles();
+        deleteFilesInDir(mExternalDir);
       }
       return mError;  // null means success
     }
 
     @Override public void onProgressUpdate(String... status) {
+      Log.d(TAG, "OnProgress");
       for (String s: status) mListener.onProgressUpdate(s);
     }
     
     @Override public void onPostExecute(String status) {
+      Log.d(TAG, "OnPost");
       mListener.onFinish(status);
-    }
-    
-    private void deleteOldFiles() {
-      String[] children = mExternalDir.list();
-      if (children != null) {
-        for (String child: children) {
-          File f = new File(mExternalDir, child);
-          Log.d(TAG, "Deleting " + f.getAbsolutePath());
-          f.delete();
-        }
-      }
     }
     
     private Summary downloadSummary() {
@@ -238,20 +227,21 @@ public class Downloader {
       try {
         return Summary.parseFile(dstPath);
       } catch (IOException e) {
+        mCorruptionFound = true;
         setError("downloadSummary: " + e.getMessage());
         return null;
       } catch (NumberFormatException e) {
+        mCorruptionFound = true;
         setError("downloadSummary: " + e.getMessage());
         return null;
       }
     }
 
     private void downloadZipShards(Summary summary) {
-      for (int shard = 0; shard < NUM_ZIP_SHARDS; ++shard) {
-        String suffix = shardToSuffix(shard);
-        File dstShardPath = new File(mExternalDir, mZipPath.getName() + suffix);
+      for (Summary.File file : summary.files) {
+        File dstShardPath = new File(mExternalDir, mZipPath.getName() + "." + file.suffix);
         if (!dstShardPath.exists()) {
-          if (!downloadFile(mSourceUri.toString() + shardToSuffix(shard), dstShardPath)) {
+          if (!downloadFile(mSourceUri.toString() + "." + file.suffix, dstShardPath)) {
             return;
           }
         } else {
@@ -260,14 +250,45 @@ public class Downloader {
       }
     }
 
+    private void checksumZipShards(Summary summary) {
+      for (Summary.File file : summary.files) {
+        File shardPath = new File(mExternalDir, mZipPath.getName() + "." + file.suffix);
+        FileInputStream in = null;
+        MessageDigest digester = null;
+        try {
+          try {
+            digester = MessageDigest.getInstance("SHA-1");
+            in = new FileInputStream(shardPath);
+            int len;
+            while ((len = in.read(mBuf)) > 0) {
+              digester.update(mBuf, 0, len);
+            }
+          } finally {
+            if (in != null) in.close();
+          }
+        } catch (java.security.NoSuchAlgorithmException e) {
+          Log.e(TAG, "Could not find SHA1 digester");
+          return;
+        } catch (IOException e) {
+          setError(shardPath.getAbsolutePath() + ": " + e.getMessage());
+          return;
+        }
+        byte[] digest = digester.digest();
+        if (!MessageDigest.isEqual(digest, file.sha1Digest)) {
+          Log.d(TAG, shardPath.getName() + ": Wrong SHA-1 checksum");
+          setError(shardPath.getName() + ": Wrong SHA-1 checksum: " + digest.toString());
+          mCorruptionFound = true;
+        }
+      }
+    }
     private void concatenateZipShards(Summary summary) {
       FileOutputStream out = null;
       FileInputStream in = null;
       try {
         try {
           out = new FileOutputStream(mZipPath);
-          for (int shard = 0; shard < NUM_ZIP_SHARDS; ++shard) {
-            File srcShardPath = new File(mExternalDir, mZipPath.getName() + shardToSuffix(shard));
+          for (Summary.File file : summary.files) {
+            File srcShardPath = new File(mExternalDir, mZipPath.getName() + "." + file.suffix);
             in = new FileInputStream(srcShardPath);
             copyStream(srcShardPath.getName() + ": %d bytes copied", in, out, 1<<20);
             FileInputStream tmpIn = in;
@@ -283,15 +304,10 @@ public class Downloader {
       }
     }
     
-    private String shardToSuffix(int shard) {
-      // We assume that shard < 26
-      return String.format(".a%c", shard + 'a'); 
-    }
-    
     private boolean downloadFile(String sourceUri, File dstPath) {
       InputStream in = null;
-      FileOutputStream out = null;
       AndroidHttpClient httpclient = null;
+      FileOutputStream out = null;
       
       // Download to a tmp file first, then rename to dstPath so that
       // we won't leave partially downloaded file around.
@@ -303,9 +319,13 @@ public class Downloader {
       
       try {
         try {
-          httpclient = AndroidHttpClient.newInstance("Mozilla/5.0 (Android)");
-          HttpResponse response = httpclient.execute(new HttpGet(sourceUri.toString()));
-          in = response.getEntity().getContent();
+          if (sourceUri.startsWith("file://")) {
+            in = new FileInputStream(sourceUri.substring(7));
+          } else {
+            httpclient = AndroidHttpClient.newInstance("Mozilla/5.0 (Android)");
+            HttpResponse response = httpclient.execute(new HttpGet(sourceUri.toString()));
+            in = response.getEntity().getContent();
+          }
           out = new FileOutputStream(tmpPath);
           copyStream(dstPath.getName() + ": %d bytes downloaded", in, out, 64<<10);
 

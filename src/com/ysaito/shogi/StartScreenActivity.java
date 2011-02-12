@@ -66,7 +66,7 @@ public class StartScreenActivity extends Activity {
     buttons.add(b);    
     b.setOnClickListener(new Button.OnClickListener() {
       public void onClick(View v) {
-        if (Downloader.hasRequiredFiles(mExternalDir)) {
+        if (hasRequiredFiles(mExternalDir)) {
           showDialog(DIALOG_CONFIRM_DOWNLOAD);
         } else {
           startDownload();
@@ -163,6 +163,13 @@ public class StartScreenActivity extends Activity {
     
     public void onFinish(String status) {
       if (status == null) {  // success
+        if (!hasRequiredFiles(mExternalDir)) {
+          status = String.format("Failed to download required files to %s:", mExternalDir);
+          for (String s: REQUIRED_FILES) status += " " + s;
+          Downloader.deleteFilesInDir(mExternalDir);
+        }
+      }
+      if (status == null) {
         mDownloadDialog.dismiss();
       } else {
         mDownloadDialog.setMessage(status + ". Please retry later.");
@@ -189,7 +196,7 @@ public class StartScreenActivity extends Activity {
   }
   
   private void newGame() {
-    if (!Downloader.hasRequiredFiles(mExternalDir)) {
+    if (!hasRequiredFiles(mExternalDir)) {
       Toast.makeText(
           getBaseContext(),
           "Please download the shogi database files first",
@@ -224,7 +231,7 @@ public class StartScreenActivity extends Activity {
   }
   
   private void initializeBonanzaInBackground() {
-    if (!Downloader.hasRequiredFiles(mExternalDir)) {
+    if (!hasRequiredFiles(mExternalDir)) {
       Toast.makeText(
           getBaseContext(),
           "Please download the shogi database files first",
@@ -232,5 +239,22 @@ public class StartScreenActivity extends Activity {
       return;
     }
     new BonanzaInitializeThread().start();
+  }
+  
+  /**
+   * See if all the files required to run Bonanza are present in externalDir.
+   */
+  private static final String[] REQUIRED_FILES = {
+    "book.bin", "fv.bin", "hash.bin"
+  };
+  public static boolean hasRequiredFiles(File externalDir) {
+    for (String basename: REQUIRED_FILES) {
+      File file = new File(externalDir, basename);
+      if (!file.exists()) {
+        Log.d(TAG, file.getAbsolutePath() + " not found");
+        return false;
+      }
+    }
+    return true;
   }
 }
