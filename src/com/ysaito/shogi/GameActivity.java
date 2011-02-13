@@ -305,7 +305,7 @@ public class GameActivity extends Activity {
         mController.computerMove(r.nextPlayer);
       }
       if (mGameState != GameState.ACTIVE && 
-          (true || mMoves.size() >= 30) &&
+          (true || mMoves.size() >= 10) &&
           !mPlayerTypes.equals("CC")) { 
         saveGame();
       }
@@ -338,7 +338,7 @@ public class GameActivity extends Activity {
     attrs.put(GameLog.ATTR_BLACK_PLAYER, blackPlayerName());
     attrs.put(GameLog.ATTR_WHITE_PLAYER, whitePlayerName());
     Log.d(TAG, "SAVING");
-    LogList.addGameLog(GameLog.newLog(mStartTimeMs, attrs, mMoves));
+    LogLister.addGameLog(GameLog.newLog(mStartTimeMs, attrs, mMoves));
   }
   
   private String blackPlayerName() {

@@ -36,6 +36,11 @@
     android:entries="@array/piece_style"
     android:entryValues="@array/piece_style_values"/>
     />
+  <EditTextPreference
+     android:key="game_log_dir"
+     android:defaultValue="/sdcard/ShogiGameLog"
+     android:title="@string/game_log_dir"
+     />
   <PreferenceCategory android:title="Advanced settings"/>
   <EditTextPreference
      android:key="download_source_url"

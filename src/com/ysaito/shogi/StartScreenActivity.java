@@ -213,7 +213,7 @@ public class StartScreenActivity extends Activity {
   }
 
   private void pickLog() {
-    startActivity(new Intent(this, PickLogActivity.class));
+    startActivity(new Intent(this, GameLogListActivity.class));
   }
   
   private void settings() {

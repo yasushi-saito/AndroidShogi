@@ -78,8 +78,10 @@ public class Downloader {
     if (children != null) {
       for (String child: children) {
         File f = new File(dir, child);
-        Log.d(TAG, "Deleting " + f.getAbsolutePath());
-        f.delete();
+        if (!f.isDirectory()) {
+          Log.d(TAG, "Deleting " + f.getAbsolutePath());
+          f.delete();
+        }
       }
     }
   }

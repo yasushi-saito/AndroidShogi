@@ -29,7 +29,8 @@ public class GameLogTest extends InstrumentationTestCase {
   private GameLog openHtmlFile(int id) throws ParseException, IOException {
     Resources resources = getInstrumentation().getContext().getResources();
     InputStream in = resources.openRawResource(id);
-    GameLog log = GameLog.parseHtml(in);
+    InputStreamReader reader = new InputStreamReader(in, "EUC_JP");
+    GameLog log = GameLog.parseHtml(reader);
     in.close();
     return log;
   }
@@ -38,7 +39,7 @@ public class GameLogTest extends InstrumentationTestCase {
     GregorianCalendar c = new GregorianCalendar();
     c.setTimeInMillis(GameLog.TEST_parseDate("2011/1/10"));
     assertEquals(c.get(Calendar.YEAR), 2011);
-    assertEquals(c.get(Calendar.MONTH), 1);
+    assertEquals(c.get(Calendar.MONTH), Calendar.JANUARY);
     assertEquals(c.get(Calendar.DAY_OF_MONTH), 10);
     
     c.setTimeInMillis(GameLog.TEST_parseDate("2011/1/10 11:23"));

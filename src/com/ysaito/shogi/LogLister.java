@@ -3,7 +3,9 @@
 package com.ysaito.shogi;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 import java.io.File;
@@ -13,18 +15,19 @@ import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Reader;
 import java.io.Serializable;
-import java.io.StreamCorruptedException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
- * @author saito@google.com (Your Name Here)
- *
+ * A task that scans the file system and finds saved game logs
  */
-public class LogList {
+public class LogLister {
   public interface EventListener {
     /**
      * Called multiple times to report progress.
@@ -133,7 +136,11 @@ public class LogList {
         publishProgress(log);
       }
       long scanStartTimeMs = System.currentTimeMillis();
-      scanHtmlFiles(summary);
+      scanDirectory(new File("/sdcard/download"), summary);
+      
+      SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+      scanDirectory(new File(prefs.getString("game_log_dir", "/sdcard/ShogiGameLog")), summary);
+      
       summary.lastScanTimeMs = scanStartTimeMs;
       
       // TODO: don't write the summary if it hasn't changed.
@@ -180,28 +187,52 @@ public class LogList {
         ;
       }
     }
-    private void scanHtmlFiles(LogSummary summary) {
-      File downloadDir = new File("/sdcard/download");
+    
+    private static boolean isHtml(String basename) {
+      return basename.endsWith(".html") || basename.endsWith(".htm");
+    }
+    
+    private static boolean isKif(String basename) {
+      return basename.endsWith(".kif");
+    }
+    
+    private void scanDirectory(File downloadDir, LogSummary summary) {
       String[] files = downloadDir.list(new FilenameFilter(){
         public boolean accept(File dir, String filename) {
-          return filename.endsWith(".html") || filename.endsWith(".htm");
+          return isHtml(filename) || isKif(filename);
         }
       });
+      
       if (files == null || isCancelled()) return;
-      for (String f: files) {
+      
+      for (String basename: files) {
         if (isCancelled()) return;
-        File child = new File(downloadDir, f);
+        File child = new File(downloadDir, basename);
+        InputStream in = null;
         try {
-          if (true || child.lastModified() >= summary.lastScanTimeMs) {
-            Log.d(TAG, "Try: " + child.getAbsolutePath());
-            InputStream in = new FileInputStream(child);
-            GameLog log = GameLog.parseHtml(in);
-            if (log != null) {
-              if (summary.logs.put(log.digest(), log) == null) {
-                publishProgress(log);
-                Log.d(TAG, "ADD: " + log.digest() + "//" + log.attr(GameLog.ATTR_BLACK_PLAYER));
+          try {
+            if (true || child.lastModified() >= summary.lastScanTimeMs) {
+              Log.d(TAG, "Try: " + child.getAbsolutePath());
+              in = new FileInputStream(child);
+              
+              GameLog log = null;
+              Reader reader = null;
+              if (isHtml(basename)) {
+                reader = new InputStreamReader(in, "EUC_JP");
+                log = GameLog.parseHtml(reader);
+              } else {
+                reader = new InputStreamReader(in);
+                log = GameLog.parseKif(reader);
+              }
+              if (log != null) {
+                if (summary.logs.put(log.digest(), log) == null) {
+                  publishProgress(log);
+                  Log.d(TAG, "ADD: " + log.digest() + "//" + log.attr(GameLog.ATTR_BLACK_PLAYER));
+                }
               }
             }
+          } finally {
+            if (in != null) in.close();
           }
         } catch (IOException e) {
           Log.d(TAG, child.getAbsolutePath() + ": I/O error: " + e.getMessage()); 

@@ -147,11 +147,13 @@ public class ReplayGameActivity extends Activity {
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
     inflater.inflate(R.menu.replay_game_menu, menu);
+    
+    menu.setGroupEnabled(R.id.menu_save_in_sdcard_group,
+        (mLog.getFlag() & GameLog.FLAG_ON_SDCARD) == 0);
     return true;
   }
 
   private static final int DIALOG_LOG_PROPERTIES = 1;
-  
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
     case R.id.menu_flip_screen:
@@ -162,6 +164,11 @@ public class ReplayGameActivity extends Activity {
       intent.putExtra("initial_board", (Serializable)mBoard);
       startActivity(intent);
       return true;
+    case R.id.menu_save_in_sdcard: {
+      GameLogSaver saver = new GameLogSaver(this);
+      saver.save(mLog);
+      return true;
+    }
     case R.id.menu_log_properties:
       showDialog(DIALOG_LOG_PROPERTIES);
       return true;

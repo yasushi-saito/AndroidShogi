@@ -23,7 +23,11 @@ import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
-public class PickLogActivity extends ListActivity  {
+/**
+ * Activity that lists available game logs.
+ *
+ */
+public class GameLogListActivity extends ListActivity  {
   private static final String TAG = "PickLog";
   
   private class MyAdapter extends BaseAdapter {
@@ -66,6 +70,9 @@ public class PickLogActivity extends ListActivity  {
             mTmpCalendar.get(Calendar.MONTH) - Calendar.JANUARY + 1,
             mTmpCalendar.get(Calendar.DAY_OF_MONTH)));
       }
+      if ((log.getFlag() & GameLog.FLAG_ON_SDCARD) != 0) {
+        b.append("[sd] ");
+      } 
       String v = log.attr(GameLog.ATTR_BLACK_PLAYER);
       if (v != null) b.append(v);
       b.append("/");
@@ -88,7 +95,7 @@ public class PickLogActivity extends ListActivity  {
   }
 
   private MyAdapter mAdapter;
-  private LogList mLogLister;
+  private LogLister mLogLister;
 
   private final Comparator<GameLog> BY_DATE = new Comparator<GameLog>() {
     public int compare(GameLog g1, GameLog g2) { 
@@ -152,13 +159,13 @@ public class PickLogActivity extends ListActivity  {
     // Use an existing ListAdapter that will map an array
     // of strings to TextViews
     setListAdapter(mAdapter);
-    startListingLogs(LogList.Mode.READ_SAVED_SUMMARY);
+    startListingLogs(LogLister.Mode.READ_SAVED_SUMMARY);
   }
   
-  private void startListingLogs(LogList.Mode mode) {
-    LogList.startListing(
+  private void startListingLogs(LogLister.Mode mode) {
+    LogLister.startListing(
         this,
-        new LogList.EventListener() {
+        new LogLister.EventListener() {
           public void onNewGameLogs(GameLog[] logs) {
             for (GameLog log: logs) mLogs.add(log);
             mLogsIterator = null;
@@ -198,14 +205,14 @@ public class PickLogActivity extends ListActivity  {
         mLogs = new TreeSet<GameLog>(mLogSorter);
         mLogsIterator = null;
         mLogsArray.clear();
-        startListingLogs(LogList.Mode.READ_SAVED_SUMMARY);
+        startListingLogs(LogLister.Mode.READ_SAVED_SUMMARY);
     }
   }
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
     case R.id.menu_reload:
       mLogs.clear();
-      startListingLogs(LogList.Mode.CLEAR_SAVED_SUMMARY);
+      startListingLogs(LogLister.Mode.CLEAR_SAVED_SUMMARY);
       return true;
     case R.id.menu_sort_by_date:
       sortLogs(BY_DATE);

@@ -27,6 +27,8 @@ public class GameLogPropertiesView extends TableLayout {
   
   public final void initialize(GameLog log) {
     HashSet<String> found = new HashSet<String>();
+    final String dateString = getResources().getString(R.string.date);
+    addView(addRow(dateString, log.dateString()));
     for (String attr : GameLog.STANDARD_ATTR_NAMES) {
       String value = log.attr(attr);
       if (value != null) {

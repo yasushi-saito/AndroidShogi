@@ -30,4 +30,8 @@
     <string name="sort_by_date">日時順リスト</string>
     <string name="sort_by_player">対局者順リスト</string>    
     <string name="game_log_properties">棋譜情報</string>        
+    <string name="date">日時</string>
+    <string name="save_in_sdcard">SDカードに保存</string>
+    <string name="game_log_dir">棋譜セーブディレクトリ</string>
+
 </resources>

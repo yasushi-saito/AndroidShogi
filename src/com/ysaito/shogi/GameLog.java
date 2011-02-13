@@ -49,7 +49,7 @@ public class GameLog implements Serializable {
   // must be an ordered map so that digest() can compute a deterministic value.
   private TreeMap<String, String> mAttrs;
   
-  private int mFlag;
+  private int mFlag;   // bitmap of FLAG_XXX.
   private long mStartTimeMs;  // UTC in millisec
   private ArrayList<Move> mMoves;
   private String mDigest;  // cached value of getDigest().
@@ -109,7 +109,7 @@ public class GameLog implements Serializable {
   
   public final int getFlag() { return mFlag; }
   public final long getDate() { return mStartTimeMs; }
-  
+  public final String dateString() { return toKifDateString(mStartTimeMs); }
   public final Move getMove(int n) { return mMoves.get(n); }
   public final int numMoves() { return mMoves.size(); }
   
@@ -152,14 +152,7 @@ public class GameLog implements Serializable {
    * 
    * This method assumes that the file is encoded in EUC-JP.
    */
-  public static GameLog parseHtml(InputStream stream) throws ParseException {
-    Reader in = null;
-    try {
-      in = new InputStreamReader(stream, "EUC_JP");
-    } catch (UnsupportedEncodingException e1) {
-      Log.e(TAG, "Failed to parse file (unsupported encoding): " + e1.getMessage());
-      return null;
-    }
+  public static GameLog parseHtml(Reader in) throws ParseException {
     try {
       BufferedReader reader = new BufferedReader(in);
       String line;
@@ -284,7 +277,9 @@ public class GameLog implements Serializable {
     Calendar c = new GregorianCalendar();
     c.setTimeInMillis(dateMs);
     return String.format("%04d/%02d/%02d %02d:%02d:%02d",
-        c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH),
+        c.get(Calendar.YEAR), 
+        c.get(Calendar.MONTH) - Calendar.JANUARY + 1, 
+        c.get(Calendar.DAY_OF_MONTH),
         c.get(Calendar.HOUR), c.get(Calendar.MINUTE), c.get(Calendar.SECOND));
   }
   
@@ -311,7 +306,7 @@ public class GameLog implements Serializable {
       if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse year");
       year = Integer.parseInt(scanner.next());
       if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse month");
-      month = Integer.parseInt(scanner.next());
+      month = Integer.parseInt(scanner.next()) - 1;
       if (!scanner.hasNext()) throw new ParseException(s + ": failed to parse day");
       day = Integer.parseInt(scanner.next());
     
