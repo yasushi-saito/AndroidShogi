@@ -8,17 +8,23 @@ import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.TreeSet;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.ListActivity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -95,7 +101,6 @@ public class GameLogListActivity extends ListActivity  {
   }
 
   private MyAdapter mAdapter;
-  private LogLister mLogLister;
 
   private final Comparator<GameLog> BY_DATE = new Comparator<GameLog>() {
     public int compare(GameLog g1, GameLog g2) { 
@@ -156,18 +161,22 @@ public class GameLogListActivity extends ListActivity  {
     mLogs = new TreeSet<GameLog>(mLogSorter);
     mLogsArray = new ArrayList<GameLog>();
     mAdapter = new MyAdapter(this);
+    
+    ListView listView = (ListView)findViewById(android.R.id.list);
+    registerForContextMenu(listView);
+    
     // Use an existing ListAdapter that will map an array
     // of strings to TextViews
     setListAdapter(mAdapter);
-    startListingLogs(LogLister.Mode.READ_SAVED_SUMMARY);
+    startListingLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
   }
   
-  private void startListingLogs(LogLister.Mode mode) {
-    LogLister.startListing(
+  private void startListingLogs(LogListManager.Mode mode) {
+    LogListManager.getSingletonInstance().startListing(
         this,
-        new LogLister.EventListener() {
-          public void onNewGameLogs(GameLog[] logs) {
-            for (GameLog log: logs) mLogs.add(log);
+        new LogListManager.EventListener() {
+          public void onNewGameLog(GameLog log) {
+            mLogs.add(log);
             mLogsIterator = null;
             mLogsArray.clear();
             mAdapter.notifyDataSetChanged();
@@ -181,6 +190,10 @@ public class GameLogListActivity extends ListActivity  {
 
   @Override 
   public void onListItemClick(ListView l, View v, int position, long id) {
+    replayGame(position);
+  }
+  
+  private void replayGame(int position) {
     if (position >= mLogs.size()) {
       Log.d(TAG, "Invalid item click: " + position);
       return;
@@ -191,7 +204,24 @@ public class GameLogListActivity extends ListActivity  {
     intent.putExtra("gameLog", ss);
     startActivity(intent);
   }
+
+  @Override protected Dialog onCreateDialog(int id) {
+    switch (id) {
+    case DIALOG_LOG_PROPERTIES:
+    default:
+      return null;
+    }
+  }
   
+
+  @Override
+  public void onCreateContextMenu(ContextMenu menu, View v,
+      ContextMenuInfo menuInfo) {
+    super.onCreateContextMenu(menu, v, menuInfo);
+    MenuInflater inflater = getMenuInflater();
+    inflater.inflate(R.menu.game_log_list_context_menu, menu);
+  }  
+
   @Override 
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
@@ -205,14 +235,43 @@ public class GameLogListActivity extends ListActivity  {
         mLogs = new TreeSet<GameLog>(mLogSorter);
         mLogsIterator = null;
         mLogsArray.clear();
-        startListingLogs(LogLister.Mode.READ_SAVED_SUMMARY);
+        startListingLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
     }
   }
+  
+  static final int DIALOG_LOG_PROPERTIES = 1;
+  
+  @Override
+  public boolean onContextItemSelected(MenuItem item) {
+    AdapterContextMenuInfo info = (AdapterContextMenuInfo) item.getMenuInfo();
+    switch (item.getItemId()) {
+    case R.id.game_log_list_replay:
+      replayGame(info.position);
+      return true;
+    case R.id.game_log_list_properties: {
+      final GameLogPropertiesView view = new GameLogPropertiesView(this);
+      GameLog log = getNthLog(info.position);
+      view.initialize(log);
+      
+      new AlertDialog.Builder(this)
+      .setTitle(R.string.game_log_properties)
+      .setView(view)
+      .setPositiveButton(R.string.alert_dialog_ok, new DialogInterface.OnClickListener() {
+        public void onClick(DialogInterface dialog, int whichButton) { }
+      }).create().show();
+      return true;
+    }
+    default:
+      return super.onContextItemSelected(item);
+    }
+  }
+  
+  
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
     case R.id.menu_reload:
       mLogs.clear();
-      startListingLogs(LogLister.Mode.CLEAR_SAVED_SUMMARY);
+      startListingLogs(LogListManager.Mode.RESET_SDCARD_SUMMARY);
       return true;
     case R.id.menu_sort_by_date:
       sortLogs(BY_DATE);

@@ -2,14 +2,10 @@ package com.ysaito.shogi;
 
 import java.util.ArrayList;
 
-import android.util.Log;
-
 /**
  * Store the state of a Shogi board.
  */
 public class Board implements java.io.Serializable {
-  private static final String TAG = "Board";
-  
   // X and Y dimensions of a board
   public static final int DIM = 9; 
 
@@ -507,7 +503,8 @@ public class Board implements java.io.Serializable {
   // Encode the set of pieces captured by the WHITE player. 
   private ArrayList<CapturedPiece> mCapturedWhiteList;
 
-  // the values of mCaptured{Black,White} used when computing the above lists.
+  // The values of mCaptured{Black,White} used when computing the above lists.
+  // That is, if mLastReadCapturefX != mCaptuturedX, then we need to recompute mCapturedXList.
   private int mLastReadCapturedBlack;
   private int mLastReadCapturedWhite;
 

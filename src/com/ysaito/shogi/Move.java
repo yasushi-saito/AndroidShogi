@@ -7,8 +7,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import android.util.Log;
-
 /**
  * @author saito@google.com (Yaz Saito)
  *
@@ -16,8 +14,6 @@ import android.util.Log;
  * Move represents a move by a player
  */
 public class Move implements java.io.Serializable {
-  private static final String TAG = "ShogiMove";
-  
   // Japanese move display support
   public static final String japaneseNumbers[] = {
     null, "一", "二", "三", "四", "五", "六", "七", "八", "九",    

@@ -43,7 +43,8 @@ public class BonanzaController {
         switch (command) {
           case C_START:
             doStart(msg.getData().getInt("resume_instance_id"),
-                (Board)msg.getData().get("initial_board"));
+                (Board)msg.getData().get("initial_board"),
+                (Player)msg.getData().get("next_player"));
             break;
           case C_HUMAN_MOVE:
             doHumanMove(
@@ -75,7 +76,7 @@ public class BonanzaController {
     }
   }
 
-  public final void start(Bundle bundle, Board board) {
+  public final void start(Bundle bundle, Board board, Player nextPlayer) {
     Bundle b = new Bundle();
     
     if (bundle != null) {
@@ -83,6 +84,7 @@ public class BonanzaController {
       b.putInt("resume_instance_id", instanceId);
     }
     b.putSerializable("initial_board", board);
+    b.putSerializable("next_player", nextPlayer);
     sendInputMessage(C_START, b);
   }
 
@@ -199,7 +201,7 @@ public class BonanzaController {
       r.errorMessage = jr.error;
       
       if (jr.status >= 0) {
-        r.nextPlayer = Player.opponentOf(curPlayer);
+	r.nextPlayer = curPlayer.opponent();
         r.gameState = GameState.ACTIVE;
       } else {
         switch (jr.status) {
@@ -253,19 +255,19 @@ public class BonanzaController {
     mOutputHandler.sendMessage(msg);
   }
 
-  private final void doStart(int resumeInstanceId, Board board) {
+  private final void doStart(int resumeInstanceId, Board board, Player nextPlayer) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     if (board==null) {
       throw new AssertionError("BOARD==null");
     }
     mInstanceId = BonanzaJNI.startGame(
-        resumeInstanceId, board, mComputerDifficulty, 60, 1, jr);
+        resumeInstanceId, board, (nextPlayer == Player.BLACK) ? 0 : 1, mComputerDifficulty, 60, 1, jr);
     if (jr.status != BonanzaJNI.R_OK) {
       throw new AssertionError(String.format("startGame failed: %d %s", jr.status, jr.error));
     }
     Result r = new Result();
     r.board = jr.board;
-    r.nextPlayer = Player.BLACK;
+    r.nextPlayer = nextPlayer;
     r.gameState = GameState.ACTIVE;
     sendOutputMessage(r);
   }
@@ -306,7 +308,7 @@ public class BonanzaController {
       r = Result.fromJNI(jr, player);
       r.undoMoves = 1;
     } else {
-      r = Result.fromJNI(jr, Player.opponentOf(player));
+      r = Result.fromJNI(jr, player.opponent());
       r.undoMoves = 2;
     }
     sendOutputMessage(r);

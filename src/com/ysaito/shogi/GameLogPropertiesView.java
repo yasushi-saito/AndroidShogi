@@ -10,8 +10,7 @@ import android.widget.TableRow;
 import android.widget.TextView;
 
 /**
- * Widget for displaying game status, such as elapsed time per player and 
- * last moves.
+ * Widget for game log properties, such as the names of the players, date, and venue.
  */
 public class GameLogPropertiesView extends TableLayout {
   private Context mContext;
@@ -29,6 +28,8 @@ public class GameLogPropertiesView extends TableLayout {
     HashSet<String> found = new HashSet<String>();
     final String dateString = getResources().getString(R.string.date);
     addView(addRow(dateString, log.dateString()));
+    
+    // Show STANDARD_ATTR_NAMES in the fixed order
     for (String attr : GameLog.STANDARD_ATTR_NAMES) {
       String value = log.attr(attr);
       if (value != null) {
@@ -37,6 +38,7 @@ public class GameLogPropertiesView extends TableLayout {
       }
     }
     
+    // Show additional attributes not in STANDARD_ATTR_NAMES
     for (Map.Entry<String, String> e : log.attrs()) {
       if (!found.contains(e.getKey())) {
         addView(addRow(e.getKey(), e.getValue()));

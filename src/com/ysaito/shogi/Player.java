@@ -10,10 +10,10 @@ public enum Player {
   INVALID,
   BLACK,
   WHITE;
-  
-  public static final Player opponentOf(Player p) {
-    if (p == BLACK) return WHITE;
-    if (p == WHITE) return BLACK;
-    throw new AssertionError("Invalid player: " + p.toString());
+
+  public final Player opponent() {
+    if (this == BLACK) return WHITE;
+    if (this == WHITE) return BLACK;
+    throw new AssertionError("Invalid player: " + toString());
   }
 }

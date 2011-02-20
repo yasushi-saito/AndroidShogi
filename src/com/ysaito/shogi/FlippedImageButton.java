@@ -17,7 +17,6 @@ public class FlippedImageButton extends ImageButton {
     float px = getMeasuredWidth() / 2.15f;
     float py = getMeasuredHeight() / 2.15f;
     canvas.rotate(180, px, py);
-    
     super.onDraw(canvas);
   }
 }

@@ -29,6 +29,7 @@ import java.util.ArrayList;
  */
 public class StartScreenActivity extends Activity {
   static final String TAG = "ShogiStart";
+  static final int DIALOG_NEW_GAME = 1233;
   static final int DIALOG_CONFIRM_DOWNLOAD = 1234;
   static final int DIALOG_DOWNLOAD = 1235;
   private File mExternalDir;
@@ -182,16 +183,28 @@ public class StartScreenActivity extends Activity {
     }
   };
   
+  private StartGameDialog mStartGameDialog;
+  
   @Override
   protected Dialog onCreateDialog(int id) {
     switch (id) {
-      case DIALOG_CONFIRM_DOWNLOAD:
-        return newConfirmDownloadDialog();
-      case DIALOG_DOWNLOAD:
-        mDownloadDialog = newDownloadDialog();
-        return mDownloadDialog;
-      default:    
-        return null;
+    case DIALOG_NEW_GAME: {
+      mStartGameDialog = new StartGameDialog(this, "Start New Game");
+      mStartGameDialog.setOnClickStartButtonHandler(
+          new DialogInterface.OnClickListener() {
+           public void onClick(DialogInterface dialog, int id) {
+             newGame2();
+           }}
+          );
+      return mStartGameDialog.getDialog();
+    }
+    case DIALOG_CONFIRM_DOWNLOAD:
+      return newConfirmDownloadDialog();
+    case DIALOG_DOWNLOAD:
+      mDownloadDialog = newDownloadDialog();
+      return mDownloadDialog;
+    default:    
+      return null;
     }
   }
   
@@ -202,14 +215,21 @@ public class StartScreenActivity extends Activity {
           "Please download the shogi database files first",
           Toast.LENGTH_LONG).show();
     } else {
-      Intent intent = new Intent(this, GameActivity.class);
-      Board b = new Board();
-      Handicap h = Handicap.parseInt(Integer.parseInt(mPrefs.getString("handicap", "0")));
-      b.initialize(h);
-      intent.putExtra("initial_board", (Serializable)b);
-      
-      startActivity(intent);
+      if (mStartGameDialog != null) {
+        mStartGameDialog.loadPreferences();
+      }
+      showDialog(DIALOG_NEW_GAME);
     }
+  }
+  
+  private void newGame2() {
+    Intent intent = new Intent(this, GameActivity.class);
+    Board b = new Board();
+    Handicap h = Handicap.parseInt(Integer.parseInt(mPrefs.getString("handicap", "0")));
+    b.initialize(h);
+    intent.putExtra("initial_board", (Serializable)b);
+      
+    startActivity(intent);
   }
 
   private void pickLog() {

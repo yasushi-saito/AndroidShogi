@@ -31,20 +31,9 @@ import org.apache.http.client.methods.HttpGet;
  * Helper class for downloading large data files (fv.bin etc) from the network.
  * 
  * Downloading runs in a separate thread. The thread will communicate its status
- * through a Handler. Each message sent to the handler is of type Status.
- * 
- * While download or zip extraction is ongoing, the thread will repeatedly sends
- * Messages with state DOWNLOADING or EXTRACTING. If an error happens, or 
- * download+extraction finishes, the thread will send the final Message with state 
- * either SUCCESS or ERROR.
- * 
+ * through the EventListener.
  */
 public class Downloader {
-  public static final int DOWNLOADING = 1; 
-  public static final int EXTRACTING = 2;
-  public static final int SUCCESS = 3;
-  public static final int ERROR = 4;
-
   public interface EventListener {
     /**
      * Called multiple times to report progress.
@@ -63,7 +52,6 @@ public class Downloader {
    * @param listener Used to report download status to the caller
    * @param externalDir The directory to store the downloaded file.
    * The basename of the file will be the same as the one in the sourceUrl.
-   * @param manager The system-wide download manager.
    */
   public Downloader(
       EventListener listener,

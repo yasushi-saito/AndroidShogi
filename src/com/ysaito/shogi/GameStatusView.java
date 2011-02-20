@@ -1,6 +1,8 @@
 package com.ysaito.shogi;
 
 import android.content.Context;
+import android.text.SpannableString;
+import android.text.style.UnderlineSpan;
 import android.util.AttributeSet;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -12,6 +14,8 @@ import java.util.Locale;
 /**
  * Widget for displaying game status, such as elapsed time per player and 
  * last moves.
+ * 
+ * TODO: show sente-gote image before each player name.
  */
 public class GameStatusView extends LinearLayout {
   class Timer {
@@ -54,15 +58,16 @@ public class GameStatusView extends LinearLayout {
       String blackPlayerName,
       String whitePlayerName) {
     mGameStatus = (TextView)findViewById(R.id.status_game_status);
-    mMoveHistory = (TextView)findViewById(R.id.status_move_history);    
+    mMoveHistory = (TextView)findViewById(R.id.status_move_history);
+    mMoveHistory.setHorizontallyScrolling(true);
     mBlackTime = new Timer((TextView)findViewById(R.id.status_black_time));
     mBlackStatus = (TextView)findViewById(R.id.status_black_player_name);
     mWhiteTime = new Timer((TextView)findViewById(R.id.status_white_time));
     mWhiteStatus = (TextView)findViewById(R.id.status_white_player_name);
     mMoveList = new ArrayList<String>();
   
-    mBlackPlayerName = blackPlayerName;
-    mWhitePlayerName = whitePlayerName;
+    mBlackPlayerName = "▲" + blackPlayerName;
+    mWhitePlayerName = "△" + whitePlayerName;
     mBlackStatus.setText(mBlackPlayerName);
     mWhiteStatus.setText(mWhitePlayerName);    
   }
@@ -84,20 +89,20 @@ public class GameStatusView extends LinearLayout {
       ArrayList<Move> moves,
       Player currentPlayer,
       String errorMessage) {
+    
     if (currentPlayer == Player.WHITE) {
-      mWhiteStatus.setBackgroundColor(0xffeeeeee);
-      mWhiteStatus.setTextColor(0xff000000);
+      
+      mBlackStatus.setText(mBlackPlayerName);
+      SpannableString s = new SpannableString(mWhitePlayerName);
+      s.setSpan(new UnderlineSpan(), 0, s.length(), 0);
+      mWhiteStatus.setText(s);
     } else {
-      mWhiteStatus.setBackgroundColor(0xff000000);
-      mWhiteStatus.setTextColor(0xffffffff);
+      SpannableString s = new SpannableString(mBlackPlayerName);
+      s.setSpan(new UnderlineSpan(), 0, s.length(), 0);
+      mBlackStatus.setText(s);
+      mWhiteStatus.setText(mWhitePlayerName);
     }
-    if (currentPlayer == Player.BLACK) {
-      mBlackStatus.setBackgroundColor(0xffeeeeee);
-      mBlackStatus.setTextColor(0xff000000);
-    } else {
-      mBlackStatus.setBackgroundColor(0xff000000);
-      mBlackStatus.setTextColor(0xffffffff);
-    } 
+    
     while (moves.size() > mMoveList.size()) {
       // Generally, moves is just one larger than mMoveList, in which case
       // we can use "lastBoard" to compute the display string of the last move.
@@ -114,14 +119,19 @@ public class GameStatusView extends LinearLayout {
     }
     
     if (mMoveList.size() > 0) {
-      // Display the last two moves.
-      int n = Math.min(mMoveList.size(), 2);
-      String s = "";
+      // Display the last six moves. The TextView is right-justified, so if the view isn't wide enough, earlier moves 
+      // will be shown truncated.
+      int n = Math.min(mMoveList.size(), 6);
+      StringBuilder b = new StringBuilder();
+      boolean first = true;
       for (int i = mMoveList.size() - n; i < mMoveList.size(); ++i) {
-        if (s != "") s += ", ";
-        s += (i+1) + ":" + mMoveList.get(i);
+        if (!first) b.append(", ");
+        b.append(i + 1).append(":");
+        b.append((i % 2 == 0) ? "▲" : "△");
+        b.append(mMoveList.get(i));
+        first = false;
       }
-      mMoveHistory.setText(s);
+      mMoveHistory.setText(b.toString());
     }
     String endGameMessage = null;
     if (gameState == GameState.ACTIVE) {
@@ -146,7 +156,7 @@ public class GameStatusView extends LinearLayout {
   }
   
   private final String traditionalMoveNotation(Board board, Move m) {
-    if (!Locale.getDefault().getLanguage().equals("ja")) {
+    if (Locale.getDefault().getLanguage().equals("ja")) {
       return m.toTraditionalNotation(board).toJapaneseString();
     } else {
       return m.toCsaString();

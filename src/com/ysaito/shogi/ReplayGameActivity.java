@@ -1,6 +1,5 @@
 package com.ysaito.shogi;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
 import android.app.Activity;
@@ -11,7 +10,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -20,11 +18,9 @@ import android.widget.ImageButton;
 import android.widget.SeekBar;
 
 /**
- * The main activity that controls game play
+ * Activity for replaying a saved game
  */
 public class ReplayGameActivity extends Activity {
-  private static final String TAG = "Replay"; 
-
   // View components
   private BoardView mBoardView;
   private GameStatusView mStatusView;
@@ -35,6 +31,7 @@ public class ReplayGameActivity extends Activity {
 
   // State of the game
   private Board mBoard;            // current state of the board
+  private ArrayList<Move> mMoves;  // moves made up to mBoard.
   private Player mNextPlayer;   // the next player to make a move 
   private GameState mGameState;    // is the game is active or finished?
 
@@ -54,8 +51,10 @@ public class ReplayGameActivity extends Activity {
     setContentView(R.layout.replay_game);
     initializeInstanceState(savedInstanceState);
 
+    mGameState = GameState.ACTIVE;
     mNextMove = 0;
     mBoard = new Board();
+    mMoves = new ArrayList<Move>();
     initializeBoard();
     mNextPlayer = Player.BLACK;
     
@@ -63,13 +62,14 @@ public class ReplayGameActivity extends Activity {
     Assert.isTrue(mLog.numMoves() > 0);
     
     mStatusView = (GameStatusView)findViewById(R.id.replay_gamestatusview);
-    mStatusView.initialize(mLog.attr(GameLog.ATTR_BLACK_PLAYER),
-			     mLog.attr(GameLog.ATTR_WHITE_PLAYER));
+    mStatusView.initialize(
+        mLog.attr(GameLog.ATTR_BLACK_PLAYER),
+        mLog.attr(GameLog.ATTR_WHITE_PLAYER));
 
     mBoardView = (BoardView)findViewById(R.id.replay_boardview);
     mBoardView.initialize(mViewListener, 
-			  new ArrayList<Player>(),  // don't allow manipulation
-			  mFlipScreen);
+        new ArrayList<Player>(),  // Disallow board manipulation by the user
+        mFlipScreen);
     ImageButton b;
     // b = (ImageButton)findViewById(R.id.replay_beginning_button);
     //  b.setOnClickListener(new ImageButton.OnClickListener() {
@@ -83,24 +83,12 @@ public class ReplayGameActivity extends Activity {
     });
     b = (ImageButton)findViewById(R.id.replay_next_button);
     b.setOnClickListener(new ImageButton.OnClickListener() {
-      public void onClick(View v) { 
-        if (mNextMove >= mLog.numMoves()) return;
-        Move m = mLog.getMove(mNextMove);
-        ++mNextMove;
-        
-        Board lastBoard = new Board(mBoard);
-        mBoard.applyMove(mNextPlayer, m);
-        mNextPlayer = Player.opponentOf(mNextPlayer);
-        mBoardView.update(mGameState, lastBoard, mBoard, Player.INVALID, m, false);
-        mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
+      public void onClick(View v) {
+        if (mNextMove < mLog.numMoves()) {
+          replayUpTo(mNextMove + 1);
+        }
       }
-    });    
-    //  b = (ImageButton)findViewById(R.id.replay_last_button);
-    //  b.setOnClickListener(new ImageButton.OnClickListener() {
-    //    public void onClick(View v) {
-    //      replayUpTo(mLog.numMoves() - 1);
-    //    }
-    //  });
+    });
 
     mSeekBar = (SeekBar)findViewById(R.id.replay_seek_bar);
     mSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -122,7 +110,10 @@ public class ReplayGameActivity extends Activity {
       public void onStopTrackingTouch(SeekBar seekBar) { }
     });
     
-    mBoardView.update(mGameState, mBoard, mBoard, Player.INVALID, null, false);
+    mBoardView.update(
+        mGameState, mBoard, mBoard, 
+        Player.INVALID, // Disallow board manipulation by the user
+        null, false);
   }
 
   /**
@@ -132,14 +123,26 @@ public class ReplayGameActivity extends Activity {
   private final void replayUpTo(int numMoves) {
     initializeBoard();
     mNextPlayer = Player.BLACK;
+    mMoves.clear();
+    
     Move move = null;
+    Board lastBoard = mBoard;
+    
+    // Compute the state of the game @ numMoves
     for (int i = 0; i < numMoves; ++i) {
       move = mLog.getMove(i);
+      if (i == numMoves - 1) {
+        lastBoard = new Board(mBoard);
+      }
       mBoard.applyMove(mNextPlayer, move);
-      mNextPlayer = Player.opponentOf(mNextPlayer);
+      mNextPlayer = mNextPlayer.opponent();
+      mMoves.add(move);
     }
     mNextMove = numMoves;
-    mBoardView.update(mGameState, mBoard, mBoard, Player.INVALID, move, false);
+    mStatusView.update(mGameState, lastBoard, mBoard, mMoves, mNextPlayer, null);
+    mBoardView.update(mGameState, lastBoard, mBoard, 
+        Player.INVALID,  // Disallow board manipluation by the user 
+        move, false);
     mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
   }
   
@@ -153,16 +156,29 @@ public class ReplayGameActivity extends Activity {
     return true;
   }
 
-  private static final int DIALOG_LOG_PROPERTIES = 1;
+  private static final int DIALOG_RESUME_GAME = 1;
+  private static final int DIALOG_LOG_PROPERTIES = 2;
+  private StartGameDialog mStartGameDialog;
+
+  void resumeGame() {            
+    Intent intent = new Intent(this, GameActivity.class);
+    intent.putExtra("initial_board", mBoard);
+    intent.putExtra("moves", mMoves);
+    intent.putExtra("next_player", mNextPlayer);
+    intent.putExtra("replaying_saved_game", true);
+    startActivity(intent);
+  }
+  
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
     case R.id.menu_flip_screen:
       mBoardView.flipScreen();
       return true;
     case R.id.menu_resume:
-      Intent intent = new Intent(this, GameActivity.class);
-      intent.putExtra("initial_board", (Serializable)mBoard);
-      startActivity(intent);
+      if (mStartGameDialog != null) {
+        mStartGameDialog.loadPreferences();
+      }
+      showDialog(DIALOG_RESUME_GAME);
       return true;
     case R.id.menu_save_in_sdcard: {
       GameLogSaver saver = new GameLogSaver(this);
@@ -179,6 +195,16 @@ public class ReplayGameActivity extends Activity {
 
   @Override protected Dialog onCreateDialog(int id) {
     switch (id) {
+    case DIALOG_RESUME_GAME: {
+      mStartGameDialog = new StartGameDialog(this, "Resume Game");
+      mStartGameDialog.setOnClickStartButtonHandler(
+          new DialogInterface.OnClickListener() {
+           public void onClick(DialogInterface dialog, int id) {
+             resumeGame();
+           }}
+          );
+      return mStartGameDialog.getDialog();
+    }
     case DIALOG_LOG_PROPERTIES:
       final GameLogPropertiesView view = new GameLogPropertiesView(this);
       view.initialize(mLog);
