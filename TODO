@@ -1,0 +1,4 @@
+Long press on a gamelog should present "Save in SDCARD" option
+After saving in SDCard, the game log list doesn't show the SDCard flag.
+Print the source location in each game log
+Add "delete log"
