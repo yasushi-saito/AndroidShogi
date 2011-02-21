@@ -1,6 +1,7 @@
 package com.ysaito.shogi;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
@@ -54,7 +55,8 @@ public class GameLog implements Serializable {
   private long mStartTimeMs;  // UTC in millisec
   private ArrayList<Move> mMoves;
   private String mDigest;  // cached value of getDigest().
-
+  private File mPath;
+  
   private GameLog() {
     mFlag = 0;
     mAttrs = new TreeMap<String, String>();
@@ -81,6 +83,8 @@ public class GameLog implements Serializable {
   public final String attr(String key) {
     return mAttrs.get(key);
   }
+
+  public final File path() { return mPath; }
   
   /**
    * Get the list of <attr_key, attr_value> pairs.
@@ -118,8 +122,18 @@ public class GameLog implements Serializable {
   
   public final int getFlag() { return mFlag; }
   public final void setFlag(int f) { mFlag = f; }  
+  
   public final long getDate() { return mStartTimeMs; }
   public final String dateString() { return toKifDateString(mStartTimeMs); }
+  
+  public final Handicap handicap() {
+    String handicapString = mAttrs.get(GameLog.ATTR_HANDICAP);
+    if (handicapString != null) {
+      return Handicap.parseJapaneseString(handicapString);
+    }
+    return Handicap.NONE;
+  }
+  
   public final Move getMove(int n) { return mMoves.get(n); }
   public final int numMoves() { return mMoves.size(); }
   
@@ -165,12 +179,11 @@ public class GameLog implements Serializable {
     return log;
   }
       
-      
   /** 
    * Parse an embedded KIF file downloaded from http://wiki.optus.nu/.
    * Such a file can be created by saving a "テキスト表示" link directly to a file.
    */
-  public static GameLog parseHtml(Reader in) throws ParseException {
+  public static GameLog parseHtml(File path, Reader in) throws ParseException {
     try {
       BufferedReader reader = new BufferedReader(in);
       String line;
@@ -197,7 +210,7 @@ public class GameLog implements Serializable {
         }
       }
       if (!kifFound) return null;
-      return parseKif(new StringReader(output.toString()));
+      return parseKif(path, new StringReader(output.toString()));
     } catch (IOException e) {
       Log.e(TAG, "Failed to parse file: " + e.getMessage());      
       return null;
@@ -224,16 +237,17 @@ public class GameLog implements Serializable {
     board.initialize(Handicap.NONE);
     Player player = Player.BLACK;
     for (int i = 0; i < mMoves.size(); ++i) {
-      Move move = mMoves.get(i);
+      Move thisMove = mMoves.get(i);
+      Move prevMove = (i > 0 ? mMoves.get(i - 1) : null);
       b.append(String.format("%4d %s", 
           i + 1, 
-          move.toTraditionalNotation(board).toJapaneseString()));
-      if (!move.isDroppingPiece()) {
+          thisMove.toTraditionalNotation(board, prevMove).toJapaneseString()));
+      if (!thisMove.isDroppingPiece()) {
         b.append(String.format(" (%d%d)", 
-            9 - move.getFromX(), 1 + move.getFromY()));
+            9 - thisMove.getFromX(), 1 + thisMove.getFromY()));
       }
       b.append("\n");
-      board.applyMove(player, move);
+      board.applyMove(player, thisMove);
       player = player.opponent();
     }
     stream.write(b.toString());
@@ -243,9 +257,10 @@ public class GameLog implements Serializable {
    * Given a KIF file encoded in UTF-8, parse it. If this method doesn't throw 
    * an exception, it always return a non-null GameLog object.
    */
-  public static GameLog parseKif(Readable stream) throws ParseException {
+  public static GameLog parseKif(File path, Reader stream) throws ParseException {
     GameLog l = new GameLog();
     l.mFlag = FLAG_ON_SDCARD;
+    l.mPath = path;
     
     Scanner scanner = new Scanner(stream);
     Move prevMove = null;
@@ -268,11 +283,11 @@ public class GameLog implements Serializable {
         l.mStartTimeMs = parseDate(matcher.group(1));
         continue;
       }
-      
+
       // Skip lines that don't contain information
       if (line.startsWith("手数")) continue;
       if (line.startsWith("まで")) continue;
-      
+
       matcher = MOVE_PATTERN.matcher(line);
       if (matcher.matches()) {
         String moveString = matcher.group(1);
@@ -299,7 +314,7 @@ public class GameLog implements Serializable {
         c.get(Calendar.YEAR), 
         c.get(Calendar.MONTH) - Calendar.JANUARY + 1, 
         c.get(Calendar.DAY_OF_MONTH),
-        c.get(Calendar.HOUR), c.get(Calendar.MINUTE), c.get(Calendar.SECOND));
+        c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE), c.get(Calendar.SECOND));
   }
   
   // Exposed for unittesting only.

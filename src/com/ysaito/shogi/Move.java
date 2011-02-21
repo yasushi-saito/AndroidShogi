@@ -138,11 +138,15 @@ public class Move implements java.io.Serializable {
   }
 
   private static int arabicToXCoord(String s) throws NumberFormatException {
-    return 9 - Integer.parseInt(s);
+    char ch = s.charAt(0);
+    final int n = (ch >= '０' ? ch - '０' : ch - '0');
+    return 9 - n;
   }
 
   private static int arabicToYCoord(String s) throws NumberFormatException {
-    return Integer.parseInt(s) - 1;
+    char ch = s.charAt(0);
+    final int n = (ch >= '０' ? ch - '０' : ch - '0');
+    return n - 1;
   }
 
   private static int japaneseToYCoord(String s) throws NumberFormatException {
@@ -192,6 +196,10 @@ public class Move implements java.io.Serializable {
   public static final int RIGHT = (1 << 6);    
   public static final int CENTER = (1 << 7);
   
+  // This move has captured the piece involved in the last move.
+  // In Japanese, "同".
+  public static final int CAPTURED_PREVIOUS_PIECE = (1 << 8);
+  
   public static class TraditionalNotation {
     public TraditionalNotation(int p, int xx, int yy, int m) {
       piece = p;
@@ -205,23 +213,29 @@ public class Move implements java.io.Serializable {
     }
     
     public String toJapaneseString() {
-      return String.format("%d%s%s%s",
-          x, 
-          Move.japaneseNumbers[y], 
-          Piece.japaneseNames[Board.type(piece)],
-          modifiersToJapanese(modifier));
+      if ((modifier & Move.CAPTURED_PREVIOUS_PIECE) != 0) {
+        return String.format("同%s%s",
+            Piece.japaneseNames[Board.type(piece)],
+            modifiersToJapanese(modifier));
+      } else {
+        return String.format("%d%s%s%s",
+            x, 
+            Move.japaneseNumbers[y], 
+            Piece.japaneseNames[Board.type(piece)],
+            modifiersToJapanese(modifier));
+      }
     }
   
-    private static final String modifiersToJapanese(int modifiers) {
+    private static final String modifiersToJapanese(int modifier) {
       String s = "";
-      if ((modifiers & Move.DROP) != 0) s += "打";
-      if ((modifiers & Move.PROMOTE) != 0) s += "成";    
-      if ((modifiers & Move.FORWARD) != 0) s += "上";        
-      if ((modifiers & Move.BACKWARD) != 0) s += "引";            
-      if ((modifiers & Move.SIDEWAYS) != 0) s += "寄";          
-      if ((modifiers & Move.RIGHT) != 0) s += "右";                    
-      if ((modifiers & Move.LEFT) != 0) s += "左";                        
-      if ((modifiers & Move.CENTER) != 0) s += "直";
+      if ((modifier & Move.DROP) != 0) s += "打";
+      if ((modifier & Move.PROMOTE) != 0) s += "成";    
+      if ((modifier & Move.FORWARD) != 0) s += "上";        
+      if ((modifier & Move.BACKWARD) != 0) s += "引";            
+      if ((modifier & Move.SIDEWAYS) != 0) s += "寄";          
+      if ((modifier & Move.RIGHT) != 0) s += "右";                    
+      if ((modifier & Move.LEFT) != 0) s += "左";                        
+      if ((modifier & Move.CENTER) != 0) s += "直";
       return s;
     }
     
@@ -230,8 +244,13 @@ public class Move implements java.io.Serializable {
     public int modifier;    // bitstring, see above.
   }
   
-  public final TraditionalNotation toTraditionalNotation(Board board) {
+  public final TraditionalNotation toTraditionalNotation(Board board, Move prevMove) {
     int modifier = 0;
+
+    if (prevMove != null && prevMove.getToX() == mToX && prevMove.getToY() == mToY) {
+      modifier |= CAPTURED_PREVIOUS_PIECE;
+    }
+    
     int pieceBeforeMove = mPiece;
     if (isNewlyPromoted(board)) {
       modifier |= PROMOTE;

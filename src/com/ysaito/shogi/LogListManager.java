@@ -251,15 +251,14 @@ public class LogListManager {
             if (child.lastModified() >= summary.lastScanTimeMs) {
               Log.d(TAG, "Try: " + child.getAbsolutePath());
               in = new FileInputStream(child);
-
               GameLog log = null;
               Reader reader = null;
               if (isHtml(basename)) {
                 reader = new InputStreamReader(in, "EUC_JP");
-                log = GameLog.parseHtml(reader);
+                log = GameLog.parseHtml(child, reader);
               } else {
                 reader = new InputStreamReader(in);
-                log = GameLog.parseKif(reader);
+                log = GameLog.parseKif(child, reader);
               }
               if (log != null) {
                 if (summary.logs.put(log.digest(), log) == null) {

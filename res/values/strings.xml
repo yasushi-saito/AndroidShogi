@@ -32,9 +32,9 @@
     <string name="sort_by_date">Sort by date</string>
     <string name="sort_by_player">Sort by player</string>    
     <string name="game_log_properties">Log information</string>        
-    <string name="alert_dialog_ok">Ok</string>        
     <string name="date">Date</string>
     <string name="save_in_sdcard">Save in SD card</string>
     <string name="game_log_dir">Game log save directory</string>
     <string name="saved_game_log_in_memory">Saved game log in memory</string>
+    <string name="file">File</string>
 </resources>

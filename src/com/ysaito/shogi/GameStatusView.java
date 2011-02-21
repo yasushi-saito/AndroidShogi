@@ -4,6 +4,7 @@ import android.content.Context;
 import android.text.SpannableString;
 import android.text.style.UnderlineSpan;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -34,6 +35,8 @@ public class GameStatusView extends LinearLayout {
     private final TextView mView;
     private long mLastThinkTimeSeconds;
   }
+
+  private static final String TAG = "ShogiStatus";
   
   private TextView mGameStatus;
   private TextView mMoveHistory;
@@ -109,8 +112,9 @@ public class GameStatusView extends LinearLayout {
       // If moves.size() > mMovesList.size() + 1, then moves other than the last
       // may be inaccurately displayed since "lastBoard" may not correspond to the
       // state before these moves are made.
-      Move m = moves.get(mMoveList.size());
-      mMoveList.add(traditionalMoveNotation(lastBoard, m));
+      Move thisMove = moves.get(mMoveList.size());
+      Move prevMove = (mMoveList.size() > 0 ? moves.get(mMoveList.size() - 1) : null);
+      mMoveList.add(traditionalMoveNotation(lastBoard, thisMove, prevMove));
     }
     
     // Handle undos
@@ -155,11 +159,11 @@ public class GameStatusView extends LinearLayout {
     mWhiteTime.update(white);
   }
   
-  private final String traditionalMoveNotation(Board board, Move m) {
+  private final String traditionalMoveNotation(Board board, Move thisMove, Move prevMove) {
     if (Locale.getDefault().getLanguage().equals("ja")) {
-      return m.toTraditionalNotation(board).toJapaneseString();
+      return thisMove.toTraditionalNotation(board, prevMove).toJapaneseString();
     } else {
-      return m.toCsaString();
+      return thisMove.toCsaString();
     }
   }
 }

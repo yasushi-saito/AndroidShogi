@@ -1,6 +1,5 @@
 package com.ysaito.shogi;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.TreeMap;
 
@@ -53,7 +52,8 @@ public class GameActivity extends Activity {
   private int mComputerLevel;      // 0 .. 4
   private String mPlayerTypes;     // "HC", "CH", "HH", "CC"
   private boolean mFlipScreen;
-
+  private Handicap mHandicap;
+  
   // State of the game
   private long mStartTimeMs;       // Time the game started (UTC millisec)
   private Board mBoard;            // current state of the board
@@ -182,7 +182,6 @@ public class GameActivity extends Activity {
     mBlackThinkStartMs = initializeLong(b, "shogi_black_think_start_ms", null, null, 0);
     mWhiteThinkStartMs = initializeLong(b, "shogi_white_think_start_ms", null, null, 0);
     mStartTimeMs = initializeLong(b, "shogi_start_time_ms", null, null, System.currentTimeMillis());
-    
     long nextPlayer = initializeLong(b, "shogi_next_player", null, null, -1);
     if (nextPlayer >= 0) {
       mNextPlayer = (nextPlayer == 0 ? Player.BLACK : Player.WHITE);
@@ -202,6 +201,9 @@ public class GameActivity extends Activity {
       mHumanPlayers.add(Player.WHITE);      
     }
     mComputerLevel = Integer.parseInt(prefs.getString("computer_difficulty", "1"));
+
+    mHandicap = (Handicap)getIntent().getSerializableExtra("handicap");
+    if (mHandicap == null) mHandicap = Handicap.NONE;
     
     // The "initial_board" intent extra is always set (the handicap setting is reported here).
     //
@@ -386,6 +388,9 @@ public class GameActivity extends Activity {
       TreeMap<String, String> attrs = new TreeMap<String, String>();
       attrs.put(GameLog.ATTR_BLACK_PLAYER, blackPlayerName());
       attrs.put(GameLog.ATTR_WHITE_PLAYER, whitePlayerName());
+      if (mHandicap != Handicap.NONE) {
+        attrs.put(GameLog.ATTR_HANDICAP, mHandicap.toJapaneseString());
+      }
       LogListManager.getSingletonInstance().addGameLog(
           this, 
           GameLog.newLog(mStartTimeMs, attrs, mMoves));

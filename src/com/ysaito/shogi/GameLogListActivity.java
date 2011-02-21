@@ -256,7 +256,7 @@ public class GameLogListActivity extends ListActivity  {
       new AlertDialog.Builder(this)
       .setTitle(R.string.game_log_properties)
       .setView(view)
-      .setPositiveButton(R.string.alert_dialog_ok, new DialogInterface.OnClickListener() {
+      .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
         public void onClick(DialogInterface dialog, int whichButton) { }
       }).create().show();
       return true;

@@ -44,6 +44,11 @@ public class GameLogPropertiesView extends TableLayout {
         addView(addRow(e.getKey(), e.getValue()));
       }
     }
+    
+    if (log.path() != null) {
+      addView(
+          addRow(getResources().getString(R.string.file), log.path().getAbsolutePath()));
+    }
   }
   
   private final TableRow addRow(String attr, String value) {

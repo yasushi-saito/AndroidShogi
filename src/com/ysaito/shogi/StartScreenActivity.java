@@ -227,8 +227,8 @@ public class StartScreenActivity extends Activity {
     Board b = new Board();
     Handicap h = Handicap.parseInt(Integer.parseInt(mPrefs.getString("handicap", "0")));
     b.initialize(h);
-    intent.putExtra("initial_board", (Serializable)b);
-      
+    intent.putExtra("initial_board", b);
+    intent.putExtra("handicap", h);
     startActivity(intent);
   }
 

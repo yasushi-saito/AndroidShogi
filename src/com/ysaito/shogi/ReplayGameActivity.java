@@ -36,14 +36,11 @@ public class ReplayGameActivity extends Activity {
   private GameState mGameState;    // is the game is active or finished?
 
   private GameLog mLog;
+  
   // Number of moves made so far. 0 means the beginning of the game.
   private int mNextMove;
 
   private static final int MAX_PROGRESS = 1000; 
-  
-  private final void initializeBoard() {
-    mBoard.initialize(Handicap.NONE);  // TODO: support handicap
-  }
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -51,15 +48,15 @@ public class ReplayGameActivity extends Activity {
     setContentView(R.layout.replay_game);
     initializeInstanceState(savedInstanceState);
 
+    mLog = (GameLog)getIntent().getSerializableExtra("gameLog");
+    Assert.isTrue(mLog.numMoves() > 0);
+    
     mGameState = GameState.ACTIVE;
     mNextMove = 0;
     mBoard = new Board();
     mMoves = new ArrayList<Move>();
-    initializeBoard();
+    mBoard.initialize(mLog.handicap());
     mNextPlayer = Player.BLACK;
-    
-    mLog = (GameLog)getIntent().getSerializableExtra("gameLog");
-    Assert.isTrue(mLog.numMoves() > 0);
     
     mStatusView = (GameStatusView)findViewById(R.id.replay_gamestatusview);
     mStatusView.initialize(
@@ -121,7 +118,7 @@ public class ReplayGameActivity extends Activity {
    *  numMoves==mLog.numMoves-1 will recreate the final game state.
    */ 
   private final void replayUpTo(int numMoves) {
-    initializeBoard();
+    mBoard.initialize(mLog.handicap());
     mNextPlayer = Player.BLACK;
     mMoves.clear();
     
@@ -166,6 +163,9 @@ public class ReplayGameActivity extends Activity {
     intent.putExtra("moves", mMoves);
     intent.putExtra("next_player", mNextPlayer);
     intent.putExtra("replaying_saved_game", true);
+
+    Handicap h = mLog.handicap();
+    if (h != Handicap.NONE) intent.putExtra("handicap", h);
     startActivity(intent);
   }
   
@@ -212,7 +212,7 @@ public class ReplayGameActivity extends Activity {
       return new AlertDialog.Builder(this)
       .setTitle(R.string.game_log_properties)
       .setView(view)
-      .setPositiveButton(R.string.alert_dialog_ok, new DialogInterface.OnClickListener() {
+      .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
         public void onClick(DialogInterface dialog, int whichButton) { }
       }).create();
     default:
