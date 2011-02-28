@@ -3,10 +3,10 @@ package com.ysaito.shogi;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.GregorianCalendar;
-import java.util.Iterator;
-import java.util.TreeSet;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -24,6 +24,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
@@ -66,36 +67,40 @@ public class GameLogListActivity extends ListActivity  {
       }
 
       GameLog log = getNthLog(position);
-      
-      StringBuilder b = new StringBuilder();
-      long date = log.getDate();
-      if (date > 0) {
-        mTmpCalendar.setTimeInMillis(date);
-        b.append(String.format("%04d/%02d/%02d ", 
-            mTmpCalendar.get(Calendar.YEAR),
-            mTmpCalendar.get(Calendar.MONTH) - Calendar.JANUARY + 1,
-            mTmpCalendar.get(Calendar.DAY_OF_MONTH)));
-      }
-      if ((log.getFlag() & GameLog.FLAG_ON_SDCARD) != 0) {
-        b.append("[sd] ");
-      } 
-      String v = log.attr(GameLog.ATTR_BLACK_PLAYER);
-      if (v != null) b.append(v);
-      b.append("/");
-      v = log.attr(GameLog.ATTR_WHITE_PLAYER);
-      if (v != null) b.append(v);
-      v = log.attr(GameLog.ATTR_TOURNAMENT);
-      if (v != null) {
-        b.append("/").append(v);
+      if (log == null) {
+        // this shouldn't happen
+        text.setText("");
       } else {
-        v = log.attr(GameLog.ATTR_TITLE);
+        StringBuilder b = new StringBuilder();
+        long date = log.getDate();
+        if (date > 0) {
+          mTmpCalendar.setTimeInMillis(date);
+          b.append(String.format("%04d/%02d/%02d ", 
+              mTmpCalendar.get(Calendar.YEAR),
+              mTmpCalendar.get(Calendar.MONTH) - Calendar.JANUARY + 1,
+              mTmpCalendar.get(Calendar.DAY_OF_MONTH)));
+        }
+        if (log.path() != null) {
+          b.append("[sd] ");
+        } 
+        String v = log.attr(GameLog.ATTR_BLACK_PLAYER);
+        if (v != null) b.append(v);
+        b.append("/");
+        v = log.attr(GameLog.ATTR_WHITE_PLAYER);
+        if (v != null) b.append(v);
+        v = log.attr(GameLog.ATTR_TOURNAMENT);
         if (v != null) {
           b.append("/").append(v);
+        } else {
+          v = log.attr(GameLog.ATTR_TITLE);
+          if (v != null) {
+            b.append("/").append(v);
+          }
         }
+        text.setTextSize(14);
+        text.setText(b.toString());
+        text.setHorizontallyScrolling(true);
       }
-      text.setTextSize(14);
-      text.setText(b.toString());
-      text.setHorizontallyScrolling(true);
       return text;
     }
   }
@@ -138,18 +143,16 @@ public class GameLogListActivity extends ListActivity  {
   }
   
   private Comparator<GameLog> mLogSorter; 
-  private TreeSet<GameLog> mLogs;
+  private ArrayList<GameLog> mLogs;
+  private boolean mLogsSorted;
   
-  private ArrayList<GameLog> mLogsArray;
-  private Iterator<GameLog> mLogsIterator;
   private GameLog getNthLog(int position) {
-    if (position >= mLogs.size()) return null;
-
-    if (mLogsIterator == null) mLogsIterator = mLogs.iterator();
-    while (mLogsArray.size() <= position) {
-      mLogsArray.add(mLogsIterator.next());
+    if (!mLogsSorted) {
+      Collections.sort(mLogs, mLogSorter);
+      mLogsSorted = true;
     }
-    return mLogsArray.get(position);
+    if (position >= mLogs.size()) return null;
+    return mLogs.get(position);
   }
   
   @Override
@@ -158,8 +161,7 @@ public class GameLogListActivity extends ListActivity  {
     setContentView(R.layout.game_log_list);
 
     mLogSorter = BY_DATE;
-    mLogs = new TreeSet<GameLog>(mLogSorter);
-    mLogsArray = new ArrayList<GameLog>();
+    mLogs = new ArrayList<GameLog>();
     mAdapter = new MyAdapter(this);
     
     ListView listView = (ListView)findViewById(android.R.id.list);
@@ -168,23 +170,26 @@ public class GameLogListActivity extends ListActivity  {
     // Use an existing ListAdapter that will map an array
     // of strings to TextViews
     setListAdapter(mAdapter);
-    startListingLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
+    startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
   }
   
-  private void startListingLogs(LogListManager.Mode mode) {
+  private void startListLogs(LogListManager.Mode mode) {
+    mLogs.clear();
+    mLogsSorted = false;
+    
     LogListManager.getSingletonInstance().listLogs(
-        this,
         new LogListManager.ListLogsListener() {
-          public void onNewGameLog(GameLog log) {
-            mLogs.add(log);
-            mLogsIterator = null;
-            mLogsArray.clear();
+          public void onNewGameLogs(Collection<GameLog> logs) {
+            if (mLogs.addAll(logs)) {
+              mLogsSorted = false;
+              mAdapter.notifyDataSetChanged();
+            }
+          }
+          public void onFinish(String error) { 
             mAdapter.notifyDataSetChanged();
           }
-          public void onFinish(String error) {
-            ;
-          }
         },
+        this,
         mode);
   }
 
@@ -194,11 +199,11 @@ public class GameLogListActivity extends ListActivity  {
   }
   
   private void replayGame(int position) {
-    if (position >= mLogs.size()) {
+    GameLog log = getNthLog(position);
+    if (log == null) {
       Log.d(TAG, "Invalid item click: " + position);
       return;
     }
-    GameLog log = getNthLog(position);
     Intent intent = new Intent(this, ReplayGameActivity.class);
     Serializable ss = (Serializable)log;
     intent.putExtra("gameLog", ss);
@@ -215,11 +220,18 @@ public class GameLogListActivity extends ListActivity  {
   
 
   @Override
-  public void onCreateContextMenu(ContextMenu menu, View v,
+  public void onCreateContextMenu(
+      ContextMenu menu, 
+      View v,
       ContextMenuInfo menuInfo) {
     super.onCreateContextMenu(menu, v, menuInfo);
     MenuInflater inflater = getMenuInflater();
     inflater.inflate(R.menu.game_log_list_context_menu, menu);
+    GameLog log = getNthLog(((AdapterView.AdapterContextMenuInfo)menuInfo).position);
+    
+    if (log.path() != null) {
+      menu.findItem(R.id.game_log_list_save_in_sdcard).setEnabled(false);
+    }
   }  
 
   @Override 
@@ -231,11 +243,8 @@ public class GameLogListActivity extends ListActivity  {
 
   private void sortLogs(Comparator<GameLog> sorter) {
     if (mLogSorter != sorter) {
-        mLogSorter = sorter;
-        mLogs = new TreeSet<GameLog>(mLogSorter);
-        mLogsIterator = null;
-        mLogsArray.clear();
-        startListingLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
+      mLogSorter = sorter;
+      startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
     }
   }
   
@@ -248,38 +257,68 @@ public class GameLogListActivity extends ListActivity  {
     case R.id.game_log_list_replay:
       replayGame(info.position);
       return true;
-    case R.id.game_log_list_delete_file: {
-      class DoDelete implements DialogInterface.OnClickListener {
-        final GameLogListActivity mActivity;
-        final GameLog mLog;
-        public DoDelete(GameLogListActivity a, GameLog log) { mActivity = a; mLog = log; }
-        public void onClick(DialogInterface dialog, int whichButton) { 
-          LogListManager.getSingletonInstance().removeLog(mActivity, mLog);
-        }
-      }
+    case R.id.game_log_list_delete_log: {
       GameLog log = getNthLog(info.position);
-      java.io.File path = log.path();
-      if (path != null) {
+      if (log != null) { 
+        class DoDelete implements DialogInterface.OnClickListener {
+          final LogListManager.Listener mListener;
+          final GameLogListActivity mActivity;
+          final GameLog mLog;
+          public DoDelete(GameLogListActivity a, GameLog log) {
+            mListener = new LogListManager.Listener() {
+              public void onFinish(String error) { 
+                startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
+              }
+            };
+            mActivity = a; 
+            mLog = log; 
+          }
+          public void onClick(DialogInterface dialog, int whichButton) { 
+            LogListManager.getSingletonInstance().deleteLog(mListener, mActivity, mLog);
+          }
+        }
+        
+        String path;
+        if (log.path() != null) {
+          path = log.path().getAbsolutePath();
+        } else {
+          path = "in memory";
+        }
         new AlertDialog.Builder(this)
-        .setTitle("Delete file " + path.getAbsolutePath() + "?")
-        .setPositiveButton(android.R.string.ok, new DoDelete(this, log))
-        .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-          public void onClick(DialogInterface dialog, int whichButton) { }
-        }).create().show();
+          .setTitle("Delete log " + path + "?")
+          .setPositiveButton(android.R.string.ok, new DoDelete(this, log))
+          .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) { }
+          }).create().show();
+      }
+      return true;
+    }
+    case R.id.game_log_list_save_in_sdcard: {
+      GameLog log = getNthLog(info.position);
+      if (log != null) {
+        LogListManager.getSingletonInstance().saveLogInSdcard(
+            new LogListManager.Listener() {
+              public void onFinish(String error) { 
+                startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
+              }
+            },
+            this,
+            log);
       }
       return true;
     }
     case R.id.game_log_list_properties: {
-      final GameLogPropertiesView view = new GameLogPropertiesView(this);
       GameLog log = getNthLog(info.position);
-      view.initialize(log);
-      
-      new AlertDialog.Builder(this)
-      .setTitle(R.string.game_log_properties)
-      .setView(view)
-      .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-        public void onClick(DialogInterface dialog, int whichButton) { }
-      }).create().show();
+      if (log != null) {
+        final GameLogPropertiesView view = new GameLogPropertiesView(this);
+        view.initialize(log);
+        new AlertDialog.Builder(this)
+        .setTitle(R.string.game_log_properties)
+        .setView(view)
+        .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+          public void onClick(DialogInterface dialog, int whichButton) { }
+        }).create().show();
+      }
       return true;
     }
     default:
@@ -291,8 +330,7 @@ public class GameLogListActivity extends ListActivity  {
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
     case R.id.menu_reload:
-      mLogs.clear();
-      startListingLogs(LogListManager.Mode.RESET_SDCARD_SUMMARY);
+      startListLogs(LogListManager.Mode.RESET_SDCARD_SUMMARY);
       return true;
     case R.id.menu_sort_by_date:
       sortLogs(BY_DATE);

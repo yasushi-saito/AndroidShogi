@@ -147,9 +147,9 @@ public class ReplayGameActivity extends Activity {
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
     inflater.inflate(R.menu.replay_game_menu, menu);
-    
-    menu.setGroupEnabled(R.id.menu_save_in_sdcard_group,
-        (mLog.getFlag() & GameLog.FLAG_ON_SDCARD) == 0);
+    if (mLog.path() != null) {
+      menu.findItem(R.id.menu_save_in_sdcard).setEnabled(false);
+    }
     return true;
   }
 
@@ -181,8 +181,10 @@ public class ReplayGameActivity extends Activity {
       showDialog(DIALOG_RESUME_GAME);
       return true;
     case R.id.menu_save_in_sdcard: {
-      GameLogSaver saver = new GameLogSaver(this);
-      saver.save(mLog);
+      LogListManager.getSingletonInstance().saveLogInSdcard(
+          LogListManager.NULL_LISTENER,
+          this, 
+          mLog);
       return true;
     }
     case R.id.menu_log_properties:

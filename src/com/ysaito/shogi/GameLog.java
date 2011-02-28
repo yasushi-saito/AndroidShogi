@@ -46,21 +46,15 @@ public class GameLog implements Serializable {
    */
   private TreeMap<String, String> mAttrs;
   
-  // mFlag values.
-  // If set, log is stored on sdcard. 
-  public static final int FLAG_ON_SDCARD = (1 << 0); 
-  
-  private int mFlag;   // bitmap of FLAG_XXX.
-  
   private long mStartTimeMs;  // UTC in millisec
   private ArrayList<Play> mPlays;
   private String mDigest;  // cached value of getDigest().
-  private File mPath;
+  private File mPath;  // the path on sdcard. null in the log is only in memory
   
   private GameLog() {
-    mFlag = 0;
     mAttrs = new TreeMap<String, String>();
     mPlays = new ArrayList<Play>();
+    mPath = null;
   }
   
   public String attrsToString() {
@@ -120,9 +114,6 @@ public class GameLog implements Serializable {
     return mDigest;
   }
   
-  public final int getFlag() { return mFlag; }
-  public final void setFlag(int f) { mFlag = f; }  
-  
   public final long getDate() { return mStartTimeMs; }
   public final String dateString() { return toKifDateString(mStartTimeMs); }
   
@@ -136,6 +127,7 @@ public class GameLog implements Serializable {
   
   public final Play play(int n) { return mPlays.get(n); }
   public final int numPlays() { return mPlays.size(); }
+  public final ArrayList<Play> plays() { return mPlays; }
   
   //
   // Methods to parse .kif and .html files into a GameLog object
@@ -169,16 +161,20 @@ public class GameLog implements Serializable {
 
   public static GameLog newLog(
       long startTimeMs, 
-      TreeMap<String, String> attrs,
-      ArrayList<Play> plays) {
+      Set<Map.Entry<String, String>> attrs,
+      ArrayList<Play> plays,
+      File path) {
     GameLog log = new GameLog();
-    log.mFlag = 0;
     log.mStartTimeMs = startTimeMs;
-    log.mAttrs = new TreeMap<String,String>(attrs);
+    log.mAttrs = new TreeMap<String,String>();
+    for (Map.Entry<String, String> e : attrs) {
+      log.mAttrs.put(e.getKey(), e.getValue());
+    }
     log.mPlays = new ArrayList<Play>(plays);
+    log.mPath = path;
     return log;
   }
-      
+
   /** 
    * Parse an embedded KIF file downloaded from http://wiki.optus.nu/.
    * Such a file can be created by saving a "テキスト表示" link directly to a file.
@@ -259,7 +255,6 @@ public class GameLog implements Serializable {
    */
   public static GameLog parseKif(File path, Reader stream) throws ParseException {
     GameLog l = new GameLog();
-    l.mFlag = FLAG_ON_SDCARD;
     l.mPath = path;
     
     Scanner scanner = new Scanner(stream);

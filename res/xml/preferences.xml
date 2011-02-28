@@ -17,7 +17,7 @@
     />
   <EditTextPreference
      android:key="game_log_dir"
-     android:defaultValue="/sdcard/ShogiGameLog"
+     android:defaultValue="/sdcard/ShogiLog"
      android:title="@string/game_log_dir"
      />
   <PreferenceCategory android:title="Advanced settings"/>

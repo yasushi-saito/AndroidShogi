@@ -33,9 +33,9 @@
     <string name="game_log_properties">棋譜情報</string>        
     <string name="date">日時</string>
     <string name="save_in_sdcard">SDカードに保存</string>
-    <string name="game_log_dir">棋譜セーブディレクトリ</string>
+    <string name="game_log_dir">棋譜保存場所</string>
     <string name="saved_game_log_in_memory">棋譜をメモリに保存しました</string>
     <string name="file">ファイル</string>
-    <string name="delete_file">ファイル削除</string>
+    <string name="delete_log">棋譜削除</string>
     <string name="num_plays">手数</string>
 </resources>

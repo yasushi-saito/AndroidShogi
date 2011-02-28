@@ -382,22 +382,23 @@ public class GameActivity extends Activity {
   };
 
   private void maybeSaveGame() {
-    if (!mReplayingSavedGame &&
-        mPlays.size() >= 10 &&
-        !mPlayerTypes.equals("CC")) {
+    if (true || 
+        (!mReplayingSavedGame &&
+            mPlays.size() >= 10 &&
+            !mPlayerTypes.equals("CC"))) {
       TreeMap<String, String> attrs = new TreeMap<String, String>();
       attrs.put(GameLog.ATTR_BLACK_PLAYER, blackPlayerName());
       attrs.put(GameLog.ATTR_WHITE_PLAYER, whitePlayerName());
       if (mHandicap != Handicap.NONE) {
         attrs.put(GameLog.ATTR_HANDICAP, mHandicap.toJapaneseString());
       }
+      
       LogListManager.getSingletonInstance().addLog(
+          LogListManager.NULL_LISTENER,
           this, 
-          GameLog.newLog(mStartTimeMs, attrs, mPlays));
-      Toast.makeText(
-          getBaseContext(),
-          getResources().getText(R.string.saved_game_log_in_memory).toString(),
-          Toast.LENGTH_SHORT).show();
+          GameLog.newLog(mStartTimeMs, attrs.entrySet(), mPlays, 
+              null /* not on sdcard yet */
+              ));
     }
   }
   

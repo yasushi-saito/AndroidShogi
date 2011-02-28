@@ -24,6 +24,8 @@ import java.io.ObjectOutputStream;
 import java.io.Reader;
 import java.io.Serializable;
 import java.lang.Thread;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,24 +42,25 @@ public class LogListManager {
     return mSingleton;
   }
 
-  public interface ListLogsListener {
+  public interface Listener {
     /**
-     * Called multiple times to report progress.
-     * @param message Download status
+     * Called when the request finishes
+     * @param error null on success. Contains an error message otherwise.
      */
-    public void onNewGameLog(GameLog log);
-
-    /**
-     *  Called exactly once when download finishes. error==null on success. Else, it contains an 
-     * @param error null on success. Contains an error message on error. 
-     */
-    public void onFinish(String error);  
-  };
-
-  public interface SaveLogEventListener {
-    public void onFinish(String message);
+    public void onFinish(String error);
   }
   
+  public static final Listener NULL_LISTENER = new Listener() {
+    public void onFinish(String error) { }
+  };
+  
+  public interface ListLogsListener extends Listener {
+    /**
+     * Called multiple times to report game logs found.
+     */
+    public void onNewGameLogs(Collection<GameLog> logs);
+  }
+
   private static String SUMMARY_PATH = "log_summary";
 
   public enum Mode {
@@ -66,16 +69,41 @@ public class LogListManager {
   };
 
   public static class Cancellable {
-    boolean mCancelled;
+    private Work mWork;
+    public Cancellable(Work w) { mWork = w; }
     public synchronized void cancel() {
-      mCancelled = true;
+      mWork.cancel();
     }
   }
   
-  private static class Work extends Cancellable {
+  private class Work {
+    private final Listener mListener;
+    private final Handler mHandler = new Handler();
+    private boolean mCancelled;
+
+    public Work(Listener listener) { mListener = listener; }
+    public synchronized void cancel() { mCancelled = true; }
     public synchronized boolean isCancelled() { return mCancelled; }
+    public Listener getListener() { return mListener; }
+    
+    public void reportFinish(String error) { 
+      final class FinishReporter implements Runnable {
+        String error;
+        Listener listener;
+        public void run() { 
+          listener.onFinish(error);
+        }
+      }
+      FinishReporter r = new FinishReporter();
+      r.error = error;
+      r.listener = mListener;
+      mHandler.post(r);
+    }
+    
     public void run() { }  // to be overridden by the subclasses
   }  
+
+  private LogListManager() { mSummary = null; mThread = null; }
   
   /**
    * @param listener Used to report download status to the caller
@@ -84,12 +112,14 @@ public class LogListManager {
    * @param manager The system-wide download manager.
    */
   public synchronized Cancellable listLogs(
-      Context context, ListLogsListener listener, Mode mode) {
+      ListLogsListener listener, 
+      Context context, 
+      Mode mode) {
     maybeStartBackgroundThread();
-    Work w = new ListLogsWork(context, listener, mode);
+    Work w = new ListLogsWork(listener, context, mode);
     mPendingWork.add(w);
     notify();
-    return w;
+    return new Cancellable(w);
   }
 
   /*
@@ -97,36 +127,40 @@ public class LogListManager {
    * The file I/Os happen in a separate thread, and this method returns before they are
    * complete.
    */
-  public synchronized Cancellable addLog(Context context, GameLog log) {
+  public synchronized Cancellable addLog(
+      Listener listener,
+      Activity activity,
+      GameLog log) {
     maybeStartBackgroundThread();
-    Work w = new AddLogWork(context, log);
+    Work w = new AddLogWork(listener, activity, log);
     mPendingWork.add(w);
     notify();
-    return w;
+    return new Cancellable(w);
   }
 
   public synchronized Cancellable saveLogInSdcard(
-      Context context, 
-      SaveLogEventListener listener, 
+      Listener listener, 
+      Activity activity,
       GameLog log) {
     maybeStartBackgroundThread();
-    Work w = new SaveLogInSdcardWork(context, listener, log);
+    Work w = new SaveLogInSdcardWork(listener, activity, log);
     mPendingWork.add(w);
     notify();
-    return w;
+    return new Cancellable(w);
   }
   
   /**
    * Delete the given log in the background. Show a toast when done.
    */
-  public synchronized Cancellable removeLog(
+  public synchronized Cancellable deleteLog(
+      Listener listener,
       Activity activity,
       GameLog log) {
     maybeStartBackgroundThread();
-    Work w = new RemoveLogWork(activity, log);
+    Work w = new DeleteLogWork(listener, activity, log);
     mPendingWork.add(w);
     notify();
-    return w;
+    return new Cancellable(w);
   }
   
   // 
@@ -135,8 +169,13 @@ public class LogListManager {
   private static final String TAG = "ShogiLogLister";
   private Thread mThread;
   private final LinkedList<Work> mPendingWork = new LinkedList<Work>();
+  private LogList mSummary;
 
   private static class LogList implements Serializable {
+    public LogList(LogList src) {
+      lastScanTimeMs = src.lastScanTimeMs;
+      logs = new HashMap<String, GameLog>(src.logs);
+    }
     public LogList() {
       lastScanTimeMs = -1;
       logs = new HashMap<String, GameLog>();
@@ -174,53 +213,47 @@ public class LogListManager {
     }
   }
 
-  private static class ListLogsWork extends Work {
+  private class ListLogsWork extends Work {
     private final Context mContext;
-    private final ListLogsListener mListener;
     private final Mode mMode;
     private final Handler mHandler = new Handler();
 
     // The constructor is called by the UI thread so that mHandler is bound to the UI thread.
-    public ListLogsWork(Context c, ListLogsListener l, Mode m) {
+    public ListLogsWork(ListLogsListener l, Context c, Mode m) {
+      super(l);
       mContext = c;
-      mListener = l;
       mMode = m;
     }
     
-    private void publishLog(GameLog log) {
+    private void publishLogs(Collection<GameLog> logs) {
       final class GameLogReporter implements Runnable {
-        GameLog log;
+        Collection<GameLog> logs;
         ListLogsListener listener;
         public void run() {
-          listener.onNewGameLog(log); 
+          listener.onNewGameLogs(logs); 
         }
       }
 
       GameLogReporter r = new GameLogReporter();
-      r.log = log;
-      r.listener = mListener;
+      r.logs = logs;
+      r.listener = (ListLogsListener)getListener();
       mHandler.post(r);
     }
 
-    private void reportFinish(String error) {
-      final class FinishReporter implements Runnable {
-        String error;
-        ListLogsListener listener;
-        public void run() { 
-          listener.onFinish(error);
+    /**
+     * Remove from "summary" logs that are in sdcard. 
+     * Logs that are not yet saved in sdcard are kept intact.
+     */
+    private void removeLogsInSdCard(LogList summary) {
+      summary.lastScanTimeMs = -1;
+      ArrayList<String> to_remove = new ArrayList<String>();
+      for (Map.Entry<String, GameLog> e : summary.logs.entrySet()) {
+        if (e.getValue().path() != null) {
+          to_remove.add(e.getKey());
         }
       }
-      FinishReporter r = new FinishReporter();
-      r.listener = mListener;
-      mHandler.post(r);
-    }
-    
-    private void removeSdcardSummary(LogList summary) {
-      summary.lastScanTimeMs = -1;
-      for (Map.Entry<String, GameLog> e : summary.logs.entrySet()) {
-        if ((e.getValue().getFlag() & GameLog.FLAG_ON_SDCARD) != 0) {
-          summary.logs.remove(e.getKey());
-        }
+      for (String key : to_remove) {
+        summary.logs.remove(key);
       }
     }
 
@@ -228,15 +261,13 @@ public class LogListManager {
     public void run() {
       LogList summary = readSummary(mContext);
       if (summary == null) {
-        summary = new LogList();
+        mSummary = summary = new LogList();
       } 
       if (mMode == Mode.RESET_SDCARD_SUMMARY) {
-        removeSdcardSummary(summary);
+        removeLogsInSdCard(summary);
       }
 
-      for (GameLog log: summary.logs.values()) {
-        publishLog(log);
-      }
+      publishLogs(summary.logs.values());
       long scanStartTimeMs = System.currentTimeMillis();
       scanDirectory(new File("/sdcard/download"), summary);
 
@@ -281,7 +312,9 @@ public class LogListManager {
               }
               if (log != null) {
                 if (summary.logs.put(log.digest(), log) == null) {
-                  publishLog(log);
+                  ArrayList<GameLog> logs = new ArrayList<GameLog>();
+                  logs.add(log);
+                  publishLogs(logs);
                   Log.d(TAG, "ADD: " + log.digest() + "//" + log.attr(GameLog.ATTR_BLACK_PLAYER));
                 }
               }
@@ -298,66 +331,60 @@ public class LogListManager {
     }
   }
 
-  private static class AddLogWork extends Work {
-    private final Context mContext;
+  private class AddLogWork extends Work {
+    private final Activity mActivity;
     private final GameLog mLog;
 
     // Called by the UI thread
-    public AddLogWork(Context c, GameLog l) { 
-      mContext = c; 
+    public AddLogWork(Listener listener, Activity a, GameLog l) {
+      super(listener);
+      mActivity = a;
       mLog = l; 
     }
     
     @Override public void run() {
-      LogList summary = readSummary(mContext);
+      LogList summary = readSummary(mActivity);
       if (summary == null) summary = new LogList();
       summary.logs.put(mLog.digest(), mLog);
       if (!isCancelled()) {
-        writeSummary(mContext, summary);
+        writeSummary(mActivity, summary);
+        showToast(mActivity, mActivity.getResources().getString(R.string.saved_game_log_in_memory));
       }
     }
   }
 
-  private static class SaveLogInSdcardWork extends Work {
-    private final Context mContext;
-    private final SaveLogEventListener mListener;
-    private final GameLog mLog;
-    private final Handler mHandler = new Handler();
+  private class SaveLogInSdcardWork extends Work {
+    private final Activity mActivity;
+    private GameLog mLog;
 
     // Called by the UI thread
-    public SaveLogInSdcardWork(Context c, SaveLogEventListener listener, GameLog l) { 
-      mContext = c;
-      mListener = listener;
+    public SaveLogInSdcardWork(Listener listener, Activity activity, GameLog l) {
+      super(listener);
+      mActivity = activity;
       mLog = l; 
     }
 
-    private void reportFinish(String error) {
-      final class FinishReporter implements Runnable {
-        String error;
-        SaveLogEventListener listener;
-        public void run() { 
-          listener.onFinish(error);
-        }
-      }
-      FinishReporter r = new FinishReporter();
-      r.listener = mListener;
-      mHandler.post(r);
-    }
-
     @Override public void run() {
-      SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+      SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mActivity);
       File logDir = new File(prefs.getString("game_log_dir", "/sdcard/ShogiGameLog"));
       File logFile = new File(logDir, mLog.digest() + ".kif");
       try {
         saveInSdcard(mLog, logFile);
-        LogList summary = readSummary(mContext);
+        LogList summary = readSummary(mActivity);
         if (summary == null) summary = new LogList();
-        mLog.setFlag(mLog.getFlag() & GameLog.FLAG_ON_SDCARD);
+        mLog = GameLog.newLog(
+            mLog.getDate(),
+            mLog.attrs(),
+            mLog.plays(),
+            logFile);
         summary.logs.put(mLog.digest(), mLog);
-        writeSummary(mContext, summary);
-        reportFinish("Saved log in " + logFile.getAbsolutePath());
+        writeSummary(mActivity, summary);
+        showToast(mActivity, "Saved log in " + logFile.getAbsolutePath());
+        reportFinish(null);
       } catch (IOException e) {
-        reportFinish("Error saving log: " + e.getMessage());
+        String message = "Error saving log: " + e.getMessage();
+        showToast(mActivity, message);
+        reportFinish(message);
       }
     }
     
@@ -373,60 +400,73 @@ public class LogListManager {
     }
   }
   
-  private static class RemoveLogWork extends Work {
+  private class DeleteLogWork extends Work {
     private final Activity mActivity;
     private final GameLog mLog;
 
     // Called by the UI thread
-    public RemoveLogWork(Activity a, GameLog l) { 
+    public DeleteLogWork(Listener listener, Activity a, GameLog l) {
+      super(listener);
       mActivity = a;
       mLog = l; 
     }
 
     @Override public void run() {
+      String error = null;
       File path = mLog.path();
       if (path == null) {
         // The log hasn't been saved to the sdcard.
-        // The caller should have avoided this situation.
-        return;
-      }
-      final Context context = mActivity.getApplicationContext();
-      if (!path.delete()) {
-        showToast(mActivity, "Could not delete " + path.getAbsolutePath());
-        return;
       } else {
-        LogList summary = readSummary(context);
-        if (summary == null) summary = new LogList();
-        summary.logs.remove(mLog.digest());
-        writeSummary(context, summary);
-        showToast(mActivity, "Deleted " + path.getAbsolutePath());
-      } 
-    }
-    
-    private void showToast(Activity activity, String message) {
-      class ShowToast implements Runnable {
-        private final Activity mActivity;
-        private final String mMessage;
-        ShowToast(Activity a, String m) {
-          mActivity = a;
-          mMessage = m;
-        }
-        public void run() {
-          Toast.makeText(mActivity.getApplicationContext(), mMessage, Toast.LENGTH_SHORT).show();
+        if (!path.delete()) {
+          error = "Could not delete " + path.getAbsolutePath();
+          showToast(mActivity, error);
         }
       }
       
-      activity.runOnUiThread(new ShowToast(activity, message));
+      LogList summary = readSummary(mActivity);
+      if (summary == null) summary = new LogList();
+      summary.logs.remove(mLog.digest());
+      writeSummary(mActivity, summary);
+      if (path == null) {
+        showToast(mActivity, "Deleted log in memory");
+      } else {
+        showToast(mActivity, "Deleted " + path.getAbsolutePath());
+      }
+      reportFinish(error);
     }
+    
+  }
+
+  static private void showToast(Activity activity, String message) {
+    class ShowToast implements Runnable {
+      private final Activity mActivity;
+      private final String mMessage;
+      ShowToast(Activity a, String m) {
+        mActivity = a;
+        mMessage = m;
+      }
+      public void run() {
+        Toast.makeText(mActivity, mMessage, Toast.LENGTH_SHORT).show();
+      }
+    }
+    
+    activity.runOnUiThread(new ShowToast(activity, message));
   }
   
-  private static LogList readSummary(Context context) {
+  /**
+   * 
+   * TODO this method assumes that context.openFileInput(path) opens the same file for a given path for any value of "context".
+   */
+  private LogList readSummary(Context context) {
+    if (mSummary != null) return new LogList(mSummary);
+    
     FileInputStream fin = null;
     try {
       try {
         fin = context.openFileInput(SUMMARY_PATH);
         ObjectInputStream oin = new ObjectInputStream(fin);
-        return (LogList)oin.readObject();
+        mSummary = (LogList)oin.readObject();
+        return mSummary;
       } finally {
         if (fin != null) fin.close();
       }
@@ -441,7 +481,7 @@ public class LogListManager {
     }
   }
 
-  private static void writeSummary(Context context, LogList summary) {
+  private void writeSummary(Context context, LogList summary) {
     FileOutputStream fout = null;
     try {
       try {
@@ -449,6 +489,7 @@ public class LogListManager {
         ObjectOutputStream oout = new ObjectOutputStream(fout);
         oout.writeObject(summary);
         oout.close();
+        mSummary = new LogList(summary);
       } finally {
         fout.close();
       }

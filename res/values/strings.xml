@@ -37,6 +37,6 @@
     <string name="game_log_dir">Game log save directory</string>
     <string name="saved_game_log_in_memory">Saved game log in memory</string>
     <string name="file">File</string>
-    <string name="delete_file">Delete file</string>
+    <string name="delete_log">Delete log</string>
     <string name="num_plays">Plays</string>
 </resources>
