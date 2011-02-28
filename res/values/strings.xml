@@ -39,4 +39,12 @@
     <string name="file">File</string>
     <string name="delete_log">Delete log</string>
     <string name="num_plays">Plays</string>
+    <string name="plays_suffix"> plays</string>
+
+    <string name="attr_title">Title</string>
+    <string name="attr_location">Location</string>
+    <string name="attr_time_limit">Time limit</string>
+    <string name="attr_tournament">Tournament</string>
+    <string name="attr_black_player">Black player</string>
+    <string name="attr_white_player">White player</string>
 </resources>

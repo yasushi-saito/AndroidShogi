@@ -20,7 +20,6 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -189,7 +188,9 @@ public class StartScreenActivity extends Activity {
   protected Dialog onCreateDialog(int id) {
     switch (id) {
     case DIALOG_NEW_GAME: {
-      mStartGameDialog = new StartGameDialog(this, "Start New Game");
+      mStartGameDialog = new StartGameDialog(
+          this, 
+          getResources().getString(R.string.new_game));
       mStartGameDialog.setOnClickStartButtonHandler(
           new DialogInterface.OnClickListener() {
            public void onClick(DialogInterface dialog, int id) {

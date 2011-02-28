@@ -310,7 +310,7 @@ public class GameActivity extends Activity {
   }
 
   private final void updateUndoMenu() {
-    mMenu.setGroupEnabled(R.id.menu_undo_group, (mUndosRemaining > 0));
+    mMenu.findItem(R.id.menu_undo).setEnabled((mUndosRemaining > 0));
     MenuItem item = mMenu.getItem(0);
     if (mUndosRemaining <= 0) {
       item.setTitle(R.string.undo_disallowed);

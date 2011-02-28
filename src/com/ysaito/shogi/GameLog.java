@@ -11,6 +11,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Comparator;
 import java.util.GregorianCalendar;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -128,6 +129,46 @@ public class GameLog implements Serializable {
   public final Play play(int n) { return mPlays.get(n); }
   public final int numPlays() { return mPlays.size(); }
   public final ArrayList<Play> plays() { return mPlays; }
+
+  /**
+   * A Comparator to sort GameLog by date (oldest first)
+   */
+  public static final Comparator<GameLog> SORT_BY_DATE = new Comparator<GameLog>() {
+    public int compare(GameLog g1, GameLog g2) { 
+      if (g1.getDate() < g2.getDate()) return -1;
+      if (g1.getDate() > g2.getDate()) return 1;      
+
+      // Use player name, then digest as a tiebreaker.
+      
+      // int x = BY_PLAYERS.compare(g1, g2);
+      // if (x != 0) return x;
+      return g1.digest().compareTo(g2.digest());
+    }
+    public boolean equals(Object o) { return o == this; }
+  };
+  
+  /**
+   * A comparator to sort GameLog by the player names
+   */
+  public static final Comparator<GameLog> SORT_BY_PLAYER = new Comparator<GameLog>() {
+    public int compare(GameLog g1, GameLog g2) { 
+      String p1 = g1.getMinPlayer();
+      String p2 = g2.getMinPlayer();      
+      int x = p1.compareTo(p2);
+      if (x != 0) return x;
+      
+      return SORT_BY_DATE.compare(g1, g2);
+    }
+    public boolean equals(Object o) { return o == this; }
+  };
+
+  private final String getMinPlayer() {
+    String black = mAttrs.get(GameLog.ATTR_BLACK_PLAYER);
+    if (black == null) black = "";
+    String white = mAttrs.get(GameLog.ATTR_WHITE_PLAYER);
+    if (white == null) white = "";
+    return (black.compareTo(white) <= 0) ? black : white;
+  }
   
   //
   // Methods to parse .kif and .html files into a GameLog object

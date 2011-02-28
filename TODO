@@ -1,6 +1,1 @@
-Long press on a gamelog should present "Save in SDCARD" option
-After saving in SDCard, the game log list doesn't show the SDCard flag.
-Add "delete log"
-After "delete log", remove the log from the gameloglister activity screen.
-Don't show "Save in SDCARD" context menu for logs already in sdcard.
 Show only the last X inmemory logs.

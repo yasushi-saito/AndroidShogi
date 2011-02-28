@@ -34,7 +34,7 @@ public class GameLogPropertiesView extends TableLayout {
     for (String attr : GameLog.STANDARD_ATTR_NAMES) {
       String value = log.attr(attr);
       if (value != null) {
-        addView(addRow(attr, value));
+        addView(addRow(attrToString(attr), value));
         found.add(attr);
       }
     }
@@ -42,7 +42,7 @@ public class GameLogPropertiesView extends TableLayout {
     // Show additional attributes not in STANDARD_ATTR_NAMES
     for (Map.Entry<String, String> e : log.attrs()) {
       if (!found.contains(e.getKey())) {
-        addView(addRow(e.getKey(), e.getValue()));
+        addView(addRow(attrToString(e.getKey()), e.getValue()));
       }
     }
     
@@ -51,6 +51,30 @@ public class GameLogPropertiesView extends TableLayout {
     }
     addView(addRow(getResources().getString(R.string.num_plays), 
         String.format("%d", log.numPlays())));
+  }
+
+  private final String attrToString(String key) {
+    int res_id = -1;
+    if (key.equals(GameLog.ATTR_TITLE)) {
+      res_id = R.string.attr_title;
+    } else if (key.equals(GameLog.ATTR_LOCATION)) {
+      res_id = R.string.attr_location;
+    } else if (key.equals(GameLog.ATTR_TIME_LIMIT)) {
+      res_id = R.string.attr_time_limit;
+    } else if (key.equals(GameLog.ATTR_TOURNAMENT)) {
+      res_id = R.string.attr_tournament;
+    } else if (key.equals(GameLog.ATTR_BLACK_PLAYER)) {
+      res_id = R.string.attr_black_player;
+    } else if (key.equals(GameLog.ATTR_WHITE_PLAYER)) {
+      res_id = R.string.attr_white_player;
+    } else if (key.equals(GameLog.ATTR_HANDICAP)) {
+      res_id = R.string.handicap;
+    } 
+    if (res_id >= 0) {
+      return getResources().getString(res_id);
+    } else {
+      return key;
+    }
   }
   
   private final TableRow addRow(String attr, String value) {

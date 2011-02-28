@@ -26,6 +26,7 @@ import java.io.Serializable;
 import java.lang.Thread;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +35,12 @@ import java.util.Map;
  * A task that scans the file system and finds saved game logs
  */
 public class LogListManager {
+  /**
+   * Maximum number of logs that are not saved in the sdcard, but only in the summary file.
+   * Exceeding this limit, oldest logs will be deleted.
+   */
+  private static final int MAX_IN_MEMORY_LOGS = 30;
+  
   private static LogListManager mSingleton;
   public static synchronized LogListManager getSingletonInstance() {
     if (mSingleton == null) {
@@ -260,9 +267,6 @@ public class LogListManager {
     @Override 
     public void run() {
       LogList summary = readSummary(mContext);
-      if (summary == null) {
-        mSummary = summary = new LogList();
-      } 
       if (mMode == Mode.RESET_SDCARD_SUMMARY) {
         removeLogsInSdCard(summary);
       }
@@ -460,28 +464,40 @@ public class LogListManager {
   private LogList readSummary(Context context) {
     if (mSummary != null) return new LogList(mSummary);
     
+    mSummary = new LogList();
     FileInputStream fin = null;
     try {
       try {
         fin = context.openFileInput(SUMMARY_PATH);
         ObjectInputStream oin = new ObjectInputStream(fin);
         mSummary = (LogList)oin.readObject();
-        return mSummary;
       } finally {
         if (fin != null) fin.close();
       }
     } catch (FileNotFoundException e) {
-      return null;
+      ;
     } catch (ClassNotFoundException e) {
       Log.d(TAG, SUMMARY_PATH + ": ClassNotFoundException: " + e.getMessage());
-      return null;
     } catch (IOException e) {
       Log.d(TAG, SUMMARY_PATH + ": IOException: " + e.getMessage());
-      return null;
     }
+    return mSummary;
   }
 
+  private void removeOldInMemoryLogs(LogList summary) {
+    ArrayList<GameLog> inmemory_logs = new ArrayList<GameLog>();
+    for (GameLog log : summary.logs.values()) {
+      if (log.path() == null) inmemory_logs.add(log);
+    }
+    if (inmemory_logs.size() > MAX_IN_MEMORY_LOGS) {
+      Collections.sort(inmemory_logs, GameLog.SORT_BY_DATE);
+      for (int i = 0; i < inmemory_logs.size() - MAX_IN_MEMORY_LOGS; ++i) {
+        summary.logs.remove(inmemory_logs.get(i).digest());
+      }
+    }
+  }
   private void writeSummary(Context context, LogList summary) {
+    removeOldInMemoryLogs(summary);
     FileOutputStream fout = null;
     try {
       try {

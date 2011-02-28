@@ -38,4 +38,12 @@
     <string name="file">ファイル</string>
     <string name="delete_log">棋譜削除</string>
     <string name="num_plays">手数</string>
+    <string name="plays_suffix">手</string>
+
+    <string name="attr_title">表題</string>
+    <string name="attr_location">場所</string>
+    <string name="attr_time_limit">持ち時間</string>
+    <string name="attr_tournament">棋戦</string>
+    <string name="attr_black_player">先手</string>
+    <string name="attr_white_player">後手</string>
 </resources>

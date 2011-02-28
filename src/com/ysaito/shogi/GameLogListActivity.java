@@ -97,6 +97,8 @@ public class GameLogListActivity extends ListActivity  {
             b.append("/").append(v);
           }
         }
+        b.append("/").append(log.numPlays());
+        b.append(getResources().getString(R.string.plays_suffix));
         text.setTextSize(14);
         text.setText(b.toString());
         text.setHorizontallyScrolling(true);
@@ -107,41 +109,6 @@ public class GameLogListActivity extends ListActivity  {
 
   private MyAdapter mAdapter;
 
-  private final Comparator<GameLog> BY_DATE = new Comparator<GameLog>() {
-    public int compare(GameLog g1, GameLog g2) { 
-      if (g1.getDate() < g2.getDate()) return -1;
-      if (g1.getDate() > g2.getDate()) return 1;      
-
-      // Use player name, then digest as a tiebreaker.
-      
-      // int x = BY_PLAYERS.compare(g1, g2);
-      // if (x != 0) return x;
-      return g1.digest().compareTo(g2.digest());
-    }
-    public boolean equals(Object o) { return o == this; }
-  };
-
-  private final Comparator<GameLog> BY_PLAYER = new Comparator<GameLog>() {
-    public int compare(GameLog g1, GameLog g2) { 
-      String p1 = getMinPlayer(g1);
-      String p2 = getMinPlayer(g2);      
-      int x = p1.compareTo(p2);
-      if (x != 0) return x;
-      
-      return BY_DATE.compare(g1, g2);
-    }
-    public boolean equals(Object o) { return o == this; }
-    
-  };
-  
-  private static final String getMinPlayer(GameLog g) {
-    String black = g.attr(GameLog.ATTR_BLACK_PLAYER);
-    if (black == null) black = "";
-    String white = g.attr(GameLog.ATTR_WHITE_PLAYER);
-    if (white == null) white = "";
-    return (black.compareTo(white) <= 0) ? black : white;
-  }
-  
   private Comparator<GameLog> mLogSorter; 
   private ArrayList<GameLog> mLogs;
   private boolean mLogsSorted;
@@ -160,7 +127,7 @@ public class GameLogListActivity extends ListActivity  {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.game_log_list);
 
-    mLogSorter = BY_DATE;
+    mLogSorter = GameLog.SORT_BY_DATE;
     mLogs = new ArrayList<GameLog>();
     mAdapter = new MyAdapter(this);
     
@@ -333,10 +300,10 @@ public class GameLogListActivity extends ListActivity  {
       startListLogs(LogListManager.Mode.RESET_SDCARD_SUMMARY);
       return true;
     case R.id.menu_sort_by_date:
-      sortLogs(BY_DATE);
+      sortLogs(GameLog.SORT_BY_DATE);
       return true;
     case R.id.menu_sort_by_player:
-      sortLogs(BY_PLAYER);
+      sortLogs(GameLog.SORT_BY_PLAYER);
       return true;
     default:    
       return super.onOptionsItemSelected(item);
