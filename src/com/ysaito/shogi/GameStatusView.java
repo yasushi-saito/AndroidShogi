@@ -4,7 +4,6 @@ import android.content.Context;
 import android.text.SpannableString;
 import android.text.style.UnderlineSpan;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -39,7 +38,7 @@ public class GameStatusView extends LinearLayout {
   private static final String TAG = "ShogiStatus";
   
   private TextView mGameStatus;
-  private TextView mMoveHistory;
+  private TextView mPlayHistory;
   private Timer mBlackTime;
   private TextView mBlackStatus;
   private Timer mWhiteTime;
@@ -48,7 +47,7 @@ public class GameStatusView extends LinearLayout {
   private String mWhitePlayerName;
   
   // List of past moves, in display format.
-  private ArrayList<String> mMoveList;
+  private ArrayList<String> mPlayList;
   
   public GameStatusView(Context context, AttributeSet attrs) {
     super(context, attrs);
@@ -61,13 +60,13 @@ public class GameStatusView extends LinearLayout {
       String blackPlayerName,
       String whitePlayerName) {
     mGameStatus = (TextView)findViewById(R.id.status_game_status);
-    mMoveHistory = (TextView)findViewById(R.id.status_move_history);
-    mMoveHistory.setHorizontallyScrolling(true);
+    mPlayHistory = (TextView)findViewById(R.id.status_play_history);
+    mPlayHistory.setHorizontallyScrolling(true);
     mBlackTime = new Timer((TextView)findViewById(R.id.status_black_time));
     mBlackStatus = (TextView)findViewById(R.id.status_black_player_name);
     mWhiteTime = new Timer((TextView)findViewById(R.id.status_white_time));
     mWhiteStatus = (TextView)findViewById(R.id.status_white_player_name);
-    mMoveList = new ArrayList<String>();
+    mPlayList = new ArrayList<String>();
   
     mBlackPlayerName = "▲" + blackPlayerName;
     mWhitePlayerName = "△" + whitePlayerName;
@@ -81,7 +80,7 @@ public class GameStatusView extends LinearLayout {
    * @param gameState
    * @param lastBoard State of the board before the last move
    * @param board The uptodate state of the board
-   * @param moves The list of moves leading up to "board"
+   * @param plays The list of moves leading up to "board"
    * @param currentPlayer The player to hold the next turn. 
    * @param errorMessage
    */
@@ -89,7 +88,7 @@ public class GameStatusView extends LinearLayout {
       GameState gameState,
       Board lastBoard,
       Board board,
-      ArrayList<Move> moves,
+      ArrayList<Play> plays,
       Player currentPlayer,
       String errorMessage) {
     
@@ -106,36 +105,36 @@ public class GameStatusView extends LinearLayout {
       mWhiteStatus.setText(mWhitePlayerName);
     }
     
-    while (moves.size() > mMoveList.size()) {
+    while (plays.size() > mPlayList.size()) {
       // Generally, moves is just one larger than mMoveList, in which case
       // we can use "lastBoard" to compute the display string of the last move.
       // If moves.size() > mMovesList.size() + 1, then moves other than the last
       // may be inaccurately displayed since "lastBoard" may not correspond to the
-      // state before these moves are made.
-      Move thisMove = moves.get(mMoveList.size());
-      Move prevMove = (mMoveList.size() > 0 ? moves.get(mMoveList.size() - 1) : null);
-      mMoveList.add(traditionalMoveNotation(lastBoard, thisMove, prevMove));
+      // state before these plays are made.
+      Play thisPlay = plays.get(mPlayList.size());
+      Play prevPlay = (mPlayList.size() > 0 ? plays.get(mPlayList.size() - 1) : null);
+      mPlayList.add(traditionalPlayNotation(lastBoard, thisPlay, prevPlay));
     }
     
     // Handle undos
-    while (moves.size() < mMoveList.size()) {
-      mMoveList.remove(mMoveList.size() - 1);
+    while (plays.size() < mPlayList.size()) {
+      mPlayList.remove(mPlayList.size() - 1);
     }
     
-    if (mMoveList.size() > 0) {
-      // Display the last six moves. The TextView is right-justified, so if the view isn't wide enough, earlier moves 
+    if (mPlayList.size() > 0) {
+      // Display the last six plies. The TextView is right-justified, so if the view isn't wide enough, earlier plays
       // will be shown truncated.
-      int n = Math.min(mMoveList.size(), 6);
+      int n = Math.min(mPlayList.size(), 6);
       StringBuilder b = new StringBuilder();
       boolean first = true;
-      for (int i = mMoveList.size() - n; i < mMoveList.size(); ++i) {
+      for (int i = mPlayList.size() - n; i < mPlayList.size(); ++i) {
         if (!first) b.append(", ");
         b.append(i + 1).append(":");
         b.append((i % 2 == 0) ? "▲" : "△");
-        b.append(mMoveList.get(i));
+        b.append(mPlayList.get(i));
         first = false;
       }
-      mMoveHistory.setText(b.toString());
+      mPlayHistory.setText(b.toString());
     }
     String endGameMessage = null;
     if (gameState == GameState.ACTIVE) {
@@ -159,7 +158,7 @@ public class GameStatusView extends LinearLayout {
     mWhiteTime.update(white);
   }
   
-  private final String traditionalMoveNotation(Board board, Move thisMove, Move prevMove) {
+  private final String traditionalPlayNotation(Board board, Play thisMove, Play prevMove) {
     if (Locale.getDefault().getLanguage().equals("ja")) {
       return thisMove.toTraditionalNotation(board, prevMove).toJapaneseString();
     } else {

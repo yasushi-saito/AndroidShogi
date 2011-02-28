@@ -46,9 +46,10 @@ public class GameLogPropertiesView extends TableLayout {
     }
     
     if (log.path() != null) {
-      addView(
-          addRow(getResources().getString(R.string.file), log.path().getAbsolutePath()));
+      addView(addRow(getResources().getString(R.string.file), log.path().getAbsolutePath()));
     }
+    addView(addRow(getResources().getString(R.string.num_plays), 
+        String.format("%d", log.numPlays())));
   }
   
   private final TableRow addRow(String attr, String value) {

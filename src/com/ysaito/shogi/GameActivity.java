@@ -66,9 +66,9 @@ public class GameActivity extends Activity {
   private boolean mDestroyed;      // onDestroy called?
   private boolean mReplayingSavedGame;
   
-  // History of moves made in the game. Even (resp. odd) entries are 
+  // History of plays made in the game. Even (resp. odd) entries are 
   // moves by the black (resp. white) player.
-  private ArrayList<Move> mMoves;
+  private ArrayList<Play> mPlays;
   private ArrayList<Integer> mMoveCookies;
   
   @Override
@@ -134,7 +134,7 @@ public class GameActivity extends Activity {
   }
 
   @Override public void onBackPressed() { 
-    if (mGameState == GameState.ACTIVE && !mMoves.isEmpty()) {
+    if (mGameState == GameState.ACTIVE && !mPlays.isEmpty()) {
       showDialog(DIALOG_CONFIRM_QUIT);
     } else {
       super.onBackPressed();
@@ -169,7 +169,7 @@ public class GameActivity extends Activity {
     b.putLong("shogi_white_think_start_ms", mWhiteThinkStartMs);
     b.putLong("shogi_start_time_ms", mStartTimeMs);
     b.putLong("shogi_next_player", (mNextPlayer == Player.BLACK) ? 0 : 1);
-    b.putSerializable("shogi_moves", mMoves);
+    b.putSerializable("shogi_moves", mPlays);
     b.putSerializable("shogi_move_cookies", mMoveCookies);
   }
   
@@ -187,7 +187,7 @@ public class GameActivity extends Activity {
       mNextPlayer = (nextPlayer == 0 ? Player.BLACK : Player.WHITE);
     } 
     if (b != null) {
-      mMoves = (ArrayList<Move>)b.getSerializable("shogi_moves");
+      mPlays = (ArrayList<Play>)b.getSerializable("shogi_moves");
       mMoveCookies = (ArrayList<Integer>)b.getSerializable("shogi_move_cookies");
     }
     
@@ -216,11 +216,11 @@ public class GameActivity extends Activity {
     if (mNextPlayer == null) {
       mNextPlayer = (Player)getIntent().getSerializableExtra("next_player");
     }
-    if (mMoves == null) {
-      mMoves = (ArrayList<Move>)getIntent().getSerializableExtra("moves");
-      if (mMoves != null) {
+    if (mPlays == null) {
+      mPlays = (ArrayList<Play>)getIntent().getSerializableExtra("moves");
+      if (mPlays != null) {
         mMoveCookies = new ArrayList<Integer>();
-        for (int i = 0; i < mMoves.size(); ++i) mMoveCookies.add(null);
+        for (int i = 0; i < mPlays.size(); ++i) mMoveCookies.add(null);
       }
     }
     mReplayingSavedGame = getIntent().getBooleanExtra("replaying_saved_game", false);
@@ -230,8 +230,8 @@ public class GameActivity extends Activity {
     if (mNextPlayer == null) {
       mNextPlayer = Player.BLACK;
     }
-    if (mMoves == null) {
-      mMoves = new ArrayList<Move>();
+    if (mPlays == null) {
+      mPlays = new ArrayList<Play>();
       mMoveCookies = new ArrayList<Integer>();
     }
   }
@@ -331,13 +331,13 @@ public class GameActivity extends Activity {
       BonanzaController.Result r = (BonanzaController.Result)(
           msg.getData().get("result"));
       if (r.lastMove != null) {
-        mMoves.add(r.lastMove);
+        mPlays.add(r.lastMove);
         mMoveCookies.add(r.lastMoveCookie);
       }
       setCurrentPlayer(r.nextPlayer);
       for (int i = 0; i < r.undoMoves; ++i) {
         Assert.isTrue(r.lastMove == null);
-        mMoves.remove(mMoves.size() - 1);
+        mPlays.remove(mPlays.size() - 1);
         mMoveCookies.remove(mMoveCookies.size() - 1);
       }
 
@@ -347,7 +347,7 @@ public class GameActivity extends Activity {
           !isComputerPlayer(r.nextPlayer)); /* animate if lastMove was made by the computer player */
       mStatusView.update(r.gameState,
           mBoard, r.board,
-          mMoves, r.nextPlayer, r.errorMessage);
+          mPlays, r.nextPlayer, r.errorMessage);
 
       mGameState = r.gameState;
       mBoard = r.board;
@@ -366,24 +366,24 @@ public class GameActivity extends Activity {
 
   // state kept during the run of promotion dialog
   private Player mSavedPlayerForPromotion;
-  private Move mSavedMoveForPromotion;    
+  private Play mSavedPlayForPromotion;    
 
   private final BoardView.EventListener mViewListener = new BoardView.EventListener() {
-    public void onHumanMove(Player player, Move move) {
+    public void onHumanPlay(Player player, Play play) {
       setCurrentPlayer(Player.INVALID);  
-      if (MoveAllowsForPromotion(player, move)) {
+      if (PlayAllowsForPromotion(player, play)) {
         mSavedPlayerForPromotion = player;
-        mSavedMoveForPromotion = move;
+        mSavedPlayForPromotion = play;
         showDialog(DIALOG_PROMOTE);
       } else {
-        mController.humanMove(player, move);
+        mController.humanPlay(player, play);
       }
     }
   };
 
   private void maybeSaveGame() {
     if (!mReplayingSavedGame &&
-        mMoves.size() >= 10 &&
+        mPlays.size() >= 10 &&
         !mPlayerTypes.equals("CC")) {
       TreeMap<String, String> attrs = new TreeMap<String, String>();
       attrs.put(GameLog.ATTR_BLACK_PLAYER, blackPlayerName());
@@ -391,9 +391,9 @@ public class GameActivity extends Activity {
       if (mHandicap != Handicap.NONE) {
         attrs.put(GameLog.ATTR_HANDICAP, mHandicap.toJapaneseString());
       }
-      LogListManager.getSingletonInstance().addGameLog(
+      LogListManager.getSingletonInstance().addLog(
           this, 
-          GameLog.newLog(mStartTimeMs, attrs, mMoves));
+          GameLog.newLog(mStartTimeMs, attrs, mPlays));
       Toast.makeText(
           getBaseContext(),
           getResources().getText(R.string.saved_game_log_in_memory).toString(),
@@ -422,12 +422,12 @@ public class GameActivity extends Activity {
     b.setOnCancelListener(
         new DialogInterface.OnCancelListener() {
           public void onCancel(DialogInterface unused) {
-            if (mSavedMoveForPromotion == null) {
+            if (mSavedPlayForPromotion == null) {
               // Event delivered twice?
             } else {
               setCurrentPlayer(mSavedPlayerForPromotion);
               mBoardView.update(mGameState, null, mBoard, mNextPlayer, null, false);
-              mSavedMoveForPromotion = null;
+              mSavedPlayForPromotion = null;
               mSavedPlayerForPromotion = null;
             }
           }
@@ -438,34 +438,34 @@ public class GameActivity extends Activity {
             getResources().getString(R.string.do_not_promote) },
             new DialogInterface.OnClickListener() {
           public void onClick(DialogInterface d, int item) {
-            if (mSavedMoveForPromotion == null) {
+            if (mSavedPlayForPromotion == null) {
               // A click event delivered twice?
               return;
             }
 
             if (item == 0) {
-              mSavedMoveForPromotion = new Move(
-                  Board.promote(mSavedMoveForPromotion.getPiece()), 
-                  mSavedMoveForPromotion.getFromX(), mSavedMoveForPromotion.getFromY(),
-                  mSavedMoveForPromotion.getToX(), mSavedMoveForPromotion.getToY());
+              mSavedPlayForPromotion = new Play(
+                  Board.promote(mSavedPlayForPromotion.getPiece()), 
+                  mSavedPlayForPromotion.getFromX(), mSavedPlayForPromotion.getFromY(),
+                  mSavedPlayForPromotion.getToX(), mSavedPlayForPromotion.getToY());
             }
-            mController.humanMove(mSavedPlayerForPromotion, mSavedMoveForPromotion);
-            mSavedMoveForPromotion = null;
+            mController.humanPlay(mSavedPlayerForPromotion, mSavedPlayForPromotion);
+            mSavedPlayForPromotion = null;
             mSavedPlayerForPromotion = null;
           }
         });
     return b.create();
   }
 
-  private static final boolean MoveAllowsForPromotion(Player player, Move move) {
-    if (Board.isPromoted(move.getPiece())) return false;  // already promoted
+  private static final boolean PlayAllowsForPromotion(Player player, Play play) {
+    if (Board.isPromoted(play.getPiece())) return false;  // already promoted
 
-    final int type = Board.type(move.getPiece());
+    final int type = Board.type(play.getPiece());
     if (type == Piece.KIN || type == Piece.OU) return false;
 
-    if (move.isDroppingPiece()) return false;
-    if (player == Player.WHITE && move.getFromY() < 6 && move.getToY() < 6) return false;
-    if (player == Player.BLACK && move.getFromY() >= 3 && move.getToY() >= 3) return false;
+    if (play.isDroppingPiece()) return false;
+    if (player == Player.WHITE && play.getFromY() < 6 && play.getToY() < 6) return false;
+    if (player == Player.BLACK && play.getFromY() >= 3 && play.getToY() >= 3) return false;
     return true;
   }
 

@@ -2,11 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
   <item android:id="@+id/game_log_list_replay" 
 	android:title="@string/replay_game" />
+  <item android:id="@+id/game_log_list_delete_file"
+  	android:title="@string/delete_file" />
   <item android:id="@+id/game_log_list_properties" 
 	android:title="@string/log_properties"/>
 </menu>
-
-    
     
     
     

@@ -36,4 +36,6 @@
     <string name="game_log_dir">棋譜セーブディレクトリ</string>
     <string name="saved_game_log_in_memory">棋譜をメモリに保存しました</string>
     <string name="file">ファイル</string>
+    <string name="delete_file">ファイル削除</string>
+    <string name="num_plays">手数</string>
 </resources>

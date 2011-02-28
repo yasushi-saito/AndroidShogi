@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  *
  * Move represents a move by a player
  */
-public class Move implements java.io.Serializable {
+public class Play implements java.io.Serializable {
   // Japanese move display support
   public static final String japaneseNumbers[] = {
     null, "一", "二", "三", "四", "五", "六", "七", "八", "九",    
@@ -28,7 +28,7 @@ public class Move implements java.io.Serializable {
   // [0, Board.DIM). When dropping a captured piece on the board, fromX = fromY = -1.
   private final int mFromX, mFromY, mToX, mToY;
   
-  public Move(int p, int fx, int fy, int tx, int ty) {
+  public Play(int p, int fx, int fy, int tx, int ty) {
     mPiece = p;
     mFromX = fx;
     mFromY = fy;
@@ -44,7 +44,7 @@ public class Move implements java.io.Serializable {
   public final int getToY() { return mToY; }  
   
   @Override public boolean equals(Object o) {
-    Move m = (Move)o;
+    Play m = (Play)o;
     return (m != null &&
         m.mPiece == mPiece &&
         m.mFromX == mFromX && m.mFromY == mFromY &&
@@ -81,7 +81,7 @@ public class Move implements java.io.Serializable {
         Piece.csaNames[p]);
   }
   
-  public static Move fromCsaString(String csa, Player player) {
+  public static Play fromCsaString(String csa, Player player) {
     int tmp = csa.charAt(0) - '0';
     int fromX, fromY;
     if (tmp > 0) {
@@ -98,7 +98,7 @@ public class Move implements java.io.Serializable {
     int piece = Piece.fromCsaName(csa.substring(4));
     if (player == Player.WHITE) piece = -piece;
     
-    return new Move(
+    return new Play(
         piece, fromX, fromY, toX, toY);
   }
   
@@ -109,25 +109,25 @@ public class Move implements java.io.Serializable {
   private static final Pattern KIF_DROP_PATTERN = Pattern.compile("([1-9１-９])([一二三四五六七八九])(.*)");
   // Parse a KIF-format string. It looks like
   // "８四歩(83)" (move FU at 83 to 84).
-  public static final Move fromKifString(Move prevMove, Player player, String kifMove) throws ParseException {
+  public static final Play fromKifString(Play prevMove, Player player, String kifMove) throws ParseException {
     Matcher m = KIF_MOVE_PATTERN.matcher(kifMove);
     try {
       if (m.matches()) {
-        return new Move(japaneseToPiece(player, m.group(3)),
+        return new Play(japaneseToPiece(player, m.group(3)),
             arabicToXCoord(m.group(4)), arabicToYCoord(m.group(5)),
             arabicToXCoord(m.group(1)), japaneseToYCoord(m.group(2)));
       }
       if (prevMove != null) {
         m = KIF_MOVE2_PATTERN.matcher(kifMove);
         if (m.matches()) {
-          return new Move(japaneseToPiece(player, m.group(1)), 
+          return new Play(japaneseToPiece(player, m.group(1)), 
               arabicToXCoord(m.group(2)), arabicToYCoord(m.group(3)),
               prevMove.mToX, prevMove.mToY);
         }
       }
       m = KIF_DROP_PATTERN.matcher(kifMove);
       if (m.matches()) {
-        Move mm = new Move(japaneseToPiece(player, m.group(3)), 
+        Play mm = new Play(japaneseToPiece(player, m.group(3)), 
             -1, -1, arabicToXCoord(m.group(1)), japaneseToYCoord(m.group(2)));
         return mm;
       }
@@ -213,14 +213,14 @@ public class Move implements java.io.Serializable {
     }
     
     public String toJapaneseString() {
-      if ((modifier & Move.CAPTURED_PREVIOUS_PIECE) != 0) {
+      if ((modifier & Play.CAPTURED_PREVIOUS_PIECE) != 0) {
         return String.format("同%s%s",
             Piece.japaneseNames[Board.type(piece)],
             modifiersToJapanese(modifier));
       } else {
         return String.format("%d%s%s%s",
             x, 
-            Move.japaneseNumbers[y], 
+            Play.japaneseNumbers[y], 
             Piece.japaneseNames[Board.type(piece)],
             modifiersToJapanese(modifier));
       }
@@ -228,14 +228,14 @@ public class Move implements java.io.Serializable {
   
     private static final String modifiersToJapanese(int modifier) {
       String s = "";
-      if ((modifier & Move.DROP) != 0) s += "打";
-      if ((modifier & Move.PROMOTE) != 0) s += "成";    
-      if ((modifier & Move.FORWARD) != 0) s += "上";        
-      if ((modifier & Move.BACKWARD) != 0) s += "引";            
-      if ((modifier & Move.SIDEWAYS) != 0) s += "寄";          
-      if ((modifier & Move.RIGHT) != 0) s += "右";                    
-      if ((modifier & Move.LEFT) != 0) s += "左";                        
-      if ((modifier & Move.CENTER) != 0) s += "直";
+      if ((modifier & Play.DROP) != 0) s += "打";
+      if ((modifier & Play.PROMOTE) != 0) s += "成";    
+      if ((modifier & Play.FORWARD) != 0) s += "上";        
+      if ((modifier & Play.BACKWARD) != 0) s += "引";            
+      if ((modifier & Play.SIDEWAYS) != 0) s += "寄";          
+      if ((modifier & Play.RIGHT) != 0) s += "右";                    
+      if ((modifier & Play.LEFT) != 0) s += "左";                        
+      if ((modifier & Play.CENTER) != 0) s += "直";
       return s;
     }
     
@@ -244,7 +244,7 @@ public class Move implements java.io.Serializable {
     public int modifier;    // bitstring, see above.
   }
   
-  public final TraditionalNotation toTraditionalNotation(Board board, Move prevMove) {
+  public final TraditionalNotation toTraditionalNotation(Board board, Play prevMove) {
     int modifier = 0;
 
     if (prevMove != null && prevMove.getToX() == mToX && prevMove.getToY() == mToY) {

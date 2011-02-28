@@ -53,14 +53,14 @@ public class GameLog implements Serializable {
   private int mFlag;   // bitmap of FLAG_XXX.
   
   private long mStartTimeMs;  // UTC in millisec
-  private ArrayList<Move> mMoves;
+  private ArrayList<Play> mPlays;
   private String mDigest;  // cached value of getDigest().
   private File mPath;
   
   private GameLog() {
     mFlag = 0;
     mAttrs = new TreeMap<String, String>();
-    mMoves = new ArrayList<Move>();
+    mPlays = new ArrayList<Play>();
   }
   
   public String attrsToString() {
@@ -104,8 +104,8 @@ public class GameLog implements Serializable {
           digest.update(e.getKey().getBytes());
           digest.update(e.getValue().getBytes());
         }
-        for (int i = 0; i < mMoves.size(); ++i) {
-          digest.update(mMoves.get(i).toString().getBytes());
+        for (int i = 0; i < mPlays.size(); ++i) {
+          digest.update(mPlays.get(i).toString().getBytes());
         }
         byte b[] = digest.digest();
         StringBuffer hex = new StringBuffer();
@@ -134,14 +134,14 @@ public class GameLog implements Serializable {
     return Handicap.NONE;
   }
   
-  public final Move getMove(int n) { return mMoves.get(n); }
-  public final int numMoves() { return mMoves.size(); }
+  public final Play play(int n) { return mPlays.get(n); }
+  public final int numPlays() { return mPlays.size(); }
   
   //
   // Methods to parse .kif and .html files into a GameLog object
   //
   private static final Pattern DATE_PATTERN = Pattern.compile("開始日時[：:](.*)");
-  private static final Pattern MOVE_PATTERN = Pattern.compile("\\s*[0-9]+\\s+(.*)");  
+  private static final Pattern PLAY_PATTERN = Pattern.compile("\\s*[0-9]+\\s+(.*)");  
   private static final Pattern OPTIONAL_DAY_OF_WEEK_PATTERN = Pattern.compile("[(（][月火水木金土日][）)]");
   
   private static class AttrPattern {
@@ -170,12 +170,12 @@ public class GameLog implements Serializable {
   public static GameLog newLog(
       long startTimeMs, 
       TreeMap<String, String> attrs,
-      ArrayList<Move> moves) {
+      ArrayList<Play> plays) {
     GameLog log = new GameLog();
     log.mFlag = 0;
     log.mStartTimeMs = startTimeMs;
     log.mAttrs = new TreeMap<String,String>(attrs);
-    log.mMoves = new ArrayList<Move>(moves);
+    log.mPlays = new ArrayList<Play>(plays);
     return log;
   }
       
@@ -236,18 +236,18 @@ public class GameLog implements Serializable {
     Board board = new Board();
     board.initialize(Handicap.NONE);
     Player player = Player.BLACK;
-    for (int i = 0; i < mMoves.size(); ++i) {
-      Move thisMove = mMoves.get(i);
-      Move prevMove = (i > 0 ? mMoves.get(i - 1) : null);
+    for (int i = 0; i < mPlays.size(); ++i) {
+      Play thisPlay = mPlays.get(i);
+      Play prevPlay = (i > 0 ? mPlays.get(i - 1) : null);
       b.append(String.format("%4d %s", 
           i + 1, 
-          thisMove.toTraditionalNotation(board, prevMove).toJapaneseString()));
-      if (!thisMove.isDroppingPiece()) {
+          thisPlay.toTraditionalNotation(board, prevPlay).toJapaneseString()));
+      if (!thisPlay.isDroppingPiece()) {
         b.append(String.format(" (%d%d)", 
-            9 - thisMove.getFromX(), 1 + thisMove.getFromY()));
+            9 - thisPlay.getFromX(), 1 + thisPlay.getFromY()));
       }
       b.append("\n");
-      board.applyMove(player, thisMove);
+      board.applyPly(player, thisPlay);
       player = player.opponent();
     }
     stream.write(b.toString());
@@ -263,7 +263,7 @@ public class GameLog implements Serializable {
     l.mPath = path;
     
     Scanner scanner = new Scanner(stream);
-    Move prevMove = null;
+    Play prevPlay = null;
     Player curPlayer = Player.BLACK;
     while (scanner.hasNextLine()) {
       String line = scanner.nextLine();
@@ -288,15 +288,15 @@ public class GameLog implements Serializable {
       if (line.startsWith("手数")) continue;
       if (line.startsWith("まで")) continue;
 
-      matcher = MOVE_PATTERN.matcher(line);
+      matcher = PLAY_PATTERN.matcher(line);
       if (matcher.matches()) {
-        String moveString = matcher.group(1);
-        if (moveString.startsWith("投了")) {
+        String playString = matcher.group(1);
+        if (playString.startsWith("投了")) {
           continue;
         } else {
-          Move m = Move.fromKifString(prevMove, curPlayer, moveString);
-          l.mMoves.add(m);
-          prevMove = m;
+          Play m = Play.fromKifString(prevPlay, curPlayer, playString);
+          l.mPlays.add(m);
+          prevPlay = m;
           curPlayer = curPlayer.opponent();
         }
       } else {

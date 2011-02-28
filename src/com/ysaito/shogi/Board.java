@@ -219,7 +219,7 @@ public class Board implements java.io.Serializable {
     public final int x, y;
   }
   
-  // A relative move.
+  // A relative move by one player.
   private static class MoveDelta {
     public MoveDelta(int x, int y, boolean m) { deltaX = x; deltaY = y; multi = m; }
     
@@ -270,7 +270,7 @@ public class Board implements java.io.Serializable {
   /**
    *  Apply the move "m" by player "p" to the board. Does not check if the move is legal. 
    */
-  public final void applyMove(Player p, Move m) {
+  public final void applyPly(Player p, Play m) {
     int oldPiece = Piece.EMPTY;
     boolean capturedChanged = false;
     ArrayList<CapturedPiece> captured = getCapturedPieces(p);

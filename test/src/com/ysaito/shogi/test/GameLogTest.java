@@ -1,5 +1,6 @@
 package com.ysaito.shogi.test;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -21,7 +22,7 @@ public class GameLogTest extends InstrumentationTestCase {
   private GameLog openKifFile(int id) throws ParseException, IOException {
     Resources resources = getInstrumentation().getContext().getResources();
     InputStreamReader in = new InputStreamReader(resources.openRawResource(id));
-    GameLog log = GameLog.parseKif(in);
+    GameLog log = GameLog.parseKif(new File("/nonexistent/path"), in);
     in.close();
     return log;
   }
@@ -30,7 +31,7 @@ public class GameLogTest extends InstrumentationTestCase {
     Resources resources = getInstrumentation().getContext().getResources();
     InputStream in = resources.openRawResource(id);
     InputStreamReader reader = new InputStreamReader(in, "EUC_JP");
-    GameLog log = GameLog.parseHtml(reader);
+    GameLog log = GameLog.parseHtml(new File("/nonexistent/path"), reader);
     in.close();
     return log;
   }
@@ -61,9 +62,9 @@ public class GameLogTest extends InstrumentationTestCase {
     assertEquals(log.attr(GameLog.ATTR_WHITE_PLAYER), "久保利明");
     assertEquals(log.attr(GameLog.ATTR_HANDICAP), "平手");
     assertEquals(log.attr(GameLog.ATTR_TOURNAMENT), "ＮＨＫ杯");
-    assertEquals(log.getMove(4).toCsaString(), "2625FU");
-    assertEquals(log.getMove(94).toCsaString(), "7765KE");
-    assertEquals(log.numMoves(), 157);
+    assertEquals(log.play(4).toCsaString(), "2625FU");
+    assertEquals(log.play(94).toCsaString(), "7765KE");
+    assertEquals(log.numPlays(), 157);
  }
   
   public void testLoad3() throws ParseException, IOException {
@@ -77,16 +78,16 @@ public class GameLogTest extends InstrumentationTestCase {
   public void testHtml() throws ParseException, IOException {
     GameLog log = openHtmlFile(R.raw.download1);
     assertEquals(log.attr(GameLog.ATTR_WHITE_PLAYER), "早川俊");
-    assertEquals(log.getMove(125).toCsaString(), "0085KY");
-    assertEquals(log.numMoves(), 134);
+    assertEquals(log.play(125).toCsaString(), "0085KY");
+    assertEquals(log.numPlays(), 134);
   }
   
   public void testHtml2() throws ParseException, IOException {
     GameLog log = openHtmlFile(R.raw.download2);
     assertEquals(log.attr(GameLog.ATTR_WHITE_PLAYER), "上野裕和");
     assertEquals(log.attr(GameLog.ATTR_BLACK_PLAYER), "稲葉陽");    
-    assertEquals(log.getMove(64).toCsaString(), "7785KE");
-    assertEquals(log.numMoves(), 121);
+    assertEquals(log.play(64).toCsaString(), "7785KE");
+    assertEquals(log.numPlays(), 121);
   }
   
   public void testToKif() throws ParseException, IOException {
@@ -94,7 +95,7 @@ public class GameLogTest extends InstrumentationTestCase {
     StringWriter w = new StringWriter();
     log.toKif(w);
     StringReader r = new StringReader(w.toString());
-    GameLog log2 = GameLog.parseKif(r);
+    GameLog log2 = GameLog.parseKif(new File("/nonexistent/path"), r);
     assertLogEquals(log, log2);
   }
   
@@ -105,12 +106,12 @@ public class GameLogTest extends InstrumentationTestCase {
       assertEquals(l2.attr(e.getKey()), e.getValue());
     }
     
-    assertEquals(l1.numMoves(), l2.numMoves());
-    for (int i = 0; i < l1.numMoves(); ++i) {
+    assertEquals(l1.numPlays(), l2.numPlays());
+    for (int i = 0; i < l1.numPlays(); ++i) {
       Log.d(TAG, String.format("MOVE: %d %s %s",
-          i, l1.getMove(i).toString(),
-          l2.getMove(i).toString()));
-      assertTrue(l1.getMove(i).equals(l2.getMove(i)));
+          i, l1.play(i).toString(),
+          l2.play(i).toString()));
+      assertTrue(l1.play(i).equals(l2.play(i)));
     }
   }
 }

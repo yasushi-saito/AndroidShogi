@@ -31,7 +31,7 @@ public class BoardView extends View implements View.OnTouchListener {
    * captured piece.
    */ 
   public interface EventListener {
-    void onHumanMove(Player player, Move move);
+    void onHumanPlay(Player player, Play p);
   }
 
   public BoardView(Context context, AttributeSet attrs) {
@@ -82,7 +82,7 @@ public class BoardView extends View implements View.OnTouchListener {
       Board lastBoard,
       Board board,
       Player currentPlayer,
-      Move lastMove,
+      Play lastMove,
       boolean animateMove) {
     mCurrentPlayer = currentPlayer;
     mLastBoard = null;
@@ -262,21 +262,21 @@ public class BoardView extends View implements View.OnTouchListener {
     }
     if (action == MotionEvent.ACTION_UP) {
       if (mMoveTo != null && !mMoveFrom.equals(mMoveTo)) {
-        Move move = null;
+        Play move = null;
         if (mMoveFrom instanceof PositionOnBoard) {
           PositionOnBoard from = (PositionOnBoard)mMoveFrom;
-          move = new Move(
+          move = new Play(
               mBoard.getPiece(from.x, from.y), 
               from.x, from.y,
               mMoveTo.x, mMoveTo.y);
         } else {
-          move = new Move(
+          move = new Play(
               ((CapturedPiece)mMoveFrom).piece,
               -1, -1,
               mMoveTo.x, mMoveTo.y);
           Log.d(TAG, String.format("MOVEMOVE %d", move.getPiece()));
         }
-        mListener.onHumanMove(mCurrentPlayer, move);
+        mListener.onHumanPlay(mCurrentPlayer, move);
         mCurrentPlayer = Player.INVALID;
       }
       mMoveTo = null;
@@ -596,7 +596,7 @@ public class BoardView extends View implements View.OnTouchListener {
   // @invariant mMoveTo== null || (0,0) <= mMoveTo < (Board.DIM, Board.DIM)
   private PositionOnBoard mMoveTo;
 
-  private Move mLastMove;
+  private Play mLastMove;
   private long mAnimationStartTime;
   private long mNextAnimationTime;
   private final int ANIMATION_INTERVAL = 120;

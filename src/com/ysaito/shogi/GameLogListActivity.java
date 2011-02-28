@@ -155,7 +155,7 @@ public class GameLogListActivity extends ListActivity  {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    setContentView(R.layout.log_picker);
+    setContentView(R.layout.game_log_list);
 
     mLogSorter = BY_DATE;
     mLogs = new TreeSet<GameLog>(mLogSorter);
@@ -172,9 +172,9 @@ public class GameLogListActivity extends ListActivity  {
   }
   
   private void startListingLogs(LogListManager.Mode mode) {
-    LogListManager.getSingletonInstance().startListing(
+    LogListManager.getSingletonInstance().listLogs(
         this,
-        new LogListManager.EventListener() {
+        new LogListManager.ListLogsListener() {
           public void onNewGameLog(GameLog log) {
             mLogs.add(log);
             mLogsIterator = null;
@@ -248,6 +248,27 @@ public class GameLogListActivity extends ListActivity  {
     case R.id.game_log_list_replay:
       replayGame(info.position);
       return true;
+    case R.id.game_log_list_delete_file: {
+      class DoDelete implements DialogInterface.OnClickListener {
+        final GameLogListActivity mActivity;
+        final GameLog mLog;
+        public DoDelete(GameLogListActivity a, GameLog log) { mActivity = a; mLog = log; }
+        public void onClick(DialogInterface dialog, int whichButton) { 
+          LogListManager.getSingletonInstance().removeLog(mActivity, mLog);
+        }
+      }
+      GameLog log = getNthLog(info.position);
+      java.io.File path = log.path();
+      if (path != null) {
+        new AlertDialog.Builder(this)
+        .setTitle("Delete file " + path.getAbsolutePath() + "?")
+        .setPositiveButton(android.R.string.ok, new DoDelete(this, log))
+        .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+          public void onClick(DialogInterface dialog, int whichButton) { }
+        }).create().show();
+      }
+      return true;
+    }
     case R.id.game_log_list_properties: {
       final GameLogPropertiesView view = new GameLogPropertiesView(this);
       GameLog log = getNthLog(info.position);

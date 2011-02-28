@@ -2,11 +2,13 @@
 
 package com.ysaito.shogi;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -38,7 +40,7 @@ public class LogListManager {
     return mSingleton;
   }
 
-  public interface EventListener {
+  public interface ListLogsListener {
     /**
      * Called multiple times to report progress.
      * @param message Download status
@@ -81,8 +83,8 @@ public class LogListManager {
    * The basename of the file will be the same as the one in the sourceUrl.
    * @param manager The system-wide download manager.
    */
-  public synchronized Cancellable startListing(
-      Context context, EventListener listener, Mode mode) {
+  public synchronized Cancellable listLogs(
+      Context context, ListLogsListener listener, Mode mode) {
     maybeStartBackgroundThread();
     Work w = new ListLogsWork(context, listener, mode);
     mPendingWork.add(w);
@@ -90,9 +92,12 @@ public class LogListManager {
     return w;
   }
 
-  // mNewLogs may be accessed by both the UI thread and the lister thread, so
-  // mark the method synchronized.
-  public synchronized Cancellable addGameLog(Context context, GameLog log) {
+  /*
+   * Schedule to add a new game "log" to the summary and save it to the sdcard.
+   * The file I/Os happen in a separate thread, and this method returns before they are
+   * complete.
+   */
+  public synchronized Cancellable addLog(Context context, GameLog log) {
     maybeStartBackgroundThread();
     Work w = new AddLogWork(context, log);
     mPendingWork.add(w);
@@ -100,7 +105,7 @@ public class LogListManager {
     return w;
   }
 
-  public synchronized Cancellable saveGameLogInSdcard(
+  public synchronized Cancellable saveLogInSdcard(
       Context context, 
       SaveLogEventListener listener, 
       GameLog log) {
@@ -110,6 +115,20 @@ public class LogListManager {
     notify();
     return w;
   }
+  
+  /**
+   * Delete the given log in the background. Show a toast when done.
+   */
+  public synchronized Cancellable removeLog(
+      Activity activity,
+      GameLog log) {
+    maybeStartBackgroundThread();
+    Work w = new RemoveLogWork(activity, log);
+    mPendingWork.add(w);
+    notify();
+    return w;
+  }
+  
   // 
   // Implementation details
   //
@@ -157,12 +176,12 @@ public class LogListManager {
 
   private static class ListLogsWork extends Work {
     private final Context mContext;
-    private final EventListener mListener;
+    private final ListLogsListener mListener;
     private final Mode mMode;
     private final Handler mHandler = new Handler();
 
     // The constructor is called by the UI thread so that mHandler is bound to the UI thread.
-    public ListLogsWork(Context c, EventListener l, Mode m) {
+    public ListLogsWork(Context c, ListLogsListener l, Mode m) {
       mContext = c;
       mListener = l;
       mMode = m;
@@ -171,7 +190,7 @@ public class LogListManager {
     private void publishLog(GameLog log) {
       final class GameLogReporter implements Runnable {
         GameLog log;
-        EventListener listener;
+        ListLogsListener listener;
         public void run() {
           listener.onNewGameLog(log); 
         }
@@ -186,7 +205,7 @@ public class LogListManager {
     private void reportFinish(String error) {
       final class FinishReporter implements Runnable {
         String error;
-        EventListener listener;
+        ListLogsListener listener;
         public void run() { 
           listener.onFinish(error);
         }
@@ -351,6 +370,53 @@ public class LogListManager {
       } finally {
         if (out != null) out.close();
       }
+    }
+  }
+  
+  private static class RemoveLogWork extends Work {
+    private final Activity mActivity;
+    private final GameLog mLog;
+
+    // Called by the UI thread
+    public RemoveLogWork(Activity a, GameLog l) { 
+      mActivity = a;
+      mLog = l; 
+    }
+
+    @Override public void run() {
+      File path = mLog.path();
+      if (path == null) {
+        // The log hasn't been saved to the sdcard.
+        // The caller should have avoided this situation.
+        return;
+      }
+      final Context context = mActivity.getApplicationContext();
+      if (!path.delete()) {
+        showToast(mActivity, "Could not delete " + path.getAbsolutePath());
+        return;
+      } else {
+        LogList summary = readSummary(context);
+        if (summary == null) summary = new LogList();
+        summary.logs.remove(mLog.digest());
+        writeSummary(context, summary);
+        showToast(mActivity, "Deleted " + path.getAbsolutePath());
+      } 
+    }
+    
+    private void showToast(Activity activity, String message) {
+      class ShowToast implements Runnable {
+        private final Activity mActivity;
+        private final String mMessage;
+        ShowToast(Activity a, String m) {
+          mActivity = a;
+          mMessage = m;
+        }
+        public void run() {
+          Toast.makeText(mActivity.getApplicationContext(), mMessage, Toast.LENGTH_SHORT).show();
+        }
+      }
+      
+      activity.runOnUiThread(new ShowToast(activity, message));
     }
   }
   

@@ -21,7 +21,7 @@
       android:layout_width="50dp"
       android:layout_height="wrap_content"/>
     <TextView
-      android:id="@+id/status_move_history"
+      android:id="@+id/status_play_history"
       android:maxLines="1"
       android:layout_weight="1"
       android:textSize="12dp"

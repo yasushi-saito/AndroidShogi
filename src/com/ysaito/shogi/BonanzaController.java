@@ -25,8 +25,8 @@ public class BonanzaController {
   private int mInstanceId;
   
   private static final int C_START = 0;
-  private static final int C_HUMAN_MOVE = 1;
-  private static final int C_COMPUTER_MOVE = 2;
+  private static final int C_HUMAN_PLAY = 1;
+  private static final int C_COMPUTER_PLAY = 2;
   private static final int C_UNDO = 3;
   private static final int C_DESTROY = 4;
   
@@ -46,13 +46,13 @@ public class BonanzaController {
                 (Board)msg.getData().get("initial_board"),
                 (Player)msg.getData().get("next_player"));
             break;
-          case C_HUMAN_MOVE:
-            doHumanMove(
+          case C_HUMAN_PLAY:
+            doHumanPlay(
                 (Player)msg.getData().get("player"),
-                (Move)msg.getData().get("move"));
+                (Play)msg.getData().get("play"));
             break;  
-          case C_COMPUTER_MOVE:
-            doComputerMove((Player)msg.getData().get("player"));
+          case C_COMPUTER_PLAY:
+            doComputerPlay((Player)msg.getData().get("player"));
             break;
           case C_UNDO:
             doUndo(
@@ -103,11 +103,11 @@ public class BonanzaController {
    * @param player is the player that has made the @p move. It is used only to
    *  report back Result.nextPlayer.
    */   
-  public final void humanMove(Player player, Move move) {
+  public final void humanPlay(Player player, Play play) {
     Bundle b = new Bundle();
     b.putSerializable("player", player);
-    b.putSerializable("move", move);    
-    sendInputMessage(C_HUMAN_MOVE, b);
+    b.putSerializable("play", play);    
+    sendInputMessage(C_HUMAN_PLAY, b);
   }
   
   /** 
@@ -120,7 +120,7 @@ public class BonanzaController {
   public final void computerMove(Player player) {
     Bundle b = new Bundle();
     b.putSerializable("player", player);
-    sendInputMessage(C_COMPUTER_MOVE, b);
+    sendInputMessage(C_COMPUTER_PLAY, b);
   }
 
   /**
@@ -172,7 +172,7 @@ public class BonanzaController {
     //
     // 3. lastMove==null && lastMoveCookie == 0 && undoMoves > 0
     //    this happens after successful completion of undo1 or undo2. 
-    public Move lastMove;       // the move made by the request.
+    public Play lastMove;       // the move made by the request.
     public int lastMoveCookie;  // cookie for lastMove. for future undos.
     public int undoMoves;       // number of moves to be rolled back
     
@@ -196,7 +196,7 @@ public class BonanzaController {
         Player curPlayer) {
       Result r = new Result();
       r.board = jr.board;
-      r.lastMove = (jr.move != null) ? Move.fromCsaString(jr.move, curPlayer) : null;
+      r.lastMove = (jr.move != null) ? Play.fromCsaString(jr.move, curPlayer) : null;
       r.lastMoveCookie = jr.moveCookie;
       r.errorMessage = jr.error;
       
@@ -272,7 +272,7 @@ public class BonanzaController {
     sendOutputMessage(r);
   }
 
-  private final void doHumanMove(Player player, Move move) {
+  private final void doHumanPlay(Player player, Play move) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     BonanzaJNI.humanMove(mInstanceId, move.toCsaString(), jr);
     if (jr.status == BonanzaJNI.R_INSTANCE_DELETED) {
@@ -283,7 +283,7 @@ public class BonanzaController {
     sendOutputMessage(Result.fromJNI(jr, player));
   }
 
-  private final void doComputerMove(Player player) {
+  private final void doComputerPlay(Player player) {
     BonanzaJNI.Result jr = new BonanzaJNI.Result();
     BonanzaJNI.computerMove(mInstanceId, jr);
     if (jr.status == BonanzaJNI.R_INSTANCE_DELETED) {

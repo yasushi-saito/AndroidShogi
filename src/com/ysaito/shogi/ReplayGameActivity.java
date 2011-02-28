@@ -31,14 +31,14 @@ public class ReplayGameActivity extends Activity {
 
   // State of the game
   private Board mBoard;            // current state of the board
-  private ArrayList<Move> mMoves;  // moves made up to mBoard.
+  private ArrayList<Play> mPlays;  // plays made up to mBoard.
   private Player mNextPlayer;   // the next player to make a move 
   private GameState mGameState;    // is the game is active or finished?
 
   private GameLog mLog;
   
   // Number of moves made so far. 0 means the beginning of the game.
-  private int mNextMove;
+  private int mNextPlay;
 
   private static final int MAX_PROGRESS = 1000; 
   
@@ -49,12 +49,12 @@ public class ReplayGameActivity extends Activity {
     initializeInstanceState(savedInstanceState);
 
     mLog = (GameLog)getIntent().getSerializableExtra("gameLog");
-    Assert.isTrue(mLog.numMoves() > 0);
+    Assert.isTrue(mLog.numPlays() > 0);
     
     mGameState = GameState.ACTIVE;
-    mNextMove = 0;
+    mNextPlay = 0;
     mBoard = new Board();
-    mMoves = new ArrayList<Move>();
+    mPlays = new ArrayList<Play>();
     mBoard.initialize(mLog.handicap());
     mNextPlayer = Player.BLACK;
     
@@ -75,14 +75,14 @@ public class ReplayGameActivity extends Activity {
     b = (ImageButton)findViewById(R.id.replay_prev_button);
     b.setOnClickListener(new ImageButton.OnClickListener() {
       public void onClick(View v) { 
-        if (mNextMove > 0) replayUpTo(mNextMove - 1);
+        if (mNextPlay > 0) replayUpTo(mNextPlay - 1);
       }
     });
     b = (ImageButton)findViewById(R.id.replay_next_button);
     b.setOnClickListener(new ImageButton.OnClickListener() {
       public void onClick(View v) {
-        if (mNextMove < mLog.numMoves()) {
-          replayUpTo(mNextMove + 1);
+        if (mNextPlay < mLog.numPlays()) {
+          replayUpTo(mNextPlay + 1);
         }
       }
     });
@@ -91,16 +91,16 @@ public class ReplayGameActivity extends Activity {
     mSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
       public void onProgressChanged(SeekBar seekBar, int progress, boolean fromTouch) {
         if (fromTouch) {
-          final int maxMoves = mLog.numMoves() - 1;
-          int move = 0;
+          final int maxPlays = mLog.numPlays() - 1;
+          int play = 0;
           if (progress >= MAX_PROGRESS) {
-            move = maxMoves;
+            play = maxPlays;
           } else if (progress <= 0) {
-            move = 0;
+            play = 0;
           } else {
-            move = (int)(maxMoves * (progress / (float)MAX_PROGRESS));
+            play = (int)(maxPlays * (progress / (float)MAX_PROGRESS));
           }
-          replayUpTo(move);
+          replayUpTo(play);
         }
       }
       public void onStartTrackingTouch(SeekBar seekBar) { }
@@ -117,30 +117,30 @@ public class ReplayGameActivity extends Activity {
    *  Play the game up to "numMoves" moves. numMoves==0 will initialize the board, and
    *  numMoves==mLog.numMoves-1 will recreate the final game state.
    */ 
-  private final void replayUpTo(int numMoves) {
+  private final void replayUpTo(int numPlays) {
     mBoard.initialize(mLog.handicap());
     mNextPlayer = Player.BLACK;
-    mMoves.clear();
+    mPlays.clear();
     
-    Move move = null;
+    Play play = null;
     Board lastBoard = mBoard;
     
     // Compute the state of the game @ numMoves
-    for (int i = 0; i < numMoves; ++i) {
-      move = mLog.getMove(i);
-      if (i == numMoves - 1) {
+    for (int i = 0; i < numPlays; ++i) {
+      play = mLog.play(i);
+      if (i == numPlays - 1) {
         lastBoard = new Board(mBoard);
       }
-      mBoard.applyMove(mNextPlayer, move);
+      mBoard.applyPly(mNextPlayer, play);
       mNextPlayer = mNextPlayer.opponent();
-      mMoves.add(move);
+      mPlays.add(play);
     }
-    mNextMove = numMoves;
-    mStatusView.update(mGameState, lastBoard, mBoard, mMoves, mNextPlayer, null);
+    mNextPlay = numPlays;
+    mStatusView.update(mGameState, lastBoard, mBoard, mPlays, mNextPlayer, null);
     mBoardView.update(mGameState, lastBoard, mBoard, 
         Player.INVALID,  // Disallow board manipluation by the user 
-        move, false);
-    mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextMove / mLog.numMoves()));
+        play, false);
+    mSeekBar.setProgress((int)((float)MAX_PROGRESS * mNextPlay / mLog.numPlays()));
   }
   
   @Override 
@@ -160,7 +160,7 @@ public class ReplayGameActivity extends Activity {
   void resumeGame() {            
     Intent intent = new Intent(this, GameActivity.class);
     intent.putExtra("initial_board", mBoard);
-    intent.putExtra("moves", mMoves);
+    intent.putExtra("moves", mPlays);
     intent.putExtra("next_player", mNextPlayer);
     intent.putExtra("replaying_saved_game", true);
 
@@ -227,8 +227,8 @@ public class ReplayGameActivity extends Activity {
   }
 
   private final BoardView.EventListener mViewListener = new BoardView.EventListener() {
-    public void onHumanMove(Player player, Move move) {
-	// Replay screen doesn't allow for human move.
+    public void onHumanPlay(Player player, Play play) {
+	// Replay screen doesn't allow for human play.
     }
   };
 }
