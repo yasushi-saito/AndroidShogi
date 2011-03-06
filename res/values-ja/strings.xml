@@ -25,6 +25,7 @@
     <string name="piece_style">駒の種類</string>
     <string name="handicap">手合</string>
     <string name="reload">再読み込み</string>
+    <string name="game_logs">棋譜録</string>
     <string name="replay_game">棋譜再生</string>
     <string name="resume_play">この局面から対局</string>
     <string name="log_properties">棋譜情報</string>
