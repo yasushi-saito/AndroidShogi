@@ -8,10 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * @author saito@google.com (Yaz Saito)
- *
- *
- * Move represents a move by a player
+ * A class representing a single play
  */
 public class Play implements java.io.Serializable {
   // Japanese move display support
@@ -19,9 +16,8 @@ public class Play implements java.io.Serializable {
     null, "一", "二", "三", "四", "五", "六", "七", "八", "九",    
   };
   
-  // The piece to move. 
-  //
-  // The value is negative if player==Player.WHITE.
+  // The piece to move. The value is positive if player==BLACK, negative if player==WHITE.
+  // The absolute value of mPiece is one of the constants define in Piece (e.g., Piece.FU).
   private final int mPiece;
 
   // The source and destination coordinates. When moving a piece on the board, each value is in range
@@ -37,11 +33,11 @@ public class Play implements java.io.Serializable {
   }
 
   public final boolean isDroppingPiece() { return mFromX < 0; }
-  public final int getPiece() { return mPiece; }
-  public final int getFromX() { return mFromX; }
-  public final int getFromY() { return mFromY; }  
-  public final int getToX() { return mToX; }
-  public final int getToY() { return mToY; }  
+  public final int piece() { return mPiece; }
+  public final int fromX() { return mFromX; }
+  public final int fromY() { return mFromY; }  
+  public final int toX() { return mToX; }
+  public final int toY() { return mToY; }  
   
   @Override public boolean equals(Object o) {
     Play m = (Play)o;
@@ -247,7 +243,7 @@ public class Play implements java.io.Serializable {
   public final TraditionalNotation toTraditionalNotation(Board board, Play prevMove) {
     int modifier = 0;
 
-    if (prevMove != null && prevMove.getToX() == mToX && prevMove.getToY() == mToY) {
+    if (prevMove != null && prevMove.toX() == mToX && prevMove.toY() == mToY) {
       modifier |= CAPTURED_PREVIOUS_PIECE;
     }
     

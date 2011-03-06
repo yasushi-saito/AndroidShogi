@@ -276,11 +276,11 @@ public class Board implements java.io.Serializable {
     ArrayList<CapturedPiece> captured = getCapturedPieces(p);
 
     if (m.isDroppingPiece()) {
-      setPiece(m.getToX(), m.getToY(), m.getPiece());
+      setPiece(m.toX(), m.toY(), m.piece());
       capturedChanged = true;
       for (int i = 0; i < captured.size(); ++i) {
         Board.CapturedPiece c = captured.get(i);
-        if (c.piece == m.getPiece()) {
+        if (c.piece == m.piece()) {
           if (c.n == 1) {
             captured.remove(i);
           } else {
@@ -290,9 +290,9 @@ public class Board implements java.io.Serializable {
         }
       }
     } else {
-      setPiece(m.getFromX(), m.getFromY(), Piece.EMPTY);
-      oldPiece = getPiece(m.getToX(), m.getToY());
-      setPiece(m.getToX(), m.getToY(), m.getPiece());
+      setPiece(m.fromX(), m.fromY(), Piece.EMPTY);
+      oldPiece = getPiece(m.toX(), m.toY());
+      setPiece(m.toX(), m.toY(), m.piece());
     }
     if (oldPiece != Piece.EMPTY) {
       capturedChanged = true;

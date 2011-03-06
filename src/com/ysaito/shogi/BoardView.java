@@ -211,6 +211,7 @@ public class BoardView extends View implements View.OnTouchListener {
 
     if (action == MotionEvent.ACTION_DOWN) {
       mMoveFrom = null;
+      mMoveTo = null;
 
       // Start of touch operation
       finder.findNearestPlayersPieceOnBoard(mBoard, mCurrentPlayer);
@@ -274,7 +275,7 @@ public class BoardView extends View implements View.OnTouchListener {
               ((CapturedPiece)mMoveFrom).piece,
               -1, -1,
               mMoveTo.x, mMoveTo.y);
-          Log.d(TAG, String.format("MOVEMOVE %d", move.getPiece()));
+          Log.d(TAG, String.format("MOVEMOVE %d", move.piece()));
         }
         mListener.onHumanPlay(mCurrentPlayer, move);
         mCurrentPlayer = Player.INVALID;
@@ -318,7 +319,7 @@ public class BoardView extends View implements View.OnTouchListener {
     }
 
     if (animation == 0 && mLastMove != null) {
-      darkenSquare(canvas, layout, mLastMove.getToX(), mLastMove.getToY());
+      darkenSquare(canvas, layout, mLastMove.toX(), mLastMove.toY());
     }
 
     // Draw pieces
@@ -328,8 +329,8 @@ public class BoardView extends View implements View.OnTouchListener {
       for (int x = 0; x < Board.DIM; ++x) {
         int piece = board.getPiece(x, y);
         if ((animation & ANIM_HIDE_PIECE_FROM) != 0 &&
-            x == mLastMove.getFromX() && 
-            y == mLastMove.getFromY()) {
+            x == mLastMove.fromX() && 
+            y == mLastMove.fromY()) {
           piece = 0;
         }
         if (piece == 0) continue;
@@ -347,8 +348,8 @@ public class BoardView extends View implements View.OnTouchListener {
 
     if ((animation & ANIM_HIGHLIGHT_PIECE_TO) != 0) {
       Paint cp = new Paint();
-      float cx = layout.screenX(mLastMove.getToX()) + squareDim / 2.0f;
-      float cy = layout.screenY(mLastMove.getToY()) + squareDim / 2.0f;
+      float cx = layout.screenX(mLastMove.toX()) + squareDim / 2.0f;
+      float cy = layout.screenY(mLastMove.toY()) + squareDim / 2.0f;
       float radius = squareDim * 0.9f;
       cp.setShader(new RadialGradient(cx, cy, 20, 0xffb8860b, 0x00b8860b, Shader.TileMode.MIRROR));
       canvas.drawCircle(cx, cy, radius, cp);

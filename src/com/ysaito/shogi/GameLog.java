@@ -150,24 +150,30 @@ public class GameLog implements Serializable {
   /**
    * A comparator to sort GameLog by the player names
    */
-  public static final Comparator<GameLog> SORT_BY_PLAYER = new Comparator<GameLog>() {
+  public static final Comparator<GameLog> SORT_BY_BLACK_PLAYER = new Comparator<GameLog>() {
     public int compare(GameLog g1, GameLog g2) { 
-      String p1 = g1.getMinPlayer();
-      String p2 = g2.getMinPlayer();      
-      int x = p1.compareTo(p2);
-      if (x != 0) return x;
-      
-      return SORT_BY_DATE.compare(g1, g2);
+      String p1 = g1.getPlayer(GameLog.ATTR_BLACK_PLAYER);
+      String p2 = g2.getPlayer(GameLog.ATTR_BLACK_PLAYER);      
+      int cmp = p1.compareTo(p2);
+      return (cmp != 0) ? cmp : SORT_BY_DATE.compare(g1, g2); 
     }
     public boolean equals(Object o) { return o == this; }
   };
 
-  private final String getMinPlayer() {
-    String black = mAttrs.get(GameLog.ATTR_BLACK_PLAYER);
-    if (black == null) black = "";
-    String white = mAttrs.get(GameLog.ATTR_WHITE_PLAYER);
-    if (white == null) white = "";
-    return (black.compareTo(white) <= 0) ? black : white;
+  public static final Comparator<GameLog> SORT_BY_WHITE_PLAYER = new Comparator<GameLog>() {
+    public int compare(GameLog g1, GameLog g2) { 
+      String p1 = g1.getPlayer(GameLog.ATTR_WHITE_PLAYER);
+      String p2 = g2.getPlayer(GameLog.ATTR_WHITE_PLAYER);      
+      int cmp = p1.compareTo(p2);
+      return (cmp != 0) ? cmp : SORT_BY_DATE.compare(g1, g2); 
+    }
+    public boolean equals(Object o) { return o == this; }
+  };
+  
+  private final String getPlayer(String playerAttr) {
+    String name = mAttrs.get(playerAttr);
+    if (name == null) name = "";
+    return name;
   }
   
   //
@@ -281,7 +287,7 @@ public class GameLog implements Serializable {
           thisPlay.toTraditionalNotation(board, prevPlay).toJapaneseString()));
       if (!thisPlay.isDroppingPiece()) {
         b.append(String.format(" (%d%d)", 
-            9 - thisPlay.getFromX(), 1 + thisPlay.getFromY()));
+            9 - thisPlay.fromX(), 1 + thisPlay.fromY()));
       }
       b.append("\n");
       board.applyPly(player, thisPlay);

@@ -382,9 +382,8 @@ public class GameActivity extends Activity {
   };
 
   private void maybeSaveGame() {
-    if (true || 
-        (!mReplayingSavedGame &&
-            mPlays.size() >= 10 &&
+    if ((!mReplayingSavedGame &&
+            mPlays.size() >= 20 &&
             !mPlayerTypes.equals("CC"))) {
       TreeMap<String, String> attrs = new TreeMap<String, String>();
       attrs.put(GameLog.ATTR_BLACK_PLAYER, blackPlayerName());
@@ -446,9 +445,9 @@ public class GameActivity extends Activity {
 
             if (item == 0) {
               mSavedPlayForPromotion = new Play(
-                  Board.promote(mSavedPlayForPromotion.getPiece()), 
-                  mSavedPlayForPromotion.getFromX(), mSavedPlayForPromotion.getFromY(),
-                  mSavedPlayForPromotion.getToX(), mSavedPlayForPromotion.getToY());
+                  Board.promote(mSavedPlayForPromotion.piece()), 
+                  mSavedPlayForPromotion.fromX(), mSavedPlayForPromotion.fromY(),
+                  mSavedPlayForPromotion.toX(), mSavedPlayForPromotion.toY());
             }
             mController.humanPlay(mSavedPlayerForPromotion, mSavedPlayForPromotion);
             mSavedPlayForPromotion = null;
@@ -459,14 +458,14 @@ public class GameActivity extends Activity {
   }
 
   private static final boolean PlayAllowsForPromotion(Player player, Play play) {
-    if (Board.isPromoted(play.getPiece())) return false;  // already promoted
+    if (Board.isPromoted(play.piece())) return false;  // already promoted
 
-    final int type = Board.type(play.getPiece());
+    final int type = Board.type(play.piece());
     if (type == Piece.KIN || type == Piece.OU) return false;
 
     if (play.isDroppingPiece()) return false;
-    if (player == Player.WHITE && play.getFromY() < 6 && play.getToY() < 6) return false;
-    if (player == Player.BLACK && play.getFromY() >= 3 && play.getToY() >= 3) return false;
+    if (player == Player.WHITE && play.fromY() < 6 && play.toY() < 6) return false;
+    if (player == Player.BLACK && play.fromY() >= 3 && play.toY() >= 3) return false;
     return true;
   }
 

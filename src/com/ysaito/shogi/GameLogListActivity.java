@@ -204,7 +204,7 @@ public class GameLogListActivity extends ListActivity  {
   @Override 
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
-    inflater.inflate(R.menu.log_picker_menu, menu);
+    inflater.inflate(R.menu.game_log_list_option_menu, menu);
     return true;
   }
 
@@ -302,8 +302,11 @@ public class GameLogListActivity extends ListActivity  {
     case R.id.menu_sort_by_date:
       sortLogs(GameLog.SORT_BY_DATE);
       return true;
-    case R.id.menu_sort_by_player:
-      sortLogs(GameLog.SORT_BY_PLAYER);
+    case R.id.menu_sort_by_black_player:
+      sortLogs(GameLog.SORT_BY_BLACK_PLAYER);
+      return true;
+    case R.id.menu_sort_by_white_player:
+      sortLogs(GameLog.SORT_BY_WHITE_PLAYER);
       return true;
     default:    
       return super.onOptionsItemSelected(item);
