@@ -93,7 +93,7 @@ public class StartGameDialog {
       changed = true;
     }
   
-    if (maybeSaveIntPreference(mHandicap.getSelectedItemPosition(), editor, "handicap", "0o")) {
+    if (maybeSaveIntPreference(mHandicap.getSelectedItemPosition(), editor, "handicap", "0")) {
       changed = true;
     }
     
@@ -124,7 +124,7 @@ public class StartGameDialog {
     if (s.equals("CC")) return 3;
     return 0;
   }
-  
+    
   private static String IntToPlayerTypes(int v) {
     switch (v) {
     case 1: return "CH";
