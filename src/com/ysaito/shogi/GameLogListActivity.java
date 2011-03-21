@@ -152,9 +152,7 @@ public class GameLogListActivity extends ListActivity  {
               mAdapter.notifyDataSetChanged();
             }
           }
-          public void onFinish(String error) { 
-            mAdapter.notifyDataSetChanged();
-          }
+          public void onFinish() { mAdapter.notifyDataSetChanged(); }
         },
         this,
         mode);
@@ -217,6 +215,11 @@ public class GameLogListActivity extends ListActivity  {
   
   static final int DIALOG_LOG_PROPERTIES = 1;
   
+  private final ArrayList<LogListManager.UndoToken> mUndoTokens = new ArrayList<LogListManager.UndoToken>();
+  private void addUndoToken(LogListManager.UndoToken undoToken) {
+    mUndoTokens.add(undoToken);
+  }
+  
   @Override
   public boolean onContextItemSelected(MenuItem item) {
     AdapterContextMenuInfo info = (AdapterContextMenuInfo) item.getMenuInfo();
@@ -227,36 +230,17 @@ public class GameLogListActivity extends ListActivity  {
     case R.id.game_log_list_delete_log: {
       GameLog log = getNthLog(info.position);
       if (log != null) { 
-        class DoDelete implements DialogInterface.OnClickListener {
-          final LogListManager.Listener mListener;
-          final GameLogListActivity mActivity;
-          final GameLog mLog;
-          public DoDelete(GameLogListActivity a, GameLog log) {
-            mListener = new LogListManager.Listener() {
-              public void onFinish(String error) { 
-                startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
+        LogListManager.getSingletonInstance().deleteLog(
+            new LogListManager.DeleteLogListener() {
+              public void onFinish(LogListManager.UndoToken undoToken) {
+                if (undoToken != null) { // no error happened
+                  addUndoToken(undoToken);
+                  startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
+                }
               }
-            };
-            mActivity = a; 
-            mLog = log; 
-          }
-          public void onClick(DialogInterface dialog, int whichButton) { 
-            LogListManager.getSingletonInstance().deleteLog(mListener, mActivity, mLog);
-          }
-        }
-        
-        String path;
-        if (log.path() != null) {
-          path = log.path().getAbsolutePath();
-        } else {
-          path = "in memory";
-        }
-        new AlertDialog.Builder(this)
-          .setTitle("Delete log " + path + "?")
-          .setPositiveButton(android.R.string.ok, new DoDelete(this, log))
-          .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) { }
-          }).create().show();
+            },
+            this,
+            log);
       }
       return true;
     }
@@ -264,10 +248,8 @@ public class GameLogListActivity extends ListActivity  {
       GameLog log = getNthLog(info.position);
       if (log != null) {
         LogListManager.getSingletonInstance().saveLogInSdcard(
-            new LogListManager.Listener() {
-              public void onFinish(String error) { 
-                startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY);
-              }
+            new LogListManager.TrivialListener() {
+              public void onFinish() { startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY); }
             },
             this,
             log);
@@ -298,6 +280,18 @@ public class GameLogListActivity extends ListActivity  {
     switch (item.getItemId()) {
     case R.id.menu_reload:
       startListLogs(LogListManager.Mode.RESET_SDCARD_SUMMARY);
+      return true;
+    case R.id.menu_undo:
+      if (!mUndoTokens.isEmpty()) {
+        final int lastIndex = mUndoTokens.size() - 1;
+        final LogListManager.UndoToken undo = mUndoTokens.remove(lastIndex);
+        LogListManager.getSingletonInstance().undo(
+            new LogListManager.TrivialListener() {
+              public void onFinish() { startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY); }
+            },
+            this,
+            undo);
+      }
       return true;
     case R.id.menu_sort_by_date:
       sortLogs(GameLog.SORT_BY_DATE);

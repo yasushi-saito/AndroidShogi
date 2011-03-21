@@ -393,7 +393,6 @@ public class GameActivity extends Activity {
       }
       
       LogListManager.getSingletonInstance().addLog(
-          LogListManager.NULL_LISTENER,
           this, 
           GameLog.newLog(mStartTimeMs, attrs.entrySet(), mPlays, 
               null /* not on sdcard yet */

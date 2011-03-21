@@ -182,7 +182,9 @@ public class ReplayGameActivity extends Activity {
       return true;
     case R.id.menu_save_in_sdcard: {
       LogListManager.getSingletonInstance().saveLogInSdcard(
-          LogListManager.NULL_LISTENER,
+          new LogListManager.TrivialListener() { 
+            public void onFinish() { }
+          },
           this, 
           mLog);
       return true;

@@ -693,7 +693,7 @@ public class BoardView extends View implements View.OnTouchListener {
   private final void initializeBitmaps(Context context) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
     String prefix = prefs.getString("piece_style", "kinki_simple");
-
+    Log.d(TAG, "PREFIX: " + prefix);
     Resources r = getResources();
     mBlackBitmaps = new BitmapDrawable[Piece.NUM_TYPES];
     mWhiteBitmaps = new BitmapDrawable[Piece.NUM_TYPES];
@@ -708,6 +708,7 @@ public class BoardView extends View implements View.OnTouchListener {
 
     for (int i = 1; i < Piece.NUM_TYPES; ++i) {
       if (koma_names[i] == null) continue;
+      Log.d(TAG, "PIECE: " + String.format("@com.ysaito.shogi:drawable/%s_%s", prefix, koma_names[i]));
       int id = r.getIdentifier(String.format("@com.ysaito.shogi:drawable/%s_%s", prefix, koma_names[i]), null, null);
       Bitmap blackBm = BitmapFactory.decodeResource(r, id);
       mBlackBitmaps[i] = new BitmapDrawable(getResources(), blackBm);

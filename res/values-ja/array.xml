@@ -46,6 +46,7 @@
   <string-array name="piece_style">
     <item>錦旗</item>
     <item>錦旗(一字)</item>
+    <item>Chess</item>
     <item>Western(Duniho/Marroquin)</item>
   </string-array>
 </resources>
