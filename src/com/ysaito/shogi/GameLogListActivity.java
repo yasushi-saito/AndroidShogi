@@ -199,10 +199,14 @@ public class GameLogListActivity extends ListActivity  {
     }
   }  
 
+  private Menu mOptionsMenu;
+  
   @Override 
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
     inflater.inflate(R.menu.game_log_list_option_menu, menu);
+    mOptionsMenu = menu;
+    updateUndoMenu();
     return true;
   }
 
@@ -218,6 +222,7 @@ public class GameLogListActivity extends ListActivity  {
   private final ArrayList<LogListManager.UndoToken> mUndoTokens = new ArrayList<LogListManager.UndoToken>();
   private void addUndoToken(LogListManager.UndoToken undoToken) {
     mUndoTokens.add(undoToken);
+    updateUndoMenu();
   }
   
   @Override
@@ -275,6 +280,12 @@ public class GameLogListActivity extends ListActivity  {
     }
   }
   
+  private void updateUndoMenu() {
+    if (mOptionsMenu != null) {
+      boolean enabled = !mUndoTokens.isEmpty();
+      mOptionsMenu.findItem(R.id.menu_undo).setEnabled(enabled);
+    }
+  }
   
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
@@ -292,6 +303,7 @@ public class GameLogListActivity extends ListActivity  {
             this,
             undo);
       }
+      updateUndoMenu();
       return true;
     case R.id.menu_sort_by_date:
       sortLogs(GameLog.SORT_BY_DATE);

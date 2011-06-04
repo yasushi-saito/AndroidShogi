@@ -116,6 +116,9 @@ public class GameActivity extends Activity {
     case R.id.menu_flip_screen:
       mBoardView.flipScreen();
       return true;
+    case R.id.menu_quit_game:
+      tryQuitGame();
+      return true;
     default:    
       return super.onOptionsItemSelected(item);
     }
@@ -133,12 +136,16 @@ public class GameActivity extends Activity {
     mDestroyed = true;
   }
 
-  @Override public void onBackPressed() { 
+  private void tryQuitGame() {
     if (mGameState == GameState.ACTIVE && !mPlays.isEmpty()) {
       showDialog(DIALOG_CONFIRM_QUIT);
     } else {
       super.onBackPressed();
     }
+  }
+  
+  @Override public void onBackPressed() {
+    tryQuitGame();
   }
 
   @Override protected Dialog onCreateDialog(int id) {
@@ -310,7 +317,10 @@ public class GameActivity extends Activity {
   }
 
   private final void updateUndoMenu() {
-    mMenu.findItem(R.id.menu_undo).setEnabled((mUndosRemaining > 0));
+    if (mMenu == null) return;
+    
+    boolean enabled = (mUndosRemaining > 0) && !mMoveCookies.isEmpty();
+    mMenu.findItem(R.id.menu_undo).setEnabled(enabled);
     MenuItem item = mMenu.getItem(0);
     if (mUndosRemaining <= 0) {
       item.setTitle(R.string.undo_disallowed);
@@ -357,6 +367,7 @@ public class GameActivity extends Activity {
       if (mGameState != GameState.ACTIVE) {
         maybeSaveGame();
       }
+      updateUndoMenu();  // if no move is in mMoveCookies, disable the undo menu
     }
   };
 
@@ -475,13 +486,13 @@ public class GameActivity extends Activity {
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
     builder.setMessage(R.string.confirm_quit_game);
     builder.setCancelable(false);
-    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+    builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
       public void onClick(DialogInterface d, int id) {
         maybeSaveGame();
         finish();
       }
     });
-    builder.setNegativeButton("No",  new DialogInterface.OnClickListener() {
+    builder.setNegativeButton(android.R.string.no,  new DialogInterface.OnClickListener() {
       public void onClick(DialogInterface d, int id) {
         // nothing to do
       }

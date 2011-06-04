@@ -6,4 +6,7 @@
   <item android:id="@+id/menu_flip_screen" 
   	android:title="@string/flip_screen"
   	android:icon="@drawable/ic_contact_picture_3" />
+  <item android:id="@+id/menu_quit_game"
+  	android:title="@string/quit_game"
+  	android:icon="@drawable/ic_menu_close_clear_cancel" />
 </menu>

@@ -10,7 +10,8 @@
     <string name="promote">成る</string>
     <string name="app_name">Android Shogi</string>
     <string name="new_game">新規対局</string>
-    <string name="download_data">データベースダウンロード</string>
+    <string name="start_download_database">データベースダウンロード開始します</string>
+    <string name="restart_download_database">ダウンロードやり直します</string>
     <string name="settings">設定</string>
     <string name="player_types">対局者</string>
     <string name="human">人</string>
@@ -18,6 +19,7 @@
     <string name="computer_difficulty">コンピュータ難易度</string>
     <string name="reset_preferences">設定リセット</string>
     <string name="flip_screen">画面を上下反転する</string>
+    <string name="quit_game">対局終了</string>
     <string name="undo">待った</string>
     <string name="undo_operation">操作取り消し</string>
     <string name="undo_disallowed">待ったなし</string>
