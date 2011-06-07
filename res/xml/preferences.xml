@@ -24,6 +24,6 @@
   <EditTextPreference
      android:key="download_source_url"
      android:defaultValue="@string/default_download_source_url"
-     android:title="Shogi DB source"
+     android:title="@string/shogi_db_source"
      />
 </PreferenceScreen>

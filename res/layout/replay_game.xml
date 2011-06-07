@@ -75,28 +75,22 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
    <TableRow>
-   <!-- <ImageButton android:id="@+id/replay_beginning_button"
+   <ImageButton android:id="@+id/replay_prev_button"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@android:drawable/ic_media_previous" /> -->
-   <com.ysaito.shogi.FlippedImageButton android:id="@+id/replay_prev_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="32dp"
         android:longClickable="true"
-        android:src="@android:drawable/ic_media_play" />
+        android:src="@drawable/ic_media_back"
+        android:background="@drawable/button_background" />
    <SeekBar android:id="@+id/replay_seek_bar"
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:max="1000"/>
    <ImageButton android:id="@+id/replay_next_button"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="32dp"
         android:longClickable="true"
-        android:src="@android:drawable/ic_media_play" />
-   <!--<ImageButton android:id="@+id/replay_last_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@android:drawable/ic_media_next" /> -->
+        android:src="@drawable/ic_media_play"
+        android:background="@drawable/button_background" />
    </TableRow> 
   </TableLayout>        
  </LinearLayout>

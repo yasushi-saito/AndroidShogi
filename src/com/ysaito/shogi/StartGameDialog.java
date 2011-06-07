@@ -53,7 +53,7 @@ public class StartGameDialog {
     
     builder.setMessage(title)
       .setCancelable(true)
-      .setPositiveButton("Start", new DialogInterface.OnClickListener() {
+      .setPositiveButton(R.string.start_game, new DialogInterface.OnClickListener() {
         public void onClick(DialogInterface dialog, int id) {
           savePreferences();
           if (mOnClickStartButton != null) {

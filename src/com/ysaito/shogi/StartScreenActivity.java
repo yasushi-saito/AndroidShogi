@@ -1,5 +1,3 @@
-// Copyright 2010 Google Inc. All Rights Reserved.
-
 package com.ysaito.shogi;
 
 import android.app.Activity;
@@ -52,11 +50,6 @@ public class StartScreenActivity extends Activity {
       public void onClick(View v) { pickLog(); }
     });
 
-    Button settingsButton = (Button)findViewById(R.id.settings_button);
-    settingsButton.setOnClickListener(new Button.OnClickListener() {
-      public void onClick(View v) { settings(); }
-    });
-
     if (mExternalDir == null) {
       Toast.makeText(
           getBaseContext(),
@@ -86,6 +79,23 @@ public class StartScreenActivity extends Activity {
       case R.id.start_screen_help_menu_id:
           help();
           return true;
+      case R.id.start_screen_preferences_menu_id:
+        settings();
+        return true;
+      case R.id.start_screen_download_menu_id:
+        if (mExternalDir == null) {
+          Toast.makeText(
+              getBaseContext(),
+              "Please mount the sdcard on the device", 
+              Toast.LENGTH_LONG).show();
+        } else if (!hasRequiredFiles(mExternalDir)) {
+          startDownload();
+        } else {
+          mDeleteFilesBeforeDownload = true;
+          mDownloadConfirmMessage = getResources().getString(R.string.already_downloaded);
+          showDialog(DIALOG_CONFIRM_DOWNLOAD);
+        }
+        return true;
       default:    
         return super.onOptionsItemSelected(item);
     }
@@ -98,6 +108,7 @@ public class StartScreenActivity extends Activity {
   //
   // Data download
   //
+  private boolean mDeleteFilesBeforeDownload;
   private String mDownloadConfirmMessage;
   private ProgressDialog mDownloadStatusDialog;
   private Downloader mDownloadController;
@@ -111,12 +122,18 @@ public class StartScreenActivity extends Activity {
     b.setPositiveButton(android.R.string.yes,
         new DialogInterface.OnClickListener() {
           public void onClick(DialogInterface d, int item) {
+            if (mDeleteFilesBeforeDownload) {
+              mDeleteFilesBeforeDownload = false;
+              Downloader.deleteFilesInDir(mExternalDir);
+              mNewGameButton.setEnabled(false);
+            }
             startDownload();
           }
         });
     b.setNegativeButton(android.R.string.no,
         new DialogInterface.OnClickListener() {
       public void onClick(DialogInterface d, int item) {
+        mDeleteFilesBeforeDownload = false;
         d.cancel();
       }
     });
@@ -160,7 +177,6 @@ public class StartScreenActivity extends Activity {
         if (!hasRequiredFiles(mExternalDir)) {
           status = String.format("Failed to download required files to %s:", mExternalDir);
           for (String s: REQUIRED_FILES) status += " " + s;
-          Downloader.deleteFilesInDir(mExternalDir);
         }
       }
       mDownloadStatusDialog.dismiss();
@@ -170,10 +186,10 @@ public class StartScreenActivity extends Activity {
       }
       if (status != null) {
         mDownloadConfirmMessage = getResources().getString(R.string.restart_download_database) + status;
+        mDeleteFilesBeforeDownload = true;
         showDialog(DIALOG_CONFIRM_DOWNLOAD);
       } else {
         mNewGameButton.setEnabled(true);
-        mPickLogButton.setEnabled(true);        
         initializeBonanzaInBackground();
       }
     }

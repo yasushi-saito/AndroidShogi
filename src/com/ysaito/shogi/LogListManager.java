@@ -366,7 +366,7 @@ public class LogListManager {
             logFile);
         summary.logs.put(mLog.digest(), mLog);
         writeSummary(mActivity, summary);
-        showToast(mActivity, "Saved log in " + logFile.getAbsolutePath());
+        showToast(mActivity, String.format(mActivity.getResources().getString(R.string.saved_log_in_sdcard), logFile.getAbsolutePath()));
         post(new FinishReporter());
       } catch (IOException e) {
         String message = "Error saving log: " + e.getMessage();
@@ -424,7 +424,7 @@ public class LogListManager {
       if (summary == null) summary = new LogList();
       summary.logs.put(mUndo.log.digest(), mUndo.log);
       writeSummary(mActivity, summary);
-      showToast(mActivity, "Restored log");
+      showToast(mActivity, mActivity.getResources().getString(R.string.restored_log));
       post(new FinishReporter());
     }
   }
@@ -471,9 +471,9 @@ public class LogListManager {
       summary.logs.remove(mLog.digest());
       writeSummary(mActivity, summary);
       if (path == null) {
-        showToast(mActivity, "Deleted log in memory");
+        showToast(mActivity, mActivity.getResources().getString(R.string.deleted_log_in_memory));
       } else {
-        showToast(mActivity, "Deleted " + path.getAbsolutePath());
+        showToast(mActivity, String.format(mActivity.getResources().getString(R.string.deleted_log_in_sdcard), path.getAbsolutePath()));
       }
       post(new FinishReporter(new UndoToken(UndoToken.Op.DELETED, mLog)));
     }

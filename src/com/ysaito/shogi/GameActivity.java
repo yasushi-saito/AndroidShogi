@@ -394,7 +394,7 @@ public class GameActivity extends Activity {
 
   private void maybeSaveGame() {
     if ((!mReplayingSavedGame &&
-            mPlays.size() >= 20 &&
+            mPlays.size() >= 14 &&
             !mPlayerTypes.equals("CC"))) {
       TreeMap<String, String> attrs = new TreeMap<String, String>();
       attrs.put(GameLog.ATTR_BLACK_PLAYER, blackPlayerName());

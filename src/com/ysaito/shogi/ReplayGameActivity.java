@@ -68,10 +68,6 @@ public class ReplayGameActivity extends Activity {
         new ArrayList<Player>(),  // Disallow board manipulation by the user
         mFlipScreen);
     ImageButton b;
-    // b = (ImageButton)findViewById(R.id.replay_beginning_button);
-    //  b.setOnClickListener(new ImageButton.OnClickListener() {
-    //    public void onClick(View v) { replayUpTo(0); }
-    //  });
     b = (ImageButton)findViewById(R.id.replay_prev_button);
     b.setOnClickListener(new ImageButton.OnClickListener() {
       public void onClick(View v) { 
@@ -178,6 +174,7 @@ public class ReplayGameActivity extends Activity {
       if (mStartGameDialog != null) {
         mStartGameDialog.loadPreferences();
       }
+      // TODO(saito) Disable resumegame when !hasRequiredFiles.
       showDialog(DIALOG_RESUME_GAME);
       return true;
     case R.id.menu_save_in_sdcard: {
