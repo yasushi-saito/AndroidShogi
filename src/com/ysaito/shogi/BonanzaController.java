@@ -214,13 +214,13 @@ public class BonanzaController {
           case BonanzaJNI.R_CHECKMATE:
             r.nextPlayer = Player.INVALID;
             r.gameState = (curPlayer == Player.BLACK) ?
-                GameState.WHITE_LOST : GameState.BLACK_LOST;
+                GameState.BLACK_WON : GameState.WHITE_WON;
             r.errorMessage = "Checkmate";
             break;
           case BonanzaJNI.R_RESIGNED:
             r.nextPlayer = Player.INVALID;
             r.gameState = (curPlayer == Player.BLACK) ?
-                GameState.BLACK_LOST : GameState.WHITE_LOST;
+                GameState.WHITE_WON : GameState.BLACK_WON;
             r.errorMessage = "Resigned";
             break;
           case BonanzaJNI.R_DRAW:

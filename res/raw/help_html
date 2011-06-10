@@ -4,9 +4,9 @@
 </head>
 <body>
 
-<h2>Shogi version 2.1</h2>
+<h2>Shogi version 2.2</h2>
 
-Released March 7, 2011.
+Released Jun 7, 2011.
 
 <h3>Shogi Log Files</h3>
 
@@ -50,7 +50,7 @@ marker <strong>[sd]</strong> in the game log list, and they will
 survive even if the Android Shogi is uninstalled.
 
 
-<h4>Loading downloaded KIF and HTML files</h4>
+<h4>Loading KIF and HTML files</h4>
 
 Android Shogi also can show KIF files downloaded from the Internet.
 These files must be stored in directory <tt>/sdcard/download</tt> for

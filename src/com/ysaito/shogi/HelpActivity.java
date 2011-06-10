@@ -25,7 +25,9 @@ public class HelpActivity extends Activity {
       char[] buf = new char[16384];
       int n;
       while ((n = reader.read(buf)) >= 0) {
-        b.append(buf, 0, n);
+        for (int i = 0; i < n; ++i) {
+          b.append(buf[i] == '\n' ? ' ' : buf[i]);
+        }
       }
       in.close();
     } catch (Exception e) {

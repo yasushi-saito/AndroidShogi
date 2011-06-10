@@ -8,8 +8,7 @@ package com.ysaito.shogi;
  */
 public enum GameState {
   ACTIVE,     // game ongoing
-  // TODO(saito) rename to WHITE_WON and BLACK_WON
-  BLACK_LOST,
-  WHITE_LOST,
-  DRAW,       // sennichite
+  WHITE_WON,  // white player won
+  BLACK_WON,  // black player won
+  DRAW,       // draw (sennichite)
 }

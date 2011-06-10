@@ -14,8 +14,6 @@ import java.util.Locale;
 /**
  * Widget for displaying game status, such as elapsed time per player and 
  * last moves.
- * 
- * TODO: show sente-gote image before each player name.
  */
 public class GameStatusView extends LinearLayout {
   class Timer {
@@ -138,9 +136,9 @@ public class GameStatusView extends LinearLayout {
     }
     String endGameMessage = null;
     if (gameState == GameState.ACTIVE) {
-    } else if (gameState == GameState.BLACK_LOST) {
+    } else if (gameState == GameState.WHITE_WON) {
       endGameMessage = getResources().getString(R.string.white_won); 
-    } else if (gameState == GameState.WHITE_LOST) {
+    } else if (gameState == GameState.BLACK_WON) {
       endGameMessage = getResources().getString(R.string.black_won);       
     } else if (gameState == GameState.DRAW) {
       endGameMessage = getResources().getString(R.string.draw);             

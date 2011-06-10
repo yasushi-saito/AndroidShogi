@@ -1,5 +1,3 @@
-// Copyright 2010 Google Inc. All Rights Reserved.
-
 package com.ysaito.shogi;
 
 import android.app.Activity;
@@ -409,15 +407,12 @@ public class LogListManager {
         // The log hasn't been saved to the sdcard.
       } else {
         File trashPath = getTrashPath(mActivity, mUndo.log);
-        if (!trashPath.renameTo(trashPath)) {
-          trashPath.getParentFile().mkdirs();
-          if (!path.renameTo(trashPath)) {
-            error = "Could not restore " + path.getAbsolutePath();
-            showToast(mActivity, error);
-            post(new FinishReporter());
-            return;
-          }
-        }
+        if (!trashPath.renameTo(path)) {
+          error = "Could not restore " + path.getAbsolutePath();
+          showToast(mActivity, error);
+          post(new FinishReporter());
+          return;
+        } 
       }
       
       LogList summary = readSummary(mActivity);
