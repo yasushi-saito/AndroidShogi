@@ -15,6 +15,9 @@ public class Play implements java.io.Serializable {
   public static final String japaneseNumbers[] = {
     null, "一", "二", "三", "四", "五", "六", "七", "八", "九",    
   };
+  public static final String japaneseRomanNumbers[] = {
+    null, "１", "２", "３", "４", "５", "６", "７", "８", "９",    
+  };
   
   // The piece to move. The value is positive if player==BLACK, negative if player==WHITE.
   // The absolute value of mPiece is one of the constants define in Piece (e.g., Piece.FU).
@@ -207,15 +210,15 @@ public class Play implements java.io.Serializable {
     @Override public String toString() {
       return String.format("%d <%d,%d>/%x", piece, x, y, modifier);
     }
-    
+
     public String toJapaneseString() {
       if ((modifier & Play.CAPTURED_PREVIOUS_PIECE) != 0) {
         return String.format("同%s%s",
             Piece.japaneseNames[Board.type(piece)],
             modifiersToJapanese(modifier));
       } else {
-        return String.format("%d%s%s%s",
-            x, 
+        return String.format("%s%s%s%s",
+            Play.japaneseRomanNumbers[x], 
             Play.japaneseNumbers[y], 
             Piece.japaneseNames[Board.type(piece)],
             modifiersToJapanese(modifier));
