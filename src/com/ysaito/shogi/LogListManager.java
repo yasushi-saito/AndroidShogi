@@ -8,17 +8,19 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 import android.widget.Toast;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Serializable;
 import java.lang.Thread;
@@ -28,6 +30,8 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.mozilla.universalchardet.UniversalDetector;
 
 /**
  * A task that scans the file system and finds saved game logs
@@ -206,9 +210,12 @@ public class LogListManager {
     private final ListLogsListener mListener;
     private final Context mContext;
     private final Mode mMode;
-    
+
+    private final byte[] mTmpBuf = new byte[16384];
+    private final UniversalDetector mEncodingDetector = new UniversalDetector(null);
+
     // The constructor is called by the UI thread so that mHandler is bound to the UI thread.
-    public ListLogsWork(ListLogsListener l, Context c, Mode m) {
+    public ListLogsWork(ListLogsListener l, Context c, Mode m) {        
       mListener = l;
       mContext = c;
       mMode = m;
@@ -269,7 +276,30 @@ public class LogListManager {
       post(r);
     }
 
+    private byte[] readFileContents(File file) throws FileNotFoundException, IOException {
+      FileInputStream in = null;
+      try {
+        in = new FileInputStream(file);
+        ByteArrayOutputStream contents = new ByteArrayOutputStream();
+        int n;
+        while ((n = in.read(mTmpBuf)) > 0) {
+          contents.write(mTmpBuf, 0, n);  
+        }
+        return contents.toByteArray();
+      } finally {
+        if (in != null) in.close();
+      }
+    }
+
+    private String detectEncoding(byte[] contents) {    
+      mEncodingDetector.reset();
+      mEncodingDetector.handleData(contents, 0, contents.length);
+      mEncodingDetector.dataEnd();
+      return mEncodingDetector.getDetectedCharset();
+    }
+    
     private void scanDirectory(File downloadDir, LogList summary) {
+      
       String[] files = downloadDir.list(new FilenameFilter(){
         public boolean accept(File dir, String filename) {
           return isHtml(filename) || isKif(filename);
@@ -284,15 +314,21 @@ public class LogListManager {
         try {
           try {
             if (child.lastModified() >= summary.lastScanTimeMs) {
-              Log.d(TAG, "Try: " + child.getAbsolutePath());
-              in = new FileInputStream(child);
+              
+              byte[] contents = readFileContents(child);
+              String encoding = detectEncoding(contents);
+              /*Log.d(TAG, "Try: " + (encoding == null ? "Unknown" : encoding) + 
+                  child.getAbsolutePath());*/
+              
               GameLog log = null;
               Reader reader = null;
               if (isHtml(basename)) {
-                reader = new InputStreamReader(in, "EUC_JP");
+                reader = new InputStreamReader(new ByteArrayInputStream(contents), 
+                    encoding == null ? "EUC-JP" : encoding);
                 log = GameLog.parseHtml(child, reader);
               } else {
-                reader = new InputStreamReader(in);
+                reader = new InputStreamReader(new ByteArrayInputStream(contents),
+                    encoding == null ? "SHIFT-JIS" : encoding);                    
                 log = GameLog.parseKif(child, reader);
               }
               if (log != null) {
@@ -300,7 +336,7 @@ public class LogListManager {
                   ArrayList<GameLog> logs = new ArrayList<GameLog>();
                   logs.add(log);
                   publishLogs(logs);
-                  Log.d(TAG, "ADD: " + log.digest() + "//" + log.attr(GameLog.ATTR_BLACK_PLAYER));
+                  // Log.d(TAG, "ADD: " + log.digest() + "//" + log.attr(GameLog.ATTR_BLACK_PLAYER));
                 }
               }
             }
@@ -374,10 +410,11 @@ public class LogListManager {
     }
     
     public void saveInSdcard(GameLog log, File logFile) throws IOException {
-      FileWriter out = null;
+      OutputStreamWriter out = null;
       try {
         logFile.getParentFile().mkdirs();
-        out = new FileWriter(logFile);
+        out = new OutputStreamWriter(new FileOutputStream(logFile), "SHIFT_JIS");
+        // out = new FileWriter(logFile);
         log.toKif(out);
       } finally {
         if (out != null) out.close();
