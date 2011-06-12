@@ -281,6 +281,7 @@ public class LogListManager {
       for (String basename: files) {
         File child = new File(downloadDir, basename);
         InputStream in = null;
+
         try {
           try {
             if (child.lastModified() >= summary.lastScanTimeMs) {

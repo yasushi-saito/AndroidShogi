@@ -182,6 +182,7 @@ public class GameLog implements Serializable {
   private static final Pattern DATE_PATTERN = Pattern.compile("開始日時[：:](.*)");
   private static final Pattern PLAY_PATTERN = Pattern.compile("\\s*[0-9]+\\s+(.*)");  
   private static final Pattern OPTIONAL_DAY_OF_WEEK_PATTERN = Pattern.compile("[(（][月火水木金土日][）)]");
+  private static final Pattern UNKNOWN_ATTR_PATTERN = Pattern.compile("(\\S+)[：:](.+)");
   
   private static class AttrPattern {
     public String attr;
@@ -260,36 +261,45 @@ public class GameLog implements Serializable {
     }
   }
   
+  static final boolean ASSUME_SANE_KIF_READER = false;
+    
+  
   /**
    * Print the contents of this object to "stream" in KIF format.
    * @throws IOException
    */
   public void toKif(Writer stream) throws IOException {
+    String EOL = "\r\n";   // KIF demands strict MS-DOS formatting
     StringBuilder b = new StringBuilder();
     
     // Generate header lines
     if (mStartTimeMs > 0) {
-      b.append("開始日時: ").append(toKifDateString(mStartTimeMs)).append("\n");
+      b.append("開始日時：").append(toKifDateString(mStartTimeMs)).append(EOL);
     }
     for (Map.Entry<String, String> e : mAttrs.entrySet()) {
       String japaneseName = e.getKey();
-      b.append(japaneseName).append(": ").append(e.getValue()).append("\n");
+      b.append(japaneseName).append("：").append(e.getValue()).append(EOL);
     }
-    b.append("手数----指手---------消費時間--\n");
+    b.append("手数----指手---------消費時間--").append(EOL);
     Board board = new Board();
     board.initialize(Handicap.NONE);
     Player player = Player.BLACK;
     for (int i = 0; i < mPlays.size(); ++i) {
       Play thisPlay = mPlays.get(i);
       Play prevPlay = (i > 0 ? mPlays.get(i - 1) : null);
-      b.append(String.format("%4d %s", 
-          i + 1, 
-          thisPlay.toTraditionalNotation(board, prevPlay).toJapaneseString()));
+      
+      b.append(String.format("%4d %s%s%s", 
+          i + 1,
+          Play.japaneseRomanNumbers[thisPlay.toX()],
+          Play.japaneseNumbers[thisPlay.toY()],
+          Piece.japaneseNames[Board.type(thisPlay.piece())]));
       if (!thisPlay.isDroppingPiece()) {
         b.append(String.format(" (%d%d)", 
             9 - thisPlay.fromX(), 1 + thisPlay.fromY()));
+      } else {
+        b.append("打");
       }
-      b.append("\n");
+      b.append(EOL);
       board.applyPly(player, thisPlay);
       player = player.opponent();
     }
@@ -341,9 +351,20 @@ public class GameLog implements Serializable {
           prevPlay = m;
           curPlayer = curPlayer.opponent();
         }
-      } else {
-        Log.e(TAG, line + ": ignoring line");
+        continue;
       }
+      
+      // Parse unsupported attributes. They are just displayed as-is
+      matcher = UNKNOWN_ATTR_PATTERN.matcher(line);
+      if (matcher.matches()) {
+        String attrName = matcher.group(1);
+        String attrValue = matcher.group(2);
+        l.mAttrs.put(attrName, attrValue);
+        Log.d(TAG, "Found attr: " + attrName + "///" + attrValue);
+        continue;
+      }
+      
+      Log.e(TAG, line + ": ignoring line");
     }
     return l;
   }
