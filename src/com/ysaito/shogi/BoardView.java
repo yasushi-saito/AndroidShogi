@@ -38,9 +38,7 @@ public class BoardView extends View implements View.OnTouchListener {
     super(context, attrs);
     mCurrentPlayer = Player.INVALID;
     mBoard = new Board();
-    mBoard.setPiece(3, 3, Piece.KEI);
-    mBoard.setPiece(5, 5, Piece.KEI);
-    initializeBitmaps(context);
+    initializePieceBitmaps(context);
     setOnTouchListener(this);
   }
 
@@ -207,13 +205,12 @@ public class BoardView extends View implements View.OnTouchListener {
     ScreenLayout layout = getScreenLayout();
     int action = event.getAction();
 
-    NearestSquareFinder finder = new NearestSquareFinder(layout, event.getX(), event.getY());
-
     if (action == MotionEvent.ACTION_DOWN) {
+      // Start of touch operation
       mMoveFrom = null;
       mMoveTo = null;
-
-      // Start of touch operation
+      
+      NearestSquareFinder finder = new NearestSquareFinder(layout, event.getX(), event.getY());
       finder.findNearestPlayersPieceOnBoard(mBoard, mCurrentPlayer);
 
       ArrayList<CapturedPiece> captured = listCapturedPieces(layout, mCurrentPlayer);
@@ -235,7 +232,8 @@ public class BoardView extends View implements View.OnTouchListener {
 
     boolean needInvalidation = false;
     if (mMoveFrom != null) {
-      // Compute move destination
+      // User dragging a piece to move
+      NearestSquareFinder finder = new NearestSquareFinder(layout, event.getX(), event.getY());
       if (mMoveFrom instanceof PositionOnBoard) {
         PositionOnBoard from = (PositionOnBoard)mMoveFrom;
         ArrayList<Board.Position> dests = mBoard.possibleMoveDestinations(from.x, from.y);
@@ -254,8 +252,8 @@ public class BoardView extends View implements View.OnTouchListener {
 
       if (finder.nearestType() != S_INVALID) {
 	final PositionOnBoard to = new PositionOnBoard(finder.nearestX(), finder.nearestY());
-	needInvalidation = !to.equals(mMoveTo);
 	mMoveTo = to;
+	needInvalidation = !to.equals(mMoveTo);
       } else {
 	needInvalidation = (mMoveTo != null);
 	mMoveTo = null;
@@ -275,7 +273,6 @@ public class BoardView extends View implements View.OnTouchListener {
               ((CapturedPiece)mMoveFrom).piece,
               -1, -1,
               mMoveTo.x, mMoveTo.y);
-          Log.d(TAG, String.format("MOVEMOVE %d", move.piece()));
         }
         mListener.onHumanPlay(mCurrentPlayer, move);
         mCurrentPlayer = Player.INVALID;
@@ -690,7 +687,7 @@ public class BoardView extends View implements View.OnTouchListener {
   }
 
   // Load bitmaps for pieces. Called once when this view is created.
-  private final void initializeBitmaps(Context context) {
+  private final void initializePieceBitmaps(Context context) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
     String prefix = prefs.getString("piece_style", "kinki_simple");
     Log.d(TAG, "PREFIX: " + prefix);
