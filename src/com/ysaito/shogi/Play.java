@@ -180,7 +180,6 @@ public class Play implements java.io.Serializable {
   }
 
   // Modifier bits. Used by TraditionalNotation.modifier.
-  
   public static final int DROP = (1 << 0);    // dropping a captured piece
   public static final int PROMOTE = (1 << 1); // newly promoting a piece
   
@@ -238,15 +237,17 @@ public class Play implements java.io.Serializable {
       return s;
     }
     
-    public final int piece; // Piece type. Negative for Player.WHITE. Never promoted.
-    public final int x, y;  // destination square
+    // Piece type (see Piece.XXX constants). If modifier & PROMOTE, "piece" stores the piece type before promotion.
+    // The value is negative for Player.WHITE. 
+    public final int piece;
+    public final int x, y;  // destination square. Upper left corner is (x=9, y=1).
     public int modifier;    // bitstring, see above.
   }
   
-  public final TraditionalNotation toTraditionalNotation(Board board, Play prevMove) {
+  public final TraditionalNotation toTraditionalNotation(Board board, Play prevPlay) {
     int modifier = 0;
 
-    if (prevMove != null && prevMove.toX() == mToX && prevMove.toY() == mToY) {
+    if (prevPlay != null && prevPlay.toX() == mToX && prevPlay.toY() == mToY) {
       modifier |= CAPTURED_PREVIOUS_PIECE;
     }
     

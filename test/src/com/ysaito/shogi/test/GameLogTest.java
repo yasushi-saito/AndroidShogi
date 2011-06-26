@@ -1,11 +1,13 @@
 package com.ysaito.shogi.test;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.StringReader;
-import java.io.StringWriter;
+import java.io.Reader;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Map;
@@ -21,8 +23,8 @@ public class GameLogTest extends InstrumentationTestCase {
   static final String TAG = "MoveLogTest";
   private GameLog openKifFile(int id) throws ParseException, IOException {
     Resources resources = getInstrumentation().getContext().getResources();
-    InputStreamReader in = new InputStreamReader(resources.openRawResource(id));
-    GameLog log = GameLog.parseKif(new File("/nonexistent/path"), in);
+    InputStream in = resources.openRawResource(id);
+    GameLog log = GameLog.parseKif(new File("/nonexistent/path"), in); 
     in.close();
     return log;
   }
@@ -30,8 +32,7 @@ public class GameLogTest extends InstrumentationTestCase {
   private GameLog openHtmlFile(int id) throws ParseException, IOException {
     Resources resources = getInstrumentation().getContext().getResources();
     InputStream in = resources.openRawResource(id);
-    InputStreamReader reader = new InputStreamReader(in, "EUC_JP");
-    GameLog log = GameLog.parseHtml(new File("/nonexistent/path"), reader);
+    GameLog log = GameLog.parseHtml(new File("/nonexistent/path"), in);
     in.close();
     return log;
   }
@@ -90,12 +91,45 @@ public class GameLogTest extends InstrumentationTestCase {
     assertEquals(log.numPlays(), 121);
   }
   
-  public void testToKif() throws ParseException, IOException {
+  public void testToKif_Basic() throws ParseException, IOException {
+    GameLog log = openKifFile(R.raw.kifu5);
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    log.toKif(out, "kif_utf8");
+    
+    BufferedReader in = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(out.toByteArray())));
+    assertEquals(in.readLine(), "先手：Player2");
+    assertEquals(in.readLine(), "後手：Player1");
+    assertEquals(in.readLine(), "手数----指手---------消費時間--");
+    assertEquals(in.readLine(), "   1 ７六歩(77)");
+    assertEquals(in.readLine(), "   2 ３四歩(33)");
+    assertEquals(in.readLine(), "   3 ７五歩(76)");        
+    assertEquals(in.readLine(), "   4 ８四歩(83)");        
+    assertEquals(in.readLine(), "   5 ８八角成(22)");      
+    assertEquals(in.readLine(), "   6 ８八銀(79)");         
+    assertEquals(in.readLine(), null);
+    String line;
+    while ((line = in.readLine()) != null) {
+      Log.d(TAG, String.format("BASIC: " + line));
+    }
+  }
+  
+  public void testToKif_UTF8() throws ParseException, IOException {
     GameLog log = openKifFile(R.raw.kifu4);
-    StringWriter w = new StringWriter();
-    log.toKif(w);
-    StringReader r = new StringReader(w.toString());
-    GameLog log2 = GameLog.parseKif(new File("/nonexistent/path"), r);
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    log.toKif(out, "kif_utf8");
+    
+    ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
+    GameLog log2 = GameLog.parseKif(new File("/nonexistent/path"), in);
+    assertLogEquals(log, log2);
+  }
+
+  public void testToKif_MSDOS() throws ParseException, IOException {
+    GameLog log = openKifFile(R.raw.kifu4);
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    log.toKif(out, "kif_dos");
+    
+    ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
+    GameLog log2 = GameLog.parseKif(new File("/nonexistent/path"), in);
     assertLogEquals(log, log2);
   }
   

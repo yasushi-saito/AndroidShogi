@@ -125,8 +125,13 @@ public class GameActivity extends Activity {
   }
 
   private final String playerName(char type, int level) {
-    if (type == 'H') return getResources().getString(R.string.human);
-    return getResources().getStringArray(R.array.computer_level_names)[level];
+    if (type == 'H') {
+      SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+      return prefs.getString("human_player_name", 
+          (String) getResources().getText(R.string.default_human_player_name));
+    } else {
+      return getResources().getStringArray(R.array.computer_level_names)[level];
+    }
   }
 
   @Override public void onDestroy() {
@@ -412,17 +417,11 @@ public class GameActivity extends Activity {
   }
   
   private String blackPlayerName() {
-    if (mPlayerTypes.charAt(0) == 'H') {
-      return getResources().getText(R.string.human).toString();
-    }
-    return String.format("Lv%d", mComputerLevel);
+    return playerName(mPlayerTypes.charAt(0), mComputerLevel);
   }
   
   private String whitePlayerName() {
-    if (mPlayerTypes.charAt(1) == 'H') {
-      return getResources().getText(R.string.human).toString();
-    }
-    return String.format("Lv%d", mComputerLevel);
+    return playerName(mPlayerTypes.charAt(1), mComputerLevel);
   }
   
   private final AlertDialog createPromoteDialog() {

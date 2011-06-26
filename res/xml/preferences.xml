@@ -21,6 +21,18 @@
      android:title="@string/game_log_dir"
      />
   <PreferenceCategory android:title="Advanced settings"/>
+  <ListPreference
+    android:title="@string/log_save_format"
+    android:key="log_save_format"
+    android:defaultValue="kif_dos"
+    android:entries="@array/log_save_format"
+    android:entryValues="@array/log_save_format_values"/>
+  />
+  <EditTextPreference
+    android:key="human_player_name"
+    android:title="@string/human_player_name"
+    android:defaultValue="@string/default_human_player_name"
+  />
   <EditTextPreference
      android:key="download_source_url"
      android:defaultValue="@string/default_download_source_url"

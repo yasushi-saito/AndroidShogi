@@ -9,14 +9,13 @@
     <string name="do_not_promote">成らない</string>
     <string name="promote">成る</string>
     <string name="app_name">Android Shogi</string>
-    <string name="new_game">新規対局XXX</string>
+    <string name="new_game">新規対局</string>
     <string name="already_downloaded">データベースは既にダウンロードされています。 既存の内容を消去してもう一度ダウンロードしますか?</string>    
     <string name="download_database">データベースダウンロード</string>
     <string name="start_download_database">データベースダウンロード開始します</string>
     <string name="restart_download_database">ダウンロードやり直します</string>
     <string name="preferences">設定</string>
     <string name="player_types">対局者</string>
-    <string name="human">人</string>
     <string name="computer">コンピュータ</string>
     <string name="computer_difficulty">コンピュータ難易度</string>
     <string name="reset_preferences">設定リセット</string>
@@ -59,4 +58,7 @@
     <string name="attr_black_player">先手</string>
     <string name="attr_white_player">後手</string>
     <string name="shogi_db_source">データベースURL</string>    
+    <string name="log_save_format">棋譜記録フォーマット</string>    
+    <string name="human_player_name">ユーザ名</string>
+    <string name="default_human_player_name">人</string>
 </resources>

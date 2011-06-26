@@ -49,4 +49,10 @@
     <item>Chess</item>
     <item>Western(Duniho/Marroquin)</item>
   </string-array>
+  
+  <string-array name="log_save_format">
+    <item>KIF (MS-DOS形式)</item>
+    <item>KIF (UTF-8)</item>
+  </string-array>
+  
 </resources>

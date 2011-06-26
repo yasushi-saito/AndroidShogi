@@ -90,4 +90,12 @@
     <item>dm</item>
   </string-array>
 
+  <string-array name="log_save_format">
+    <item>KIF (MS-DOS)</item>
+    <item>KIF (UTF-8)</item>
+  </string-array>
+  <string-array name="log_save_format_values">
+    <item>kif_dos</item>
+    <item>kif_utf8</item>
+  </string-array>
 </resources>
