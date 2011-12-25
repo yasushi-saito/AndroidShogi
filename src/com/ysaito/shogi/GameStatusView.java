@@ -1,6 +1,8 @@
 package com.ysaito.shogi;
 
 import android.content.Context;
+import android.text.SpannableString;
+import android.text.style.UnderlineSpan;
 import android.util.AttributeSet;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -30,9 +32,11 @@ public class GameStatusView extends LinearLayout {
     private final TextView mView;
     private long mLastThinkTimeSeconds;
   }
+
+  private static final String TAG = "ShogiStatus";
   
   private TextView mGameStatus;
-  private TextView mMoveHistory;
+  private TextView mPlayHistory;
   private Timer mBlackTime;
   private TextView mBlackStatus;
   private Timer mWhiteTime;
@@ -41,7 +45,7 @@ public class GameStatusView extends LinearLayout {
   private String mWhitePlayerName;
   
   // List of past moves, in display format.
-  private ArrayList<String> mMoveList;
+  private ArrayList<String> mPlayList;
   
   public GameStatusView(Context context, AttributeSet attrs) {
     super(context, attrs);
@@ -54,69 +58,87 @@ public class GameStatusView extends LinearLayout {
       String blackPlayerName,
       String whitePlayerName) {
     mGameStatus = (TextView)findViewById(R.id.status_game_status);
-    mMoveHistory = (TextView)findViewById(R.id.status_move_history);    
+    mPlayHistory = (TextView)findViewById(R.id.status_play_history);
+    mPlayHistory.setHorizontallyScrolling(true);
     mBlackTime = new Timer((TextView)findViewById(R.id.status_black_time));
     mBlackStatus = (TextView)findViewById(R.id.status_black_player_name);
     mWhiteTime = new Timer((TextView)findViewById(R.id.status_white_time));
     mWhiteStatus = (TextView)findViewById(R.id.status_white_player_name);
-    mMoveList = new ArrayList<String>();
+    mPlayList = new ArrayList<String>();
   
-    mBlackPlayerName = blackPlayerName;
-    mWhitePlayerName = whitePlayerName;
+    mBlackPlayerName = "▲" + blackPlayerName;
+    mWhitePlayerName = "△" + whitePlayerName;
     mBlackStatus.setText(mBlackPlayerName);
     mWhiteStatus.setText(mWhitePlayerName);    
   }
   
+  /**
+   * Update the state of the game and redraw widgets.
+   * 
+   * @param gameState
+   * @param lastBoard State of the board before the last move
+   * @param board The uptodate state of the board
+   * @param plays The list of moves leading up to "board"
+   * @param currentPlayer The player to hold the next turn. 
+   * @param errorMessage
+   */
   public final void update(
       GameState gameState,
+      Board lastBoard,
       Board board,
-      ArrayList<Move> moves,
+      ArrayList<Play> plays,
       Player currentPlayer,
       String errorMessage) {
+    
     if (currentPlayer == Player.WHITE) {
-      mWhiteStatus.setBackgroundColor(0xffeeeeee);
-      mWhiteStatus.setTextColor(0xff000000);
+      
+      mBlackStatus.setText(mBlackPlayerName);
+      SpannableString s = new SpannableString(mWhitePlayerName);
+      s.setSpan(new UnderlineSpan(), 0, s.length(), 0);
+      mWhiteStatus.setText(s);
     } else {
-      mWhiteStatus.setBackgroundColor(0xff000000);
-      mWhiteStatus.setTextColor(0xffffffff);
+      SpannableString s = new SpannableString(mBlackPlayerName);
+      s.setSpan(new UnderlineSpan(), 0, s.length(), 0);
+      mBlackStatus.setText(s);
+      mWhiteStatus.setText(mWhitePlayerName);
     }
-    if (currentPlayer == Player.BLACK) {
-      mBlackStatus.setBackgroundColor(0xffeeeeee);
-      mBlackStatus.setTextColor(0xff000000);
-    } else {
-      mBlackStatus.setBackgroundColor(0xff000000);
-      mBlackStatus.setTextColor(0xffffffff);
-    } 
-    while (moves.size() > mMoveList.size()) {
+    
+    while (plays.size() > mPlayList.size()) {
       // Generally, moves is just one larger than mMoveList, in which case
-      // we can use "board" to compute the display string of the last move.
+      // we can use "lastBoard" to compute the display string of the last move.
       // If moves.size() > mMovesList.size() + 1, then moves other than the last
-      // may be inaccurately displayed since "board" may not correspond to the
-      // state before these moves are made.
-      Move m = moves.get(mMoveList.size());
-      mMoveList.add(traditionalMoveNotation(board, m));
+      // may be inaccurately displayed since "lastBoard" may not correspond to the
+      // state before these plays are made.
+      Play thisPlay = plays.get(mPlayList.size());
+      Play prevPlay = (mPlayList.size() > 0 ? plays.get(mPlayList.size() - 1) : null);
+      mPlayList.add(traditionalPlayNotation(lastBoard, thisPlay, prevPlay));
     }
     
     // Handle undos
-    while (moves.size() < mMoveList.size()) {
-      mMoveList.remove(mMoveList.size() - 1);
+    while (plays.size() < mPlayList.size()) {
+      mPlayList.remove(mPlayList.size() - 1);
     }
     
-    if (mMoveList.size() > 0) {
-      // Display the last two moves.
-      int n = Math.min(mMoveList.size(), 2);
-      String s = "";
-      for (int i = mMoveList.size() - n; i < mMoveList.size(); ++i) {
-        if (s != "") s += ", ";
-        s += (i+1) + ":" + mMoveList.get(i);
+    if (mPlayList.size() > 0) {
+      // Display the last six plies. The TextView is right-justified, so if the view isn't wide enough, earlier plays
+      // will be shown truncated.
+      int n = Math.min(mPlayList.size(), 6);
+      StringBuilder b = new StringBuilder();
+      boolean first = true;
+      for (int i = mPlayList.size() - n; i < mPlayList.size(); ++i) {
+        if (!first) b.append(", ");
+        b.append(i + 1).append(":");
+        b.append((i % 2 == 0) ? "▲" : "△");
+        b.append(mPlayList.get(i));
+        first = false;
       }
-      mMoveHistory.setText(s);
+      mPlayHistory.setText(b.toString());
     }
     String endGameMessage = null;
     if (gameState == GameState.ACTIVE) {
-    } else if (gameState == GameState.BLACK_LOST) {
+    } else if (gameState == GameState.WHITE_WON) {
       endGameMessage = getResources().getString(R.string.white_won); 
-    } else if (gameState == GameState.WHITE_LOST) {
+    } else if (gameState == GameState.BLACK_WON) {
       endGameMessage = getResources().getString(R.string.black_won);       
     } else if (gameState == GameState.DRAW) {
       endGameMessage = getResources().getString(R.string.draw);             
@@ -134,11 +156,11 @@ public class GameStatusView extends LinearLayout {
     mWhiteTime.update(white);
   }
   
-  private final String traditionalMoveNotation(Board board, Move m) {
-    if (!Locale.getDefault().getLanguage().equals("ja")) {
-      return m.toTraditionalNotation(board).toJapaneseString();
+  private final String traditionalPlayNotation(Board board, Play thisMove, Play prevMove) {
+    if (Locale.getDefault().getLanguage().equals("ja")) {
+      return thisMove.toTraditionalNotation(board, prevMove).toJapaneseString();
     } else {
-      return m.toCsaString();
+      return thisMove.toCsaString();
     }
   }
 }

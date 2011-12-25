@@ -1,6 +1,10 @@
 package com.ysaito.shogi;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
 import android.app.Activity;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.webkit.WebView;
 
@@ -13,51 +17,22 @@ public class HelpActivity extends Activity {
   }
 
   private final String helpString() {
+    Resources resources = getResources();
+    InputStream in = resources.openRawResource(R.raw.help_html);
     StringBuilder b = new StringBuilder();
-    b.append("<html><body>");
-    b.append("<h2>Shogi version 1.5</h2>");
-    b.append("Released Jan 17, 2011.");
-    b.append("<p>Copyright(c) 2011 Yasushi Saito<br>All rights reserved<br>");
-    b.append("This program is distributed under Apache 2.0 license.");
-    b.append("<h3>What are Shogi Database files?</h3>");
-    b.append("Three files, <tt>hash.bin</tt>, <tt>fv.bin</tt>, and <tt>book.bin</tt> are loaded by the computer solver code (Bonanza).");
-    b.append("These files are large (41MB compressed, 200MB uncompressed) and they don't fit in the ");
-    b.append("application <tt>.apk</tt> file.");
-    b.append("<p>");
-    b.append("If you don't want to download them over air, you can copy them to sdcard manually:");
-    b.append("<ul><li> Download <tt>shogi-data.zip</tt> from ");
-    b.append("<tt>www.ysaito.com/~downloads/shogi-data.zip.</tt>");
-    b.append("Mount the sdcard <tt>shogi-data.zip</tt> to <tt>/mnt/sdcard/Android//mnt/sdcard/Android/data/com.ysaito.shogi/files/shogi-data.zip</tt>");
-    b.append("You may need to create the directory <tt>/mnt/sdcard/Android//mnt/sdcard/Android/data/com.ysaito.shogi/files</tt> first.");
-    b.append("</ul>");
-    b.append("In case <tt>www.ysaito.com</tt> is unavailable, you can download the database files directly from the source:<ul>");
-    b.append("<li> Download Bonanza from ");
-    appendHref(b, "http://www.computer-shogi.org/library/bonanza_v4.1.3.zip");
-    b.append(".");
-    b.append("<li> Extract hash.bin, fv.bin, and book.bin from the zip file.");
-    b.append("<li> Mount the phone's sdcard, and copy the files to directory /mnt/sdcard/Android/data/com.ysaito.shogi/files");
-    b.append("</ul>");
-
-    b.append("<h3>Credits</h3>");
-    b.append("<ul><li>The computer shogi solver is a slightly modified Bonanza version 4.1.3, by Kunihito Hoki et al.");
-    b.append("For more information about Bonanza, visit ");
-    appendHref(b, "http://www.geocities.jp/bonanza_shogi/");
-    b.append(".");
-    b.append("<li>Bitmaps for shogi pieces are from ");
-    appendHref(b, "http://mucho.girly.jp/bona/");
-    b.append(". </ul>");
-
-    b.append("<h3>Source Code</h3>");
-    b.append("The source code for this program is available at ");
-    appendHref(b, "https://github.com/yasushi-saito/AndroidShogi");
-    b.append(".");
-    b.append("</body></html>");		
+    try {
+      InputStreamReader reader = new InputStreamReader(resources.openRawResource(R.raw.help_html), "utf-8");
+      char[] buf = new char[16384];
+      int n;
+      while ((n = reader.read(buf)) >= 0) {
+        for (int i = 0; i < n; ++i) {
+          b.append(buf[i] == '\n' ? ' ' : buf[i]);
+        }
+      }
+      in.close();
+    } catch (Exception e) {
+      b.append("Error: " + e.getMessage());
+    } 
     return b.toString();
-  }
-
-  private final void appendHref(StringBuilder b, String uri) {
-    b.append("<a href=\""); b.append(uri); b.append("\">");
-    b.append(uri);
-    b.append("</a>");
   }
 }

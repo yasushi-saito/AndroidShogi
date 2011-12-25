@@ -52,29 +52,31 @@ public class GameActivity extends Activity {
   private int mComputerLevel;      // 0 .. 4
   private String mPlayerTypes;     // "HC", "CH", "HH", "CC"
   private boolean mFlipScreen;
-
+  private Handicap mHandicap;
+  
   // State of the game
   private long mStartTimeMs;       // Time the game started (UTC millisec)
   private Board mBoard;            // current state of the board
-  private Player mCurrentPlayer;   // the next player to make a move 
+  private Player mNextPlayer;   // the next player to make a move 
   private GameState mGameState;    // is the game is active or finished?
   private long mBlackThinkTimeMs;  // Cumulative # of think time (millisec)
   private long mBlackThinkStartMs; // -1, or ms since epoch =
   private long mWhiteThinkTimeMs;  // Cumulative # of think time (millisec)
   private long mWhiteThinkStartMs; // -1, or ms since epoch
   private boolean mDestroyed;      // onDestroy called?
-
-  // History of moves made in the game. Even (resp. odd) entries are 
+  private boolean mReplayingSavedGame;
+  
+  // History of plays made in the game. Even (resp. odd) entries are 
   // moves by the black (resp. white) player.
-  private final ArrayList<Move> mMoves = new ArrayList<Move>();
-  private final ArrayList<Integer> mMoveCookies = new ArrayList<Integer>();
+  private ArrayList<Play> mPlays;
+  private ArrayList<Integer> mMoveCookies;
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.game);
-    initializeInstanceState(savedInstanceState);
 
+    initializeInstanceState(savedInstanceState);
     mStatusView = (GameStatusView)findViewById(R.id.gamestatusview);
     mStatusView.initialize(
         playerName(mPlayerTypes.charAt(0), mComputerLevel),
@@ -83,9 +85,7 @@ public class GameActivity extends Activity {
     mBoardView = (BoardView)findViewById(R.id.boardview);
     mBoardView.initialize(mViewListener, mHumanPlayers, mFlipScreen);
     mController = new BonanzaController(mEventHandler, mComputerLevel);
-    
-    Board initialBoard = (Board)getIntent().getSerializableExtra("initial_board");
-    mController.start(savedInstanceState, initialBoard);
+    mController.start(savedInstanceState, mBoard, mNextPlayer);
 
     schedulePeriodicTimer();
     // mController will call back via mControllerHandler when Bonanza is 
@@ -116,6 +116,9 @@ public class GameActivity extends Activity {
     case R.id.menu_flip_screen:
       mBoardView.flipScreen();
       return true;
+    case R.id.menu_quit_game:
+      tryQuitGame();
+      return true;
     default:    
       return super.onOptionsItemSelected(item);
     }
@@ -133,12 +136,16 @@ public class GameActivity extends Activity {
     mDestroyed = true;
   }
 
-  @Override public void onBackPressed() { 
-    if (mGameState == GameState.ACTIVE) {
+  private void tryQuitGame() {
+    if (mGameState == GameState.ACTIVE && !mPlays.isEmpty()) {
       showDialog(DIALOG_CONFIRM_QUIT);
     } else {
       super.onBackPressed();
     }
+  }
+  
+  @Override public void onBackPressed() {
+    tryQuitGame();
   }
 
   @Override protected Dialog onCreateDialog(int id) {
@@ -168,7 +175,11 @@ public class GameActivity extends Activity {
     b.putLong("shogi_black_think_start_ms", mBlackThinkStartMs);	  	  
     b.putLong("shogi_white_think_start_ms", mWhiteThinkStartMs);
     b.putLong("shogi_start_time_ms", mStartTimeMs);
+    b.putLong("shogi_next_player", (mNextPlayer == Player.BLACK) ? 0 : 1);
+    b.putSerializable("shogi_moves", mPlays);
+    b.putSerializable("shogi_move_cookies", mMoveCookies);
   }
+  
   private final void initializeInstanceState(Bundle b) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
         getBaseContext());
@@ -178,7 +189,15 @@ public class GameActivity extends Activity {
     mBlackThinkStartMs = initializeLong(b, "shogi_black_think_start_ms", null, null, 0);
     mWhiteThinkStartMs = initializeLong(b, "shogi_white_think_start_ms", null, null, 0);
     mStartTimeMs = initializeLong(b, "shogi_start_time_ms", null, null, System.currentTimeMillis());
-
+    long nextPlayer = initializeLong(b, "shogi_next_player", null, null, -1);
+    if (nextPlayer >= 0) {
+      mNextPlayer = (nextPlayer == 0 ? Player.BLACK : Player.WHITE);
+    } 
+    if (b != null) {
+      mPlays = (ArrayList<Play>)b.getSerializable("shogi_moves");
+      mMoveCookies = (ArrayList<Integer>)b.getSerializable("shogi_move_cookies");
+    }
+    
     mFlipScreen = prefs.getBoolean("flip_screen", false);
     mPlayerTypes = prefs.getString("player_types", "HC");
     mHumanPlayers = new ArrayList<Player>();
@@ -189,6 +208,39 @@ public class GameActivity extends Activity {
       mHumanPlayers.add(Player.WHITE);      
     }
     mComputerLevel = Integer.parseInt(prefs.getString("computer_difficulty", "1"));
+
+    mHandicap = (Handicap)getIntent().getSerializableExtra("handicap");
+    if (mHandicap == null) mHandicap = Handicap.NONE;
+    
+    // The "initial_board" intent extra is always set (the handicap setting is reported here).
+    //
+    // Note: if we are resuming via saveInstanceState (e.g., screen rotation), the initial
+    // value of mBoard is irrelevant. mController.start() will retrieve the board state
+    // just before interruption and report it via the event listener.
+    mBoard = (Board)getIntent().getSerializableExtra("initial_board");
+    
+    // Resuming a saved game will set "moves" and "next_player" intent extras.
+    if (mNextPlayer == null) {
+      mNextPlayer = (Player)getIntent().getSerializableExtra("next_player");
+    }
+    if (mPlays == null) {
+      mPlays = (ArrayList<Play>)getIntent().getSerializableExtra("moves");
+      if (mPlays != null) {
+        mMoveCookies = new ArrayList<Integer>();
+        for (int i = 0; i < mPlays.size(); ++i) mMoveCookies.add(null);
+      }
+    }
+    mReplayingSavedGame = getIntent().getBooleanExtra("replaying_saved_game", false);
+    
+    // If we aren't replaying a saved game, and we aren't resuming via saveInstanceState (e.g., screen rotation),
+    // then set the default board state.
+    if (mNextPlayer == null) {
+      mNextPlayer = Player.BLACK;
+    }
+    if (mPlays == null) {
+      mPlays = new ArrayList<Play>();
+      mMoveCookies = new ArrayList<Integer>();
+    }
   }
 
   private final long initializeLong(Bundle b, String bundle_key, SharedPreferences prefs, String pref_key, long dflt) {
@@ -212,30 +264,31 @@ public class GameActivity extends Activity {
       long now = System.currentTimeMillis();
       long totalBlack = mBlackThinkTimeMs;
       long totalWhite = mWhiteThinkTimeMs;
-      if (mCurrentPlayer == Player.BLACK) {
+      if (mNextPlayer == Player.BLACK) {
         totalBlack += (now - mBlackThinkStartMs); 
-      } else if (mCurrentPlayer == Player.WHITE) {
+      } else if (mNextPlayer == Player.WHITE) {
         totalWhite += (now - mWhiteThinkStartMs);
       }
       mStatusView.updateThinkTimes(totalBlack, totalWhite);
       if (!mDestroyed) schedulePeriodicTimer();
     }
   };
+  
   private final void setCurrentPlayer(Player p) {
     // Register the time spent during the last move.
     final long now = System.currentTimeMillis();
-    if (mCurrentPlayer == Player.BLACK && mBlackThinkStartMs > 0) {
+    if (mNextPlayer == Player.BLACK && mBlackThinkStartMs > 0) {
       mBlackThinkTimeMs += (now - mBlackThinkStartMs);
     }
-    if (mCurrentPlayer == Player.WHITE && mWhiteThinkStartMs > 0) {
+    if (mNextPlayer == Player.WHITE && mWhiteThinkStartMs > 0) {
       mWhiteThinkTimeMs += (now - mWhiteThinkStartMs);
     }
 
     // Switch the player, and start its timer.
-    mCurrentPlayer = p;
+    mNextPlayer = p;
     mBlackThinkStartMs = mWhiteThinkStartMs = 0;
-    if (mCurrentPlayer == Player.BLACK) mBlackThinkStartMs = now;
-    else if (mCurrentPlayer == Player.WHITE) mWhiteThinkStartMs = now;
+    if (mNextPlayer == Player.BLACK) mBlackThinkStartMs = now;
+    else if (mNextPlayer == Player.WHITE) mWhiteThinkStartMs = now;
   }
 
   private final void schedulePeriodicTimer() {
@@ -245,22 +298,29 @@ public class GameActivity extends Activity {
   // Undo
   //
   private final void undo() {
-    if (!isHumanPlayer(mCurrentPlayer)) {
+    if (!isHumanPlayer(mNextPlayer)) {
       Toast.makeText(getBaseContext(), "Computer is thinking", 
           Toast.LENGTH_SHORT).show();
       return;
     } 
     if (mMoveCookies.size() < 2) return;
-    int lastMove = mMoveCookies.get(mMoveCookies.size() - 1);
-    int penultimateMove = mMoveCookies.get(mMoveCookies.size() - 2);
-    mController.undo2(mCurrentPlayer, lastMove, penultimateMove);
+    Integer u1 = mMoveCookies.get(mMoveCookies.size() - 1);
+    Integer u2 = mMoveCookies.get(mMoveCookies.size() - 2);
+    if (u1 == null || u2 == null) return;  // happens when resuming a saved game
+    
+    int lastMove = u1;
+    int penultimateMove = u2;
+    mController.undo2(mNextPlayer, lastMove, penultimateMove);
     setCurrentPlayer(Player.INVALID);
     --mUndosRemaining;
     updateUndoMenu();
   }
 
   private final void updateUndoMenu() {
-    mMenu.setGroupEnabled(R.id.menu_undo_group, (mUndosRemaining > 0));
+    if (mMenu == null) return;
+    
+    boolean enabled = (mUndosRemaining > 0) && !mMoveCookies.isEmpty();
+    mMenu.findItem(R.id.menu_undo).setEnabled(enabled);
     MenuItem item = mMenu.getItem(0);
     if (mUndosRemaining <= 0) {
       item.setTitle(R.string.undo_disallowed);
@@ -281,33 +341,33 @@ public class GameActivity extends Activity {
       BonanzaController.Result r = (BonanzaController.Result)(
           msg.getData().get("result"));
       if (r.lastMove != null) {
-        mMoves.add(r.lastMove);
+        mPlays.add(r.lastMove);
         mMoveCookies.add(r.lastMoveCookie);
       }
       setCurrentPlayer(r.nextPlayer);
       for (int i = 0; i < r.undoMoves; ++i) {
         Assert.isTrue(r.lastMove == null);
-        mMoves.remove(mMoves.size() - 1);
+        mPlays.remove(mPlays.size() - 1);
         mMoveCookies.remove(mMoveCookies.size() - 1);
       }
 
-      mBoardView.update(r.gameState, r.board, r.nextPlayer);
+      mBoardView.update(
+          r.gameState, mBoard, r.board, r.nextPlayer, 
+          r.lastMove,
+          !isComputerPlayer(r.nextPlayer)); /* animate if lastMove was made by the computer player */
       mStatusView.update(r.gameState,
-          // Note: statusview needs the board state before the move
-          // to compute the traditional move notation.
-          mBoard,
-          mMoves, r.nextPlayer, r.errorMessage);
+          mBoard, r.board,
+          mPlays, r.nextPlayer, r.errorMessage);
 
       mGameState = r.gameState;
       mBoard = r.board;
       if (isComputerPlayer(r.nextPlayer)) {
         mController.computerMove(r.nextPlayer);
       }
-      if (mGameState != GameState.ACTIVE && 
-          (true || mMoves.size() >= 30) &&
-          !mPlayerTypes.equals("CC")) { 
-        saveGame();
+      if (mGameState != GameState.ACTIVE) {
+        maybeSaveGame();
       }
+      updateUndoMenu();  // if no move is in mMoveCookies, disable the undo menu
     }
   };
 
@@ -317,27 +377,38 @@ public class GameActivity extends Activity {
 
   // state kept during the run of promotion dialog
   private Player mSavedPlayerForPromotion;
-  private Move mSavedMoveForPromotion;    
+  private Play mSavedPlayForPromotion;    
 
   private final BoardView.EventListener mViewListener = new BoardView.EventListener() {
-    public void onHumanMove(Player player, Move move) {
+    public void onHumanPlay(Player player, Play play) {
       setCurrentPlayer(Player.INVALID);  
-      if (MoveAllowsForPromotion(player, move)) {
+      if (PlayAllowsForPromotion(player, play)) {
         mSavedPlayerForPromotion = player;
-        mSavedMoveForPromotion = move;
+        mSavedPlayForPromotion = play;
         showDialog(DIALOG_PROMOTE);
       } else {
-        mController.humanMove(player, move);
+        mController.humanPlay(player, play);
       }
     }
   };
 
-  private void saveGame() {
-    TreeMap<String, String> attrs = new TreeMap<String, String>();
-    attrs.put(GameLog.A_BLACK_PLAYER, blackPlayerName());
-    attrs.put(GameLog.A_WHITE_PLAYER, whitePlayerName());
-    Log.d(TAG, "SAVING");
-    LogList.addGameLog(GameLog.newLog(mStartTimeMs, attrs, mMoves));
+  private void maybeSaveGame() {
+    if ((!mReplayingSavedGame &&
+            mPlays.size() >= 0 &&
+            !mPlayerTypes.equals("CC"))) {
+      TreeMap<String, String> attrs = new TreeMap<String, String>();
+      attrs.put(GameLog.ATTR_BLACK_PLAYER, blackPlayerName());
+      attrs.put(GameLog.ATTR_WHITE_PLAYER, whitePlayerName());
+      if (mHandicap != Handicap.NONE) {
+        attrs.put(GameLog.ATTR_HANDICAP, mHandicap.toJapaneseString());
+      }
+      
+      LogListManager.getSingletonInstance().addLog(
+          this, 
+          GameLog.newLog(mStartTimeMs, attrs.entrySet(), mPlays, 
+              null /* not on sdcard yet */
+              ));
+    }
   }
   
   private String blackPlayerName() {
@@ -361,12 +432,12 @@ public class GameActivity extends Activity {
     b.setOnCancelListener(
         new DialogInterface.OnCancelListener() {
           public void onCancel(DialogInterface unused) {
-            if (mSavedMoveForPromotion == null) {
+            if (mSavedPlayForPromotion == null) {
               // Event delivered twice?
             } else {
               setCurrentPlayer(mSavedPlayerForPromotion);
-              mBoardView.update(mGameState, mBoard, mCurrentPlayer);
-              mSavedMoveForPromotion = null;
+              mBoardView.update(mGameState, null, mBoard, mNextPlayer, null, false);
+              mSavedPlayForPromotion = null;
               mSavedPlayerForPromotion = null;
             }
           }
@@ -377,34 +448,34 @@ public class GameActivity extends Activity {
             getResources().getString(R.string.do_not_promote) },
             new DialogInterface.OnClickListener() {
           public void onClick(DialogInterface d, int item) {
-            if (mSavedMoveForPromotion == null) {
+            if (mSavedPlayForPromotion == null) {
               // A click event delivered twice?
               return;
             }
 
             if (item == 0) {
-              mSavedMoveForPromotion = new Move(
-                  Board.promote(mSavedMoveForPromotion.getPiece()), 
-                  mSavedMoveForPromotion.getFromX(), mSavedMoveForPromotion.getFromY(),
-                  mSavedMoveForPromotion.getToX(), mSavedMoveForPromotion.getToY());
+              mSavedPlayForPromotion = new Play(
+                  Board.promote(mSavedPlayForPromotion.piece()), 
+                  mSavedPlayForPromotion.fromX(), mSavedPlayForPromotion.fromY(),
+                  mSavedPlayForPromotion.toX(), mSavedPlayForPromotion.toY());
             }
-            mController.humanMove(mSavedPlayerForPromotion, mSavedMoveForPromotion);
-            mSavedMoveForPromotion = null;
+            mController.humanPlay(mSavedPlayerForPromotion, mSavedPlayForPromotion);
+            mSavedPlayForPromotion = null;
             mSavedPlayerForPromotion = null;
           }
         });
     return b.create();
   }
 
-  private static final boolean MoveAllowsForPromotion(Player player, Move move) {
-    if (Board.isPromoted(move.getPiece())) return false;  // already promoted
+  private static final boolean PlayAllowsForPromotion(Player player, Play play) {
+    if (Board.isPromoted(play.piece())) return false;  // already promoted
 
-    final int type = Board.type(move.getPiece());
+    final int type = Board.type(play.piece());
     if (type == Piece.KIN || type == Piece.OU) return false;
 
-    if (move.getFromX() < 0) return false;  // dropping a captured piece
-    if (player == Player.WHITE && move.getFromY() < 6 && move.getToY() < 6) return false;
-    if (player == Player.BLACK && move.getFromY() >= 3 && move.getToY() >= 3) return false;
+    if (play.isDroppingPiece()) return false;
+    if (player == Player.WHITE && play.fromY() < 6 && play.toY() < 6) return false;
+    if (player == Player.BLACK && play.fromY() >= 3 && play.toY() >= 3) return false;
     return true;
   }
 
@@ -415,13 +486,13 @@ public class GameActivity extends Activity {
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
     builder.setMessage(R.string.confirm_quit_game);
     builder.setCancelable(false);
-    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+    builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
       public void onClick(DialogInterface d, int id) {
-        saveGame();
+        maybeSaveGame();
         finish();
       }
     });
-    builder.setNegativeButton("No",  new DialogInterface.OnClickListener() {
+    builder.setNegativeButton(android.R.string.no,  new DialogInterface.OnClickListener() {
       public void onClick(DialogInterface d, int id) {
         // nothing to do
       }

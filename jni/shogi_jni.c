@@ -321,6 +321,7 @@ jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
     jclass unused_bonanza_class,
     jint resume_instance_id,
     jobject initial_board,
+    jint next_turn,  // 0: black 1: white
     jint difficulty,
     jint total_think_time_secs,
     jint per_turn_think_time_secs,
@@ -351,6 +352,7 @@ jint Java_com_ysaito_shogi_BonanzaJNI_startGame(
         env, initial_board, fid));
 
     min_posi_t initial_pos = min_posi_no_handicap;
+    initial_pos.turn_to_move = next_turn;
     jint tmp_array[nsquare];
     (*env)->GetIntArrayRegion(env,  jarray, 0, nsquare, tmp_array);
     for (int i = 0; i < nsquare; ++i) {

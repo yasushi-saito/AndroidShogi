@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-  <item android:id="@+id/menu_reload" android:title="@string/reload" />
-  <item android:id="@+id/menu_sort_by_date" android:title="@string/sort_by_date" />
-  <item android:id="@+id/menu_sort_by_player" android:title="@string/sort_by_player" />  
+  <item android:id="@+id/game_log_list_replay" 
+	android:title="@string/replay_game" />
+  <item android:id="@+id/game_log_list_delete_log"
+  	android:title="@string/delete_log" />
+  <item android:id="@+id/game_log_list_save_in_sdcard"
+  	android:title="@string/save_in_sdcard" />
+  <item android:id="@+id/game_log_list_properties" 
+	android:title="@string/log_properties"/>
 </menu>
-
-    
     
     
     

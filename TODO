@@ -1,0 +1,9 @@
+TODO:
+Add "Delete log" button in the replay screen
+"Save in SDCard" in the replay activity doesn't update the gamelog list
+
+DONE:
+Disable "UNDO" in the game log screen when there's nothing to undo.
+Disable "Undo" button when there's nothing to undo
+Add "Give up" button in the game screen
+Show only the last X inmemory logs.

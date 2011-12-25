@@ -219,7 +219,7 @@ public class Board implements java.io.Serializable {
     public final int x, y;
   }
   
-  // A relative move.
+  // A relative move by one player.
   private static class MoveDelta {
     public MoveDelta(int x, int y, boolean m) { deltaX = x; deltaY = y; multi = m; }
     
@@ -270,17 +270,17 @@ public class Board implements java.io.Serializable {
   /**
    *  Apply the move "m" by player "p" to the board. Does not check if the move is legal. 
    */
-  public final void applyMove(Player p, Move m) {
+  public final void applyPly(Player p, Play m) {
     int oldPiece = Piece.EMPTY;
     boolean capturedChanged = false;
     ArrayList<CapturedPiece> captured = getCapturedPieces(p);
 
-    if (m.getFromX() < 0) { // dropping
-      setPiece(m.getToX(), m.getToY(), m.getPiece());
+    if (m.isDroppingPiece()) {
+      setPiece(m.toX(), m.toY(), m.piece());
       capturedChanged = true;
       for (int i = 0; i < captured.size(); ++i) {
         Board.CapturedPiece c = captured.get(i);
-        if (c.piece == m.getPiece()) {
+        if (c.piece == m.piece()) {
           if (c.n == 1) {
             captured.remove(i);
           } else {
@@ -290,9 +290,9 @@ public class Board implements java.io.Serializable {
         }
       }
     } else {
-      setPiece(m.getFromX(), m.getFromY(), Piece.EMPTY);
-      oldPiece = getPiece(m.getToX(), m.getToY());
-      setPiece(m.getToX(), m.getToY(), m.getPiece());
+      setPiece(m.fromX(), m.fromY(), Piece.EMPTY);
+      oldPiece = getPiece(m.toX(), m.toY());
+      setPiece(m.toX(), m.toY(), m.piece());
     }
     if (oldPiece != Piece.EMPTY) {
       capturedChanged = true;
@@ -503,7 +503,8 @@ public class Board implements java.io.Serializable {
   // Encode the set of pieces captured by the WHITE player. 
   private ArrayList<CapturedPiece> mCapturedWhiteList;
 
-  // the values of mCaptured{Black,White} used when computing the above lists.
+  // The values of mCaptured{Black,White} used when computing the above lists.
+  // That is, if mLastReadCapturefX != mCaptuturedX, then we need to recompute mCapturedXList.
   private int mLastReadCapturedBlack;
   private int mLastReadCapturedWhite;
 

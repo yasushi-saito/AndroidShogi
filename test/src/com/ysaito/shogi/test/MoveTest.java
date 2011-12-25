@@ -8,7 +8,7 @@ package com.ysaito.shogi.test;
 import java.util.ArrayList;
 
 import com.ysaito.shogi.Board;
-import com.ysaito.shogi.Move;
+import com.ysaito.shogi.Play;
 import com.ysaito.shogi.ParseException;
 import com.ysaito.shogi.Piece;
 import com.ysaito.shogi.Player;
@@ -25,68 +25,68 @@ public class MoveTest extends AndroidTestCase {
   }
   
   public void testToCsaString() {
-    Move move = new Move(Piece.FU, 1, 1, 1, 2);
+    Play move = new Play(Piece.FU, 1, 1, 1, 2);
     assertEquals(move.toCsaString(), "8283FU");
   }
 
   public void testTraditionalNotation() {
-    Move m = newMove(Piece.FU, 7, 7, 7, 6); 
-    assertEquals(toTraditionalNotation(m, newBoard()), "76FU");
+    Play m = newMove(Piece.FU, 7, 7, 7, 6); 
+    assertEquals(toTraditionalNotation(m, newBoard(), null), "76FU");
     
     m = newMove(-Piece.FU, 7, 6, 7, 7); 
-    assertEquals(toTraditionalNotation(m, newBoard()), "77FU");
+    assertEquals(toTraditionalNotation(m, newBoard(), null), "77FU");
 
     Board b = newBoard(7, 4, Piece.FU);
     m = newMove(Piece.TO, 7, 4, 7, 3); 
-    assertEquals(toTraditionalNotation(m, b), "73FU/PROMOTE");
+    assertEquals(toTraditionalNotation(m, b, null), "73FU/PROMOTE");
     
     b = newBoard();
     m = newMove(Piece.FU, -1, -1, 7, 3); 
-    assertEquals(toTraditionalNotation(m, newBoard()), "73FU");
+    assertEquals(toTraditionalNotation(m, newBoard(), null), "73FU");
   }
   
   public void testTraditionalNotation_BlackPlayer() {
     mPlayer = Player.BLACK;
     Board b = newBoard(2, 5, Piece.KIN, -1, -1, Piece.KIN);
-    Move m = newMove(Piece.KIN, 2, 5, 2, 4);
-    assertEquals(toTraditionalNotation(m, b), "24KI/FORWARD");
+    Play m = newMove(Piece.KIN, 2, 5, 2, 4);
+    assertEquals(toTraditionalNotation(m, b, null), "24KI/FORWARD");
   }
   
   public void testTraditionalNotation_WhitePlayer() {
     mPlayer = Player.WHITE;
     Board b = newBoard(8, 5, -Piece.KIN, -1, -1, -Piece.KIN);
-    Move m = newMove(-Piece.KIN, 8, 5, 8, 6);
+    Play m = newMove(-Piece.KIN, 8, 5, 8, 6);
     Log.d(TAG, "KINSTART");
-    assertEquals(toTraditionalNotation(m, b), "86KI/FORWARD");
+    assertEquals(toTraditionalNotation(m, b, null), "86KI/FORWARD");
   }
   
   public void testTraditionalNotation_Fu_BlackPlayer() {
     mPlayer = Player.BLACK;
     Board b = newBoard(2, 5, Piece.FU, -1, -1, Piece.FU);
-    Move m = newMove(Piece.FU, 2, 5, 2, 4);
-    assertEquals(toTraditionalNotation(m, b), "24FU");
+    Play m = newMove(Piece.FU, 2, 5, 2, 4);
+    assertEquals(toTraditionalNotation(m, b, null), "24FU");
   }
 
   public void testTraditionalNotation_Fu_WhitePlayer() {
     mPlayer = Player.WHITE;
     Board b = newBoard(8, 5, -Piece.FU, -1, -1, -Piece.FU);
-    Move m = newMove(-Piece.FU, 8, 5, 8, 6);
-    assertEquals(toTraditionalNotation(m, b), "86FU");
+    Play m = newMove(-Piece.FU, 8, 5, 8, 6);
+    assertEquals(toTraditionalNotation(m, b, null), "86FU");
   }
   
   public void testTraditionalNotation2() {
     mPlayer = Player.BLACK;
     Board b = newBoard(7,9, Piece.KYO);
-    Move m = newMove(Piece.KYO, -1, -1, 7, 8);
-    assertEquals(toTraditionalNotation(m, b), "78KY/DROP");
+    Play m = newMove(Piece.KYO, -1, -1, 7, 8);
+    assertEquals(toTraditionalNotation(m, b, null), "78KY/DROP");
     
     b = newBoard(-1, -1, Piece.KYO, 7, 9, Piece.KYO);
     m = newMove(Piece.KYO, 7, 9, 7, 8);
     Log.d(TAG, "BLAHBLAH: " + m.toCsaString());
-    assertEquals(toTraditionalNotation(m, b), "78KY/FORWARD");
+    assertEquals(toTraditionalNotation(m, b, null), "78KY/FORWARD");
     
     m = newMove(Piece.NARI_KYO, 7, 9, 7, 1);
-    assertEquals(toTraditionalNotation(m, b), "71KY/PROMOTE");
+    assertEquals(toTraditionalNotation(m, b, null), "71KY/PROMOTE");
   }
   
   public void testTraditionalNotation4() {
@@ -95,9 +95,17 @@ public class MoveTest extends AndroidTestCase {
     //     KIN 
     Board b = newBoard(1, 2, -Piece.KIN, 2, 3, -Piece.KIN, -1, -1, -Piece.KIN);
     
-    Move m = newMove(-Piece.KIN, -1, -1, 2, 2);
-    assertEquals(toTraditionalNotation(m, b), "22KI/DROP");
+    Play m = newMove(-Piece.KIN, -1, -1, 2, 2);
+    assertEquals(toTraditionalNotation(m, b, null), "22KI/DROP");
   }
+  
+  public void testTraditionalNotation5() {
+    Board b = newBoard(1, 1, Piece.KIN);
+    Play prev = newMove(-Piece.KIN, 1, 0, 1, 1);
+    Play cur = newMove(Piece.GIN, 2, 2, 1, 1);
+    assertEquals(toTraditionalNotation(cur, b, prev), "11GI/CAPTURED");
+  }
+  
   
   public void testTraditionalNotation3() {
     mPlayer = Player.BLACK;
@@ -109,26 +117,26 @@ public class MoveTest extends AndroidTestCase {
         1, 2, Piece.KIN, 3, 2, Piece.KIN,
         1, 3, Piece.KIN, 2, 3, Piece.KIN, 3, 3, Piece.KIN);
         
-    Move m = newMove(Piece.KIN, -1, -1, 2, 2);
-    assertEquals(toTraditionalNotation(m, b), "22KI/DROP");
+    Play m = newMove(Piece.KIN, -1, -1, 2, 2);
+    assertEquals(toTraditionalNotation(m, b, null), "22KI/DROP");
     
     m = newMove(Piece.KIN, 2, 1, 2, 2);
-    assertEquals(toTraditionalNotation(m, b), "22KI/BACKWARD");
+    assertEquals(toTraditionalNotation(m, b, null), "22KI/BACKWARD");
     
     m = newMove(Piece.KIN, 1, 2, 2, 2);
-    assertEquals(toTraditionalNotation(m, b), "22KI/RIGHT/SIDE");
+    assertEquals(toTraditionalNotation(m, b, null), "22KI/RIGHT/SIDE");
 
     m = newMove(Piece.KIN, 3, 2, 2, 2);
-    assertEquals(toTraditionalNotation(m, b), "22KI/LEFT/SIDE");
+    assertEquals(toTraditionalNotation(m, b, null), "22KI/LEFT/SIDE");
 
     m = newMove(Piece.KIN, 1, 3, 2, 2);
-    assertEquals(toTraditionalNotation(m, b), "22KI/RIGHT/FORWARD");
+    assertEquals(toTraditionalNotation(m, b, null), "22KI/RIGHT/FORWARD");
     
     m = newMove(Piece.KIN, 2, 3, 2, 2);
-    assertEquals(toTraditionalNotation(m, b), "22KI/CENTER/FORWARD");
+    assertEquals(toTraditionalNotation(m, b, null), "22KI/CENTER/FORWARD");
 
     m = newMove(Piece.KIN, 3, 3, 2, 2);
-    assertEquals(toTraditionalNotation(m, b), "22KI/LEFT/FORWARD");
+    assertEquals(toTraditionalNotation(m, b, null), "22KI/LEFT/FORWARD");
   }
 
   public void testKif1() throws ParseException {
@@ -141,28 +149,29 @@ public class MoveTest extends AndroidTestCase {
   }
   
   public void testKif2() throws ParseException {
-    Move prev = newMove(-Piece.FU, -1, -1, 8, 3);
+    Play prev = newMove(-Piece.FU, -1, -1, 8, 3);
     assertEquals(parseKifString(prev, Player.BLACK, "同香(89)"), "8983KY");    
     assertEquals(parseKifString(prev, Player.BLACK, "同 香(89)"), "8983KY");    
     assertEquals(parseKifString(prev, Player.BLACK, "同 香成(89)"), "8983NY");    
   }
   
 
-  private static String parseKifString(Move prevMove, Player p, String s) throws ParseException {
-    return Move.fromKifString(prevMove, p, s).toCsaString();
+  private static String parseKifString(Play prevMove, Player p, String s) throws ParseException {
+    return Play.fromKifString(prevMove, p, s).toCsaString();
   }
   
-  private String toTraditionalNotation(Move m, Board b) {  
-    Move.TraditionalNotation n = m.toTraditionalNotation(b);
+  private String toTraditionalNotation(Play m, Board b, Play prevMove) {  
+    Play.TraditionalNotation n = m.toTraditionalNotation(b, prevMove);
     String s = String.format("%d%d%s", n.x, n.y, Piece.csaNames[Board.type(n.piece)]);
-    if ((n.modifier & Move.PROMOTE) != 0) s += "/PROMOTE";
-    if ((n.modifier & Move.DROP) != 0) s += "/DROP";
-    if ((n.modifier & Move.RIGHT) != 0) s += "/RIGHT";
-    if ((n.modifier & Move.LEFT) != 0) s += "/LEFT";    
-    if ((n.modifier & Move.CENTER) != 0) s += "/CENTER";        
-    if ((n.modifier & Move.FORWARD) != 0) s += "/FORWARD";
-    if ((n.modifier & Move.BACKWARD) != 0) s += "/BACKWARD";
-    if ((n.modifier & Move.SIDEWAYS) != 0) s += "/SIDE";
+    if ((n.modifier & Play.PROMOTE) != 0) s += "/PROMOTE";
+    if ((n.modifier & Play.DROP) != 0) s += "/DROP";
+    if ((n.modifier & Play.RIGHT) != 0) s += "/RIGHT";
+    if ((n.modifier & Play.LEFT) != 0) s += "/LEFT";    
+    if ((n.modifier & Play.CENTER) != 0) s += "/CENTER";        
+    if ((n.modifier & Play.FORWARD) != 0) s += "/FORWARD";
+    if ((n.modifier & Play.BACKWARD) != 0) s += "/BACKWARD";
+    if ((n.modifier & Play.SIDEWAYS) != 0) s += "/SIDE";
+    if ((n.modifier & Play.CAPTURED_PREVIOUS_PIECE) != 0) s += "/CAPTURED";
     return s;
   }
   
@@ -191,11 +200,11 @@ public class MoveTest extends AndroidTestCase {
   
   // <fx, fy> and <tx, ty> are in traditional coordinate to simplify testing.
   // That is, the upper-right corner is <1,1>. 
-  private Move newMove(int piece, int fx, int fy, int tx, int ty) {
+  private Play newMove(int piece, int fx, int fy, int tx, int ty) {
     if (fx < 0) {  // dropping caputured piece
-      return new Move(piece, -1, -1, 9 - tx, ty - 1);
+      return new Play(piece, -1, -1, 9 - tx, ty - 1);
     } else {
-      return new Move(piece, 9 - fx, fy - 1, 9 - tx, ty - 1);
+      return new Play(piece, 9 - fx, fy - 1, 9 - tx, ty - 1);
     }
   }
 }

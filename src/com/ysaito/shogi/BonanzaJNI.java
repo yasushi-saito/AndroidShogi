@@ -64,7 +64,14 @@ public class BonanzaJNI {
    * 
    * @param resumeInstanceId if != 0, resume the game specified by this value.
    * If this game is not active any more, start a new game.
+<<<<<<< HEAD
    * @param initialBoard Initial state of the board.
+=======
+   * @param next_turn If 0, Black plays the first turn. If 1, the WHITE plays the first turn
+   *   in the game. This param is non-zero only when resuming a saved game midway.
+   * @param handicap The value of R.array.handicap_type_values. FGor example
+   *  if handicap==1, then the black player will remove left kyo.
+>>>>>>> 6dd1df4c0767403869da41a0d5a257f8ba430372
    * @param difficulty 1==weak, 5==strong
    * @param result (output)  filled with the initial board configuration.
    * @return The game's instance ID. When the game has resumed 
@@ -73,7 +80,8 @@ public class BonanzaJNI {
    */
   static public native int startGame(
       int resumeInstanceId,
-      Board initialBoard,  
+      Board initialBoard,
+      int next_turn,
       int difficulty,
       int total_think_time_secs,    
       int per_turn_think_time_secs,
