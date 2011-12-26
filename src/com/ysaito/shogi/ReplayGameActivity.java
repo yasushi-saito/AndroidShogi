@@ -143,12 +143,9 @@ public class ReplayGameActivity extends Activity {
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
     inflater.inflate(R.menu.replay_game_menu, menu);
-<<<<<<< HEAD
-=======
     if (mLog.path() != null) {
       menu.findItem(R.id.menu_save_in_sdcard).setEnabled(false);
     }
->>>>>>> 6dd1df4c0767403869da41a0d5a257f8ba430372
     return true;
   }
 
@@ -174,11 +171,6 @@ public class ReplayGameActivity extends Activity {
       mBoardView.flipScreen();
       return true;
     case R.id.menu_resume:
-<<<<<<< HEAD
-      Intent intent = new Intent(this, GameActivity.class);
-      intent.putExtra("initial_board", mBoard);
-      startActivity(intent);
-=======
       if (mStartGameDialog != null) {
         mStartGameDialog.loadPreferences();
       }
@@ -192,7 +184,6 @@ public class ReplayGameActivity extends Activity {
           },
           this, 
           mLog);
->>>>>>> 6dd1df4c0767403869da41a0d5a257f8ba430372
       return true;
     }
     case R.id.menu_log_properties:

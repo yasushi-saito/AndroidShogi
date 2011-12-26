@@ -257,7 +257,7 @@ public class Play implements java.io.Serializable {
     }
     ArrayList<Board.Position> others = listOtherMoveSources(board);
     if (others.isEmpty()) {
-      
+      ;
     } else if (isDroppingCapturedPiece()) {
       modifier |= DROP;
     } else {

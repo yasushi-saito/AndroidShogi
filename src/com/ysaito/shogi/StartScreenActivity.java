@@ -18,10 +18,6 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.File;
-<<<<<<< HEAD
-import java.util.ArrayList;
-=======
->>>>>>> 6dd1df4c0767403869da41a0d5a257f8ba430372
 
 /**
  * @author yasushi.saito@gmail.com 
@@ -242,20 +238,10 @@ public class StartScreenActivity extends Activity {
           "Please download the shogi database files first",
           Toast.LENGTH_LONG).show();
     } else {
-<<<<<<< HEAD
-      Intent intent = new Intent(this, GameActivity.class);
-      Board board = new Board();
-      Handicap h = Handicap.parseInt(
-          Integer.parseInt(mPrefs.getString("handicap", "0")));
-      board.initialize(h);
-      intent.putExtra("initial_board", board);
-      startActivity(intent);
-=======
       if (mStartGameDialog != null) {
         mStartGameDialog.loadPreferences();
       }
       showDialog(DIALOG_NEW_GAME);
->>>>>>> 6dd1df4c0767403869da41a0d5a257f8ba430372
     }
   }
   
