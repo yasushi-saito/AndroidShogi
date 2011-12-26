@@ -18,7 +18,6 @@
     <string name="visit_marketplace">アンドロイドマーケットを起動</string>
     <string name="preferences">設定</string>
     <string name="player_types">対局者</string>
-    <string name="human">人</string>
     <string name="computer">コンピュータ</string>
     <string name="computer_difficulty">コンピュータ難易度</string>
     <string name="reset_preferences">設定リセット</string>
@@ -60,4 +59,8 @@
     <string name="attr_tournament">棋戦</string>
     <string name="attr_black_player">先手</string>
     <string name="attr_white_player">後手</string>
+    <string name="shogi_db_source">データベースURL</string>    
+    <string name="log_save_format">棋譜記録フォーマット</string>    
+    <string name="human_player_name">ユーザ名</string>
+    <string name="default_human_player_name">人</string>
 </resources>

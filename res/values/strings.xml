@@ -16,7 +16,6 @@
     <string name="visit_marketplace">Visit Android Marketplace</string>
         <string name="preferences">Preferences</string>
     <string name="player_types">Players</string>
-    <string name="human">Human</string>
     <string name="computer">Computer</string>
     <string name="computer_difficulty">Computer Difficulty</string>
     <string name="reset_preferences">Reset Preferences</string>
@@ -57,5 +56,8 @@
     <string name="attr_tournament">Tournament</string>
     <string name="attr_black_player">Black player</string>
     <string name="attr_white_player">White player</string>
-    <string name="shogi_db_source">Shogi DB Source URL</string>    
+    <string name="shogi_db_source">Shogi DB Source URL</string>
+    <string name="log_save_format">Log file format</string>
+    <string name="human_player_name">Player name</string>
+    <string name="default_human_player_name">Human</string>
 </resources>

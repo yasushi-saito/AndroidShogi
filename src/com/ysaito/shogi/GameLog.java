@@ -1,8 +1,14 @@
 package com.ysaito.shogi;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Serializable;
 import java.io.StringReader;
@@ -20,6 +26,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.mozilla.universalchardet.UniversalDetector;
 
 import android.util.Log;
 
@@ -227,38 +235,33 @@ public class GameLog implements Serializable {
    * Parse an embedded KIF file downloaded from http://wiki.optus.nu/.
    * Such a file can be created by saving a "テキスト表示" link directly to a file.
    */
-  public static GameLog parseHtml(File path, Reader in) throws ParseException {
-    try {
-      BufferedReader reader = new BufferedReader(in);
-      String line;
-      StringBuilder output = new StringBuilder();
-      boolean kifFound = false;
-      while ((line = reader.readLine()) != null && !kifFound) {
-        Matcher m = HTML_KIF_START_PATTERN.matcher(line);
-        if (m.matches()) {
-          output.append(m.group(1));
-          output.append('\n');
-          while ((line = reader.readLine()) != null) {
-            m = HTML_KIF_END_PATTERN.matcher(line);
-            if (m.matches()) {
-              output.append(m.group(1));
-              output.append('\n');
-              kifFound = true;
-              break;
-            } else {
-              output.append(line);
-              output.append('\n');
-            }
+  public static GameLog parseHtml(File path, InputStream stream) throws ParseException, IOException {
+    BufferedReader reader = new BufferedReader(inputStreamToReader(stream, "EUC-JP"));
+    String line;
+    StringBuilder output = new StringBuilder();
+    boolean kifFound = false;
+    while ((line = reader.readLine()) != null && !kifFound) {
+      Matcher m = HTML_KIF_START_PATTERN.matcher(line);
+      if (m.matches()) {
+        output.append(m.group(1));
+        output.append('\n');
+        while ((line = reader.readLine()) != null) {
+          m = HTML_KIF_END_PATTERN.matcher(line);
+          if (m.matches()) {
+            output.append(m.group(1));
+            output.append('\n');
+            kifFound = true;
+            break;
+          } else {
+            output.append(line);
+            output.append('\n');
           }
-          break;
         }
+        break;
       }
-      if (!kifFound) return null;
-      return parseKif(path, new StringReader(output.toString()));
-    } catch (IOException e) {
-      Log.e(TAG, "Failed to parse file: " + e.getMessage());      
-      return null;
     }
+    if (!kifFound) return null;
+    return doParseKif(path, new StringReader(output.toString()));
   }
   
   static final boolean ASSUME_SANE_KIF_READER = false;
@@ -266,10 +269,20 @@ public class GameLog implements Serializable {
   
   /**
    * Print the contents of this object to "stream" in KIF format.
+   * 
+   * @param One of @id array/log_save_format_values.
    * @throws IOException
    */
-  public void toKif(Writer stream) throws IOException {
-    String EOL = "\r\n";   // KIF demands strict MS-DOS formatting
+  public void toKif(OutputStream out, String format) throws IOException {
+    Writer stream = null;
+    String EOL = null;
+    if (format.equals("kif_utf8")) {
+      stream = new OutputStreamWriter(out, "UTF-8");
+      EOL = "\n";
+    } else {
+      stream = new OutputStreamWriter(out, "SHIFT-JIS");
+      EOL = "\r\n";
+    }
     StringBuilder b = new StringBuilder();
     
     // Generate header lines
@@ -287,14 +300,17 @@ public class GameLog implements Serializable {
     for (int i = 0; i < mPlays.size(); ++i) {
       Play thisPlay = mPlays.get(i);
       Play prevPlay = (i > 0 ? mPlays.get(i - 1) : null);
-      
+      Play.TraditionalNotation n = thisPlay.toTraditionalNotation(board, prevPlay);
       b.append(String.format("%4d %s%s%s", 
           i + 1,
-          Play.japaneseRomanNumbers[thisPlay.toX()],
-          Play.japaneseNumbers[thisPlay.toY()],
-          Piece.japaneseNames[Board.type(thisPlay.piece())]));
+          Play.japaneseRomanNumbers[n.x],
+          Play.japaneseNumbers[n.y],
+          Piece.japaneseNames[Board.type(n.piece)]));
+      if ((n.modifier & Play.PROMOTE) != 0) {
+        b.append("成");
+      }
       if (!thisPlay.isDroppingPiece()) {
-        b.append(String.format(" (%d%d)", 
+        b.append(String.format("(%d%d)", 
             9 - thisPlay.fromX(), 1 + thisPlay.fromY()));
       } else {
         b.append("打");
@@ -304,13 +320,37 @@ public class GameLog implements Serializable {
       player = player.opponent();
     }
     stream.write(b.toString());
+    stream.close();
+  }
+  
+  private static Reader inputStreamToReader(InputStream in, String defaultEncoding) throws IOException {
+    byte tmpBuf[] = new byte[8192];
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    int n;
+    while ((n = in.read(tmpBuf)) > 0) {
+      out.write(tmpBuf, 0, n);  
+    }
+    byte[] contents = out.toByteArray();
+    UniversalDetector mEncodingDetector = new UniversalDetector(null);
+    
+    mEncodingDetector.reset();
+    mEncodingDetector.handleData(contents, 0, contents.length);
+    mEncodingDetector.dataEnd();
+    String encoding = mEncodingDetector.getDetectedCharset();
+    if (encoding == null) encoding = defaultEncoding;
+    return new InputStreamReader(new ByteArrayInputStream(contents), encoding);
   }
   
   /** 
    * Given a KIF file encoded in UTF-8, parse it. If this method doesn't throw 
    * an exception, it always return a non-null GameLog object.
    */
-  public static GameLog parseKif(File path, Reader stream) throws ParseException {
+  public static GameLog parseKif(File path, InputStream in) throws ParseException, IOException {
+    Reader stream = inputStreamToReader(in, "SHIFT-JIS");
+    return doParseKif(path, stream);
+  }
+  
+  private static GameLog doParseKif(File path, Reader stream) throws ParseException, IOException {
     GameLog l = new GameLog();
     l.mPath = path;
     
