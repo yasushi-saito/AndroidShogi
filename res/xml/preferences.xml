@@ -20,10 +20,4 @@
      android:defaultValue="/sdcard/ShogiLog"
      android:title="@string/game_log_dir"
      />
-  <PreferenceCategory android:title="Advanced settings"/>
-  <EditTextPreference
-     android:key="download_source_url"
-     android:defaultValue="@string/default_download_source_url"
-     android:title="@string/shogi_db_source"
-     />
 </PreferenceScreen>

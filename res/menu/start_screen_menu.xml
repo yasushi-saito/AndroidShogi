@@ -8,9 +8,5 @@
 	      android:title="@string/preferences" 
 	      android:icon="@drawable/ic_menu_preferences" />
 	      />
-	<item android:id="@+id/start_screen_download_menu_id" 
-	      android:title="@string/download_database" 
-	      android:icon="@drawable/stat_sys_download_anim0" />
-	      />
 </menu>
 

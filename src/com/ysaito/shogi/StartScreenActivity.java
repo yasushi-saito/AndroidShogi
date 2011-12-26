@@ -3,21 +3,26 @@ package com.ysaito.shogi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.text.SpannableString;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.util.regex.Pattern;
 
 /**
  * @author yasushi.saito@gmail.com 
@@ -26,19 +31,22 @@ import java.io.File;
 public class StartScreenActivity extends Activity {
   static final String TAG = "ShogiStart";
   static final int DIALOG_NEW_GAME = 1233;
-  static final int DIALOG_CONFIRM_DOWNLOAD = 1234;
-  static final int DIALOG_DOWNLOAD_STATUS = 1235;
+  static final int DIALOG_DATA_DOWNLOAD = 1234;
+  static final int DIALOG_FATAL_ERROR = 1235;
   private File mExternalDir;
   private SharedPreferences mPrefs;
+  private String mErrorMessage;
   
-
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    setContentView(R.layout.start_screen);
-
-    mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
     mExternalDir = getExternalFilesDir(null);
+    if (mExternalDir == null) {
+			FatalError("Please mount the sdcard on the device");
+			return;
+    }
+    setContentView(R.layout.start_screen);
+    mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
     
     mNewGameButton = (Button)findViewById(R.id.new_game_button);
     mNewGameButton.setOnClickListener(new Button.OnClickListener() {
@@ -59,8 +67,7 @@ public class StartScreenActivity extends Activity {
       mPickLogButton.setEnabled(false);
     } else if (!hasRequiredFiles(mExternalDir)) {
       mNewGameButton.setEnabled(false);
-      mDownloadConfirmMessage = getResources().getString(R.string.start_download_database);
-      showDialog(DIALOG_CONFIRM_DOWNLOAD);
+      showDialog(DIALOG_DATA_DOWNLOAD);
     } else {
       initializeBonanzaInBackground();
     }
@@ -82,20 +89,6 @@ public class StartScreenActivity extends Activity {
       case R.id.start_screen_preferences_menu_id:
         settings();
         return true;
-      case R.id.start_screen_download_menu_id:
-        if (mExternalDir == null) {
-          Toast.makeText(
-              getBaseContext(),
-              "Please mount the sdcard on the device", 
-              Toast.LENGTH_LONG).show();
-        } else if (!hasRequiredFiles(mExternalDir)) {
-          startDownload();
-        } else {
-          mDeleteFilesBeforeDownload = true;
-          mDownloadConfirmMessage = getResources().getString(R.string.already_downloaded);
-          showDialog(DIALOG_CONFIRM_DOWNLOAD);
-        }
-        return true;
       default:    
         return super.onOptionsItemSelected(item);
     }
@@ -104,97 +97,6 @@ public class StartScreenActivity extends Activity {
   // UI
   private Button mNewGameButton;
   private Button mPickLogButton;
-  
-  //
-  // Data download
-  //
-  private boolean mDeleteFilesBeforeDownload;
-  private String mDownloadConfirmMessage;
-  private ProgressDialog mDownloadStatusDialog;
-  private Downloader mDownloadController;
-  
-  private AlertDialog newConfirmDownloadDialog() {
-    AlertDialog.Builder b = new AlertDialog.Builder(this);
-    // Issue dummy calls to setTitle and setMessage. Otherwise, onPrepareDialog will become a noop.
-    b.setTitle("");  
-    b.setMessage("");
-    b.setCancelable(true);
-    b.setPositiveButton(android.R.string.yes,
-        new DialogInterface.OnClickListener() {
-          public void onClick(DialogInterface d, int item) {
-            if (mDeleteFilesBeforeDownload) {
-              mDeleteFilesBeforeDownload = false;
-              Downloader.deleteFilesInDir(mExternalDir);
-              mNewGameButton.setEnabled(false);
-            }
-            startDownload();
-          }
-        });
-    b.setNegativeButton(android.R.string.no,
-        new DialogInterface.OnClickListener() {
-      public void onClick(DialogInterface d, int item) {
-        mDeleteFilesBeforeDownload = false;
-        d.cancel();
-      }
-    });
-    return b.create();
-  }
-  
-  private String dbSourceUrl() {
-    String dflt = getResources().getString(R.string.default_download_source_url);
-    return mPrefs.getString("download_source_url", dflt);
-  }
-  private ProgressDialog newDownloadDialog() {
-    // TODO(saito) screen rotation will abort downloading.
-    ProgressDialog d = new ProgressDialog(this);
-    d.setCancelable(true);
-    d.setMessage(String.format("Downloading %s", dbSourceUrl()));
-    d.setOnCancelListener(new DialogInterface.OnCancelListener() {
-      public void onCancel(DialogInterface unused) {
-        if (mDownloadController != null) mDownloadController.destroy();
-      }
-    });
-    return d;
-  }
-  
-  private void startDownload() {
-    mDownloadController = new Downloader(
-        mDownloadHandler, 
-        mExternalDir);
-    mDownloadController.start(dbSourceUrl());
-    showDialog(DIALOG_DOWNLOAD_STATUS);
-  }
-
-  private final Downloader.EventListener mDownloadHandler = new Downloader.EventListener() {
-    public void onProgressUpdate(String status) {
-      if (mDownloadStatusDialog != null) {
-        mDownloadStatusDialog.setMessage(status);
-      }
-    }
-    
-    public void onFinish(String status) {
-      if (status == null) {  // success
-        if (!hasRequiredFiles(mExternalDir)) {
-          status = String.format("Failed to download required files to %s:", mExternalDir);
-          for (String s: REQUIRED_FILES) status += " " + s;
-        }
-      }
-      mDownloadStatusDialog.dismiss();
-      if (mDownloadController != null) {
-        mDownloadController.destroy();
-        mDownloadController = null;
-      }
-      if (status != null) {
-        mDownloadConfirmMessage = getResources().getString(R.string.restart_download_database) + status;
-        mDeleteFilesBeforeDownload = true;
-        showDialog(DIALOG_CONFIRM_DOWNLOAD);
-      } else {
-        mNewGameButton.setEnabled(true);
-        initializeBonanzaInBackground();
-      }
-    }
-  };
-  
   private StartGameDialog mStartGameDialog;
   
   @Override
@@ -212,24 +114,63 @@ public class StartScreenActivity extends Activity {
           );
       return mStartGameDialog.getDialog();
     }
-    case DIALOG_CONFIRM_DOWNLOAD:
-      return newConfirmDownloadDialog();
-    case DIALOG_DOWNLOAD_STATUS:
-      mDownloadStatusDialog = newDownloadDialog();
-      return mDownloadStatusDialog;
+    case DIALOG_DATA_DOWNLOAD: 
+    	return newDataDownloadDialog();
+  	case DIALOG_FATAL_ERROR: 
+  		return newFatalErrorDialog();
     default:    
       return null;
     }
   }
   
-  @Override
-  protected void onPrepareDialog(int id, Dialog dialog, Bundle unused) {
-    super.onPrepareDialog(id, dialog, unused);
-    if (id == DIALOG_CONFIRM_DOWNLOAD) {
-      ((AlertDialog)dialog).setMessage(mDownloadConfirmMessage);
-    }
+	@Override protected void onPrepareDialog(int id, Dialog d) {
+		if (id == DIALOG_FATAL_ERROR) {
+			((AlertDialog)d).setMessage(mErrorMessage);
+		}
+	}
+  
+	private void FatalError(String message) {
+		mErrorMessage = message;
+		showDialog(DIALOG_FATAL_ERROR);
+	}
+
+  private Dialog newFatalErrorDialog() {
+  	DialogInterface.OnClickListener cb = new DialogInterface.OnClickListener() {
+  		public void onClick(DialogInterface dialog, int id) {  };
+  	};
+  	AlertDialog.Builder builder = new AlertDialog.Builder(this);
+  	// The dialog message will be set in onPrepareDialog
+  	builder.setMessage("???") 
+  	.setCancelable(false)
+  	.setPositiveButton("Ok", cb);
+  	return builder.create();
   }
   
+  static final String mMarketUri = new String("market://details?id=com.ysaito.shogidata");
+  
+  private Dialog newDataDownloadDialog() {
+  	final TextView message = new TextView(this);
+  	final SpannableString s = 
+  			new SpannableString(getText(R.string.shogi_data_download));
+  	Linkify.addLinks(s, Pattern.compile("market:[a-z/?.=&]+"), mMarketUri);
+  	message.setText(s);
+  	message.setMovementMethod(LinkMovementMethod.getInstance());
+
+  	return new AlertDialog.Builder(this)
+  	.setTitle("")
+  	.setCancelable(true)
+  	.setIcon(android.R.drawable.ic_dialog_info)
+  	.setPositiveButton(R.string.visit_marketplace, new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int which) {
+				// TODO Auto-generated method stub
+				Uri marketUri = Uri.parse(mMarketUri);
+				Intent intent = new Intent(Intent.ACTION_VIEW).setData(marketUri);
+				startActivity(intent);
+			}
+		})
+  	.setView(message)
+  	.create();
+  }
   private void newGame() {
     if (!hasRequiredFiles(mExternalDir)) {
       // Note: this shouldn't happen, since the button is disabled if !hasRequiredFiles

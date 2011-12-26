@@ -11,10 +11,10 @@
     <string name="app_name">Android Shogi</string>
     <string name="new_game">New Game</string>
     <string name="already_downloaded">Database files are already downloaded. Do you want to delete them and download them again?</string>
-    <string name="download_database">Download Shogi database files</string>
-    <string name="start_download_database">Download Shogi database files?</string>
-    <string name="restart_download_database">Restart download Shogi database files?</string>    
-    <string name="preferences">Preferences</string>
+    <string name="shogi_data_download">Please install the shogi database application first by visiting
+        market://details?id=com.ysaito.shogidata</string>
+    <string name="visit_marketplace">Visit Android Marketplace</string>
+        <string name="preferences">Preferences</string>
     <string name="player_types">Players</string>
     <string name="human">Human</string>
     <string name="computer">Computer</string>
@@ -31,7 +31,6 @@
     <string name="piece_style">Piece Style</string>
     <string name="handicap">Handicap</string>
     <string name="resume_play">Replay saved game</string>
-    <string name="default_download_source_url">http://www.ysaito.com/downloads/shogi-data.zip</string>
     <string name="reload">Reload</string>
     <string name="game_logs">Game Logs</string>
     <string name="replay_game">Replay game</string>
