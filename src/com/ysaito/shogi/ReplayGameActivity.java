@@ -171,9 +171,6 @@ public class ReplayGameActivity extends Activity {
       mBoardView.flipScreen();
       return true;
     case R.id.menu_resume:
-      if (mStartGameDialog != null) {
-        mStartGameDialog.loadPreferences();
-      }
       // TODO(saito) Disable resumegame when !hasRequiredFiles.
       showDialog(DIALOG_RESUME_GAME);
       return true;
@@ -197,8 +194,8 @@ public class ReplayGameActivity extends Activity {
   @Override protected Dialog onCreateDialog(int id) {
     switch (id) {
     case DIALOG_RESUME_GAME: {
-      mStartGameDialog = new StartGameDialog(this, "Resume Game");
-      mStartGameDialog.setOnClickStartButtonHandler(
+      mStartGameDialog = new StartGameDialog(
+      		this, "Resume Game",
           new DialogInterface.OnClickListener() {
            public void onClick(DialogInterface dialog, int id) {
              resumeGame();

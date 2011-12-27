@@ -40,37 +40,30 @@ public class StartScreenActivity extends Activity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    setContentView(R.layout.start_screen);
     mExternalDir = getExternalFilesDir(null);
     if (mExternalDir == null) {
 			FatalError("Please mount the sdcard on the device");
 			return;
+    } else if (!hasRequiredFiles(mExternalDir)) {
+      showDialog(DIALOG_DATA_DOWNLOAD);
+      return;
     }
-    setContentView(R.layout.start_screen);
     mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
     
-    mNewGameButton = (Button)findViewById(R.id.new_game_button);
-    mNewGameButton.setOnClickListener(new Button.OnClickListener() {
+    Button newGameButton = (Button)findViewById(R.id.new_game_button);
+    newGameButton.setOnClickListener(new Button.OnClickListener() {
       public void onClick(View v) { newGame(); }
     });
     
-    mPickLogButton = (Button)findViewById(R.id.pick_log_button);
-    mPickLogButton.setOnClickListener(new Button.OnClickListener() {
-      public void onClick(View v) { pickLog(); }
+    Button pickLogButton = (Button)findViewById(R.id.pick_log_button);
+    pickLogButton.setOnClickListener(new Button.OnClickListener() {
+      public void onClick(View v) { 
+      	startActivity(new Intent(v.getContext(), GameLogListActivity.class));
+      }
     });
 
-    if (mExternalDir == null) {
-      Toast.makeText(
-          getBaseContext(),
-          "Please mount the sdcard on the device", 
-          Toast.LENGTH_LONG).show();
-      mNewGameButton.setEnabled(false);
-      mPickLogButton.setEnabled(false);
-    } else if (!hasRequiredFiles(mExternalDir)) {
-      mNewGameButton.setEnabled(false);
-      showDialog(DIALOG_DATA_DOWNLOAD);
-    } else {
-      initializeBonanzaInBackground();
-    }
+    new BonanzaInitializeThread().start();
   }
   
   @Override
@@ -84,35 +77,29 @@ public class StartScreenActivity extends Activity {
   public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
       case R.id.start_screen_help_menu_id:
-          help();
-          return true;
+      	startActivity(new Intent(this, HelpActivity.class));
+      	return true;
       case R.id.start_screen_preferences_menu_id:
-        settings();
-        return true;
+      	startActivity(new Intent(this, ShogiPreferenceActivity.class));
+      	return true;
       default:    
         return super.onOptionsItemSelected(item);
     }
   }
 
-  // UI
-  private Button mNewGameButton;
-  private Button mPickLogButton;
-  private StartGameDialog mStartGameDialog;
-  
   @Override
   protected Dialog onCreateDialog(int id) {
     switch (id) {
     case DIALOG_NEW_GAME: {
-      mStartGameDialog = new StartGameDialog(
+    	StartGameDialog d = new StartGameDialog(
           this, 
-          getResources().getString(R.string.new_game));
-      mStartGameDialog.setOnClickStartButtonHandler(
+          getResources().getString(R.string.new_game),
           new DialogInterface.OnClickListener() {
            public void onClick(DialogInterface dialog, int id) {
              newGame2();
            }}
           );
-      return mStartGameDialog.getDialog();
+      return d.getDialog();
     }
     case DIALOG_DATA_DOWNLOAD: 
     	return newDataDownloadDialog();
@@ -171,6 +158,7 @@ public class StartScreenActivity extends Activity {
   	.setView(message)
   	.create();
   }
+  
   private void newGame() {
     if (!hasRequiredFiles(mExternalDir)) {
       // Note: this shouldn't happen, since the button is disabled if !hasRequiredFiles
@@ -179,9 +167,6 @@ public class StartScreenActivity extends Activity {
           "Please download the shogi database files first",
           Toast.LENGTH_LONG).show();
     } else {
-      if (mStartGameDialog != null) {
-        mStartGameDialog.loadPreferences();
-      }
       showDialog(DIALOG_NEW_GAME);
     }
   }
@@ -196,33 +181,10 @@ public class StartScreenActivity extends Activity {
     startActivity(intent);
   }
 
-  private void pickLog() {
-    startActivity(new Intent(this, GameLogListActivity.class));
-  }
-  
-  private void settings() {
-    startActivity(new Intent(this, ShogiPreferenceActivity.class));
-  }
-  
-  private void help() {
-    startActivity(new Intent(this, HelpActivity.class));
-  }
-  
   private class BonanzaInitializeThread extends Thread {
     @Override public void run() {
       BonanzaJNI.initialize(mExternalDir.getAbsolutePath());
     }
-  }
-  
-  private void initializeBonanzaInBackground() {
-    if (!hasRequiredFiles(mExternalDir)) {
-      Toast.makeText(
-          getBaseContext(),
-          "Please download the shogi database files first",
-          Toast.LENGTH_LONG).show();
-      return;
-    }
-    new BonanzaInitializeThread().start();
   }
   
   /**

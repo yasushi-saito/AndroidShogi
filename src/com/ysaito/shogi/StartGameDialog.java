@@ -13,18 +13,22 @@ import android.widget.Spinner;
 
 public class StartGameDialog {
   private final Context mContext;
-  private SharedPreferences mPrefs;
+  private final SharedPreferences mPrefs;
   private final AlertDialog mDialog;
+  private final DialogInterface.OnClickListener mOnClickStartButton;
   
-  private DialogInterface.OnClickListener mOnClickStartButton; 
   private Spinner mPlayerTypes;
   private Spinner mComputerDifficulty;
   private Spinner mHandicap;
   private CheckBox mFlipScreen;
   
-  public StartGameDialog(Context context, String title) {
+  public StartGameDialog(
+  		Context context, 
+  		String title,
+  		DialogInterface.OnClickListener onClick) {
     mContext = context;
     mPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+    mOnClickStartButton = onClick;
     
     AlertDialog.Builder builder = new AlertDialog.Builder(context);
     LayoutInflater inflater = (LayoutInflater)mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -64,19 +68,16 @@ public class StartGameDialog {
     
     builder.setView(layout);
     mDialog = builder.create();
+    loadPreferences();
   }
 
-  public void loadPreferences() {
+  private void loadPreferences() {
     mPlayerTypes.setSelection(PlayerTypesToInt(mPrefs.getString("player_types", "0")));
     mComputerDifficulty.setSelection(Integer.parseInt(mPrefs.getString("computer_difficulty", "1")));
     mHandicap.setSelection(Integer.parseInt(mPrefs.getString("handicap", "0")));
     mFlipScreen.setChecked(mPrefs.getBoolean("flip_screen", false));
   }
 
-  public void setOnClickStartButtonHandler(DialogInterface.OnClickListener h) {
-    mOnClickStartButton = h;  
-  }
-  
   public AlertDialog getDialog() { return mDialog; }
 
   private void savePreferences() {
