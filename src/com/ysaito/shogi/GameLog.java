@@ -142,6 +142,7 @@ public class GameLog implements Serializable {
    * A Comparator to sort GameLog by date (oldest first)
    */
   public static final Comparator<GameLog> SORT_BY_DATE = new Comparator<GameLog>() {
+    @Override
     public int compare(GameLog g1, GameLog g2) { 
       if (g1.getDate() < g2.getDate()) return -1;
       if (g1.getDate() > g2.getDate()) return 1;      
@@ -152,6 +153,7 @@ public class GameLog implements Serializable {
       // if (x != 0) return x;
       return g1.digest().compareTo(g2.digest());
     }
+    @Override 
     public boolean equals(Object o) { return o == this; }
   };
   
@@ -159,22 +161,26 @@ public class GameLog implements Serializable {
    * A comparator to sort GameLog by the player names
    */
   public static final Comparator<GameLog> SORT_BY_BLACK_PLAYER = new Comparator<GameLog>() {
+    @Override
     public int compare(GameLog g1, GameLog g2) { 
       String p1 = g1.getPlayer(GameLog.ATTR_BLACK_PLAYER);
       String p2 = g2.getPlayer(GameLog.ATTR_BLACK_PLAYER);      
       int cmp = p1.compareTo(p2);
       return (cmp != 0) ? cmp : SORT_BY_DATE.compare(g1, g2); 
     }
+    @Override
     public boolean equals(Object o) { return o == this; }
   };
 
   public static final Comparator<GameLog> SORT_BY_WHITE_PLAYER = new Comparator<GameLog>() {
+    @Override
     public int compare(GameLog g1, GameLog g2) { 
       String p1 = g1.getPlayer(GameLog.ATTR_WHITE_PLAYER);
       String p2 = g2.getPlayer(GameLog.ATTR_WHITE_PLAYER);      
       int cmp = p1.compareTo(p2);
       return (cmp != 0) ? cmp : SORT_BY_DATE.compare(g1, g2); 
     }
+    @Override
     public boolean equals(Object o) { return o == this; }
   };
   
@@ -236,7 +242,7 @@ public class GameLog implements Serializable {
    * Such a file can be created by saving a "テキスト表示" link directly to a file.
    */
   public static GameLog parseHtml(File path, InputStream stream) throws ParseException, IOException {
-    BufferedReader reader = new BufferedReader(inputStreamToReader(stream, "EUC-JP"));
+    BufferedReader reader = new BufferedReader(Util.inputStreamToReader(stream, "EUC-JP"));
     String line;
     StringBuilder output = new StringBuilder();
     boolean kifFound = false;
@@ -270,7 +276,7 @@ public class GameLog implements Serializable {
   /**
    * Print the contents of this object to "stream" in KIF format.
    * 
-   * @param One of @id array/log_save_format_values.
+   * @param format One of @id array/log_save_format_values.
    * @throws IOException
    */
   public void toKif(OutputStream out, String format) throws IOException {
@@ -323,30 +329,12 @@ public class GameLog implements Serializable {
     stream.close();
   }
   
-  private static Reader inputStreamToReader(InputStream in, String defaultEncoding) throws IOException {
-    byte tmpBuf[] = new byte[8192];
-    ByteArrayOutputStream out = new ByteArrayOutputStream();
-    int n;
-    while ((n = in.read(tmpBuf)) > 0) {
-      out.write(tmpBuf, 0, n);  
-    }
-    byte[] contents = out.toByteArray();
-    UniversalDetector mEncodingDetector = new UniversalDetector(null);
-    
-    mEncodingDetector.reset();
-    mEncodingDetector.handleData(contents, 0, contents.length);
-    mEncodingDetector.dataEnd();
-    String encoding = mEncodingDetector.getDetectedCharset();
-    if (encoding == null) encoding = defaultEncoding;
-    return new InputStreamReader(new ByteArrayInputStream(contents), encoding);
-  }
-  
-  /** 
+    /** 
    * Given a KIF file encoded in UTF-8, parse it. If this method doesn't throw 
    * an exception, it always return a non-null GameLog object.
    */
   public static GameLog parseKif(File path, InputStream in) throws ParseException, IOException {
-    Reader stream = inputStreamToReader(in, "SHIFT-JIS");
+    Reader stream = Util.inputStreamToReader(in, "SHIFT-JIS");
     return doParseKif(path, stream);
   }
   
