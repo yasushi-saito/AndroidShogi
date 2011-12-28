@@ -116,7 +116,6 @@ public class OptusParser {
       l.date = log.child(4).text();
       l.openingMoves = log.child(5).text();
       logs.add(l);
-      Log.d(TAG, "LOG: " + log.html());
     }
     return logs.toArray(new LogRef[0]);
   }
