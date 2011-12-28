@@ -21,7 +21,7 @@ public class Util {
       return new byte[8192];
     }
   };
-  
+
   public static Reader inputStreamToReader(InputStream in, String defaultEncoding) throws IOException {
     byte[] contents = Util.streamToBytes(in);
     String encoding = Util.detectEncoding(contents, defaultEncoding);

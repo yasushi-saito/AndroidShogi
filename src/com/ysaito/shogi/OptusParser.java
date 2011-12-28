@@ -11,6 +11,7 @@ import org.jsoup.select.Elements;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -27,7 +28,7 @@ public class OptusParser {
     void deleted(String[] player_names);
   }
   
-  public static class Player {
+  public static class Player implements Serializable {
     public Player(String n, int g, String[] refs) {
       name = n;
       num_games = g;

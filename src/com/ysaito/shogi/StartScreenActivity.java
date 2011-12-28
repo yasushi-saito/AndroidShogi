@@ -53,19 +53,19 @@ public class StartScreenActivity extends Activity {
     
     Button newGameButton = (Button)findViewById(R.id.new_game_button);
     newGameButton.setOnClickListener(new Button.OnClickListener() {
-      @Override public void onClick(View v) { newGame(); }
+      public void onClick(View v) { newGame(); }
     });
     
     Button pickLogButton = (Button)findViewById(R.id.pick_log_button);
     pickLogButton.setOnClickListener(new Button.OnClickListener() {
-      @Override public void onClick(View v) { 
+      public void onClick(View v) { 
       	startActivity(new Intent(v.getContext(), GameLogListActivity.class));
       }
     });
 
     Button optusButton = (Button)findViewById(R.id.optus_button);
     optusButton.setOnClickListener(new Button.OnClickListener() {
-      @Override public void onClick(View v) { 
+      public void onClick(View v) { 
       	startActivity(new Intent(v.getContext(), OptusViewerActivity.class));
       }
     });

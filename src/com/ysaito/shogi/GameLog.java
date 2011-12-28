@@ -1,12 +1,9 @@
 package com.ysaito.shogi;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
@@ -26,8 +23,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.mozilla.universalchardet.UniversalDetector;
 
 import android.util.Log;
 
@@ -142,7 +137,6 @@ public class GameLog implements Serializable {
    * A Comparator to sort GameLog by date (oldest first)
    */
   public static final Comparator<GameLog> SORT_BY_DATE = new Comparator<GameLog>() {
-    @Override
     public int compare(GameLog g1, GameLog g2) { 
       if (g1.getDate() < g2.getDate()) return -1;
       if (g1.getDate() > g2.getDate()) return 1;      
@@ -161,7 +155,6 @@ public class GameLog implements Serializable {
    * A comparator to sort GameLog by the player names
    */
   public static final Comparator<GameLog> SORT_BY_BLACK_PLAYER = new Comparator<GameLog>() {
-    @Override
     public int compare(GameLog g1, GameLog g2) { 
       String p1 = g1.getPlayer(GameLog.ATTR_BLACK_PLAYER);
       String p2 = g2.getPlayer(GameLog.ATTR_BLACK_PLAYER);      
@@ -173,7 +166,6 @@ public class GameLog implements Serializable {
   };
 
   public static final Comparator<GameLog> SORT_BY_WHITE_PLAYER = new Comparator<GameLog>() {
-    @Override
     public int compare(GameLog g1, GameLog g2) { 
       String p1 = g1.getPlayer(GameLog.ATTR_WHITE_PLAYER);
       String p2 = g2.getPlayer(GameLog.ATTR_WHITE_PLAYER);      

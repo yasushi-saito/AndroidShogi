@@ -214,7 +214,7 @@ public class LogListManager {
     private void publishLogs(Collection<GameLog> logs) {
       final class GameLogReporter implements Runnable {
         Collection<GameLog> l;
-        @Override public void run() {
+        public void run() {
           mListener.onNewGameLogs(l); 
         }
       }
@@ -259,7 +259,7 @@ public class LogListManager {
 
       final class FinishReporter implements Runnable {
         ListLogsListener listener;
-        @Override public void run() { listener.onFinish(); }
+        public void run() { listener.onFinish(); }
       }
       FinishReporter r = new FinishReporter();
       r.listener = mListener;
@@ -268,7 +268,7 @@ public class LogListManager {
 
     private void scanDirectory(File downloadDir, LogList summary) {
       String[] files = downloadDir.list(new FilenameFilter(){
-        @Override public boolean accept(File dir, String filename) {
+        public boolean accept(File dir, String filename) {
           return isHtml(filename) || isKif(filename);
         }
       });
