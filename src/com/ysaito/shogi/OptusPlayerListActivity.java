@@ -1,8 +1,7 @@
-// Copyright 2011 Google Inc. All Rights Reserved.
-
 package com.ysaito.shogi;
 
 import android.app.ListActivity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -16,7 +15,7 @@ import java.io.InputStream;
  *
  */
 public class OptusPlayerListActivity extends ListActivity {
-  private static final String TAG = "OptusViewer";
+  private static final String TAG = "OptusPlayerList";
   private ExternalCacheManager mCache;
   private GenericListUpdater<OptusParser.Player> mUpdater;
   
@@ -24,21 +23,36 @@ public class OptusPlayerListActivity extends ListActivity {
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.game_log_list);
-    mCache = new ExternalCacheManager(getApplicationContext(), "optus");
+    mCache = ExternalCacheManager.getInstance(getApplicationContext(), "optus");
+    
+    String[] url = new String[1];
+    url[0] = OptusParser.KISI_URL;
     mUpdater = new GenericListUpdater<OptusParser.Player>(
         new MyEnv(),
-        getApplicationContext(),
-        OptusParser.KISI_URL,
+        this,
+        url,
         mCache,
         "@@player_list");
-    registerForContextMenu((ListView)findViewById(android.R.id.list));
+    registerForContextMenu(findViewById(android.R.id.list));
     setListAdapter(mUpdater.adapter());
     mUpdater.startListing();
   }
 
   private class MyEnv implements GenericListUpdater.Env<OptusParser.Player> {
+    // All calls to getListLabel() are from one thread, so share one builder.
+    final StringBuilder mBuilder = new StringBuilder();
+    
     @Override 
-    public String getListLabel(OptusParser.Player p) { return (p == null) ? "" : p.name; }
+    public String getListLabel(OptusParser.Player p) { 
+      if (p == null) return "";
+      
+      mBuilder.setLength(0);
+      mBuilder.append(p.name)
+      .append(" (")
+      .append(p.num_games)
+      .append(")");
+      return mBuilder.toString();
+    }
 
     @Override
     public OptusParser.Player[] listObjects(InputStream in) throws Throwable { return OptusParser.listPlayers(in); }
@@ -49,6 +63,9 @@ public class OptusPlayerListActivity extends ListActivity {
     OptusParser.Player player = mUpdater.getObjectAtPosition(position);
     if (player != null) {
       Log.d(TAG, "Click: " + player.name);
+      Intent intent = new Intent(this, OptusGameLogListActivity.class);
+      intent.putExtra("player", player);
+      startActivity(intent);
     }
   }
 }

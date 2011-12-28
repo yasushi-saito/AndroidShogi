@@ -82,6 +82,10 @@ public class GameLog implements Serializable {
     return mAttrs.get(key);
   }
 
+  /** 
+   * Return the local sdcard path in which the log is saved. Returns null if
+   * the log is not in sdcard. 
+   */
   public final File path() { return mPath; }
   
   /**
@@ -105,12 +109,7 @@ public class GameLog implements Serializable {
         for (int i = 0; i < mPlays.size(); ++i) {
           digest.update(mPlays.get(i).toString().getBytes());
         }
-        byte b[] = digest.digest();
-        StringBuffer hex = new StringBuffer();
-	for (int i = 0;i < b.length; i++) {
-	  hex.append(Integer.toHexString(b[i] & 0xff));
-	}        
-        mDigest = hex.toString();
+        mDigest = Util.bytesToHexText(digest.digest());
       } catch (NoSuchAlgorithmException e) {
         throw new AssertionError("MessageDigest.NoSuchAlgorithmException: " + e.getMessage());
       }
@@ -232,6 +231,8 @@ public class GameLog implements Serializable {
   /** 
    * Parse an embedded KIF file downloaded from http://wiki.optus.nu/.
    * Such a file can be created by saving a "テキスト表示" link directly to a file.
+   *
+   * @param path The path in which the file is stored. Can be null.
    */
   public static GameLog parseHtml(File path, InputStream stream) throws ParseException, IOException {
     BufferedReader reader = new BufferedReader(Util.inputStreamToReader(stream, "EUC-JP"));
@@ -321,7 +322,7 @@ public class GameLog implements Serializable {
     stream.close();
   }
   
-    /** 
+  /** 
    * Given a KIF file encoded in UTF-8, parse it. If this method doesn't throw 
    * an exception, it always return a non-null GameLog object.
    */
@@ -330,6 +331,10 @@ public class GameLog implements Serializable {
     return doParseKif(path, stream);
   }
   
+  /**
+   * @param path The local sdcard path in which the kif data is stored. Should
+   * be null if the data is not on sdcard.
+   */
   private static GameLog doParseKif(File path, Reader stream) throws ParseException, IOException {
     GameLog l = new GameLog();
     l.mPath = path;

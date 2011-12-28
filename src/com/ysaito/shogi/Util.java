@@ -55,4 +55,12 @@ public class Util {
     }
     return encoding;
   }
+  
+  public static String bytesToHexText(byte[] b) {
+    StringBuffer hex = new StringBuffer();
+    for (int i = 0;i < b.length; i++) {
+      hex.append(Integer.toHexString(b[i] & 0xff));
+    }        
+    return hex.toString();
+  }
 }

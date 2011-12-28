@@ -109,7 +109,8 @@ public class OptusParser {
       // (4) date (YYYY-MM-DD)
       // (5) opening moves
       LogRef l = new LogRef();
-      l.href = log.child(0).attr("href");
+      l.href = log.child(0).child(0).attr("href");
+      Log.d(TAG, "LOGX=" + log.html() + ": " + l.href);
       l.tournament = log.child(1).text();
       l.blackPlayer = log.child(2).text();
       l.whitePlayer = log.child(3).text();

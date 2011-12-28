@@ -1,10 +1,11 @@
 package com.ysaito.shogi;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.net.URL;
+import java.util.ArrayList;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.util.Log;
@@ -16,28 +17,10 @@ import android.widget.TextView;
 
 public class GenericListUpdater<T> {
   private static final String TAG = "GenericListUpdater";
-  private static final int MAX_CACHE_STALENESS_MS = 7200 * 1000; // 2h
   
   public interface Env<T> {
     String getListLabel(T obj);
     T[] listObjects(InputStream in) throws Throwable;
-  };
-  
-  static private TextView getTextView(
-      LayoutInflater inflater, 
-      View convertView, 
-      ViewGroup parent,
-      String message) {
-    TextView text;
-    if (convertView == null) {
-      text = (TextView)inflater.inflate(android.R.layout.simple_list_item_1, parent, false);
-      text.setTextSize(18);
-      text.setHorizontallyScrolling(true);
-    } else {
-      text = (TextView)convertView;
-    }
-    text.setText(message);
-    return text;
   }
   
   private class MyAdapter extends BaseAdapter {
@@ -52,9 +35,16 @@ public class GenericListUpdater<T> {
     @Override public Object getItem(int position) { return getObject(position); } 
     @Override public long getItemId(int position) { return position; }
     @Override public View getView(int position, View convertView, ViewGroup parent) {
-      return getTextView(
-          mInflater, convertView, parent,
-          mEnv.getListLabel(getObject(position)));
+      TextView text;
+      if (convertView == null) {
+        text = (TextView)mInflater.inflate(android.R.layout.simple_list_item_1, parent, false);
+        text.setTextSize(18);
+      } else {
+        text = (TextView)convertView;
+      }
+      text.setHorizontallyScrolling(false);
+      text.setText(mEnv.getListLabel(getObject(position)));
+      return text;
     }
 
     public void setObjects(T[] p) {
@@ -68,26 +58,34 @@ public class GenericListUpdater<T> {
     }
   }
   
+  private final Context mContext;
   private final MyAdapter mAdapter;
-  private final String mUrl;
+  private final String[] mUrls;
   private final Env<T> mEnv;
   private final ExternalCacheManager mCache;
   private final String mCacheKey;
   
   public GenericListUpdater(Env<T> env, 
       Context context,
-      String url,
+      String[] urls,
       ExternalCacheManager cache,
       String cacheKey) {
+    mContext = context;
     mAdapter = new MyAdapter(context);
-    mUrl = url;
+    mUrls = urls;
     mEnv = env; 
     mCache = cache;
     mCacheKey = cacheKey;
   }
 
+  private ProgressDialog mProgressDialog = null;
+  
   public BaseAdapter adapter() { return mAdapter; }
   public void startListing() {
+    mProgressDialog = ProgressDialog.show(
+        mContext,
+        "Please wait...", "Doing Extreme Calculations...", 
+        true);
     ListThread thread = new ListThread();
     thread.execute(0/*not used*/);
   }
@@ -96,30 +94,28 @@ public class GenericListUpdater<T> {
     return mAdapter.getObject(position);
   }
   
-  private static class CacheEntry<T> implements Serializable {
-    // The time the web page was fetched. Used to avoid accessing the page too frequently.
-    public long accessTime;
-    public T[] objects;
-  }
-  
-  private class ListThread extends AsyncTask<Integer, T[], String> {
+    private class ListThread extends AsyncTask<Integer, T[], String> {
     @Override
     protected String doInBackground(Integer... unused) {
       final long now = System.currentTimeMillis(); 
       try {
-        CacheEntry<T> cache_entry = (CacheEntry<T>)mCache.read(mCacheKey);
-        if (cache_entry != null) {
+        ExternalCacheManager.ReadResult r = mCache.read(mCacheKey);
+        if (r.obj != null) {
           Log.d(TAG, "Found cache");
-          publishProgress(cache_entry.objects);
+          publishProgress((T[])r.obj);
         }
-        if (cache_entry == null || now - cache_entry.accessTime >= MAX_CACHE_STALENESS_MS) {
-          if (cache_entry == null) cache_entry = new CacheEntry();
-          URL url = new URL(mUrl);
-          Log.d(TAG, "Start reading player list page");
-          cache_entry.objects = mEnv.listObjects(url.openStream());
-          cache_entry.accessTime = now;
-          publishProgress(cache_entry.objects);
-          mCache.write(mCacheKey, cache_entry);
+        if (r.needRefresh) {
+          ArrayList<T> aggr = new ArrayList<T>();
+          T[] objs = null;
+          for (int i = 0; i < mUrls.length; ++i) {
+            URL url = new URL(mUrls[i]);
+            Log.d(TAG, "Start reading player list page " + String.valueOf(i));
+            objs = mEnv.listObjects(url.openStream());
+            for (T obj : objs) aggr.add(obj);
+          }
+          objs = aggr.toArray(objs);
+          publishProgress(objs);
+          mCache.write(mCacheKey, objs);
         }
       } catch (Throwable e) {
         // TODO: show error on screen
@@ -132,6 +128,13 @@ public class GenericListUpdater<T> {
     protected void onProgressUpdate(T[]... players_list) {
       for (T[] p : players_list) {
         mAdapter.setObjects(p);  // TODO: just take the last list
+      }
+      if (mProgressDialog != null) {
+        mProgressDialog.dismiss();
+        
+        // Set to null so that the dialog will disappear on the first 
+        // call to this method.
+        mProgressDialog = null;
       }
     }
   }

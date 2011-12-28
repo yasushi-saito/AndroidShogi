@@ -36,6 +36,9 @@
         <activity android:name=".OptusPlayerListActivity"
                   android:label="@string/app_name">
         </activity>
+        <activity android:name=".OptusGameLogListActivity"
+                  android:label="@string/app_name">
+        </activity>
         <activity android:name=".ShogiPreferenceActivity"
                   android:label="@string/app_name">
         </activity>
