@@ -22,6 +22,7 @@ import java.util.ArrayList;
 public class OptusParser {
   private static final String TAG = "OptusParser";
   public static final String KISI_URL = "http://wiki.optus.nu/shogi/index.php?lan=jp&page=index_kisi";
+  public static final String LOG_LIST_BASE_URL = "http://wiki.optus.nu/shogi/";
   
   public interface PlayerListener {
     void added(Player[] players);
@@ -51,8 +52,7 @@ public class OptusParser {
    * @return List of players found in @p in. 
    * @throws IOException
    */
-  public static Player[] listPlayers(
-      InputStream in) throws IOException {
+  public static Player[] listPlayers(InputStream in) throws IOException {
     ArrayList<Player> players = new ArrayList<Player>();
     ArrayList<String> tmp_refs = new ArrayList<String>();
     String[] tmpString = new String[0];
@@ -82,5 +82,42 @@ public class OptusParser {
           tmp_refs.toArray(tmpString)));
     }
     return players.toArray(new Player[0]);
+  }
+  
+  public static class LogRef implements Serializable {
+    public String href;
+    public String tournament;
+    public String blackPlayer;
+    public String whitePlayer;
+    public String date;
+    public String openingMoves;  // 戦型
+  }
+  
+  public static LogRef[] listLogRefs(InputStream in) throws IOException {
+    ArrayList<LogRef> logs = new ArrayList<LogRef>();
+    byte[] contents = Util.streamToBytes(in);
+    Document doc = Jsoup.parse(
+        new ByteArrayInputStream(contents),
+        Util.detectEncoding(contents, null),
+        "http://www.example.com");
+    Elements log_list = doc.select("tr:has(td:containsOwn(kid)) ~ tr");
+    for (Element log : log_list) {
+      // (0) ref
+      // (1) tournament name
+      // (2) black player name
+      // (3) white player name
+      // (4) date (YYYY-MM-DD)
+      // (5) opening moves
+      LogRef l = new LogRef();
+      l.href = log.child(0).attr("href");
+      l.tournament = log.child(1).text();
+      l.blackPlayer = log.child(2).text();
+      l.whitePlayer = log.child(3).text();
+      l.date = log.child(4).text();
+      l.openingMoves = log.child(5).text();
+      logs.add(l);
+      Log.d(TAG, "LOG: " + log.html());
+    }
+    return logs.toArray(new LogRef[0]);
   }
 }

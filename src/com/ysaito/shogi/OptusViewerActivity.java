@@ -54,7 +54,7 @@ public class OptusViewerActivity extends ListActivity {
       } else {
         text = (TextView)convertView;
       }
-      text.setTextSize(14);
+      text.setTextSize(18);
       text.setHorizontallyScrolling(true);
 
       if (position >= mPlayers.length) {

@@ -8,18 +8,22 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.Date;
 import java.util.HashMap;
 
 import android.content.Context;
 import android.util.Log;
 
+/**
+ * Class for managing a file system directory (Context.getCacheDir) as an LRU cache.
+ * This class is generally MT safe, except that the constructor must be called by the application's main 
+ * event loop thread, since it calls Context.getCacheDir, which doesn't look MT safe.
+ */
 public class ExternalCacheManager {
   private static final String TAG = "ExtenalCacheManager"; 
   private final File mDir;
   private final Context mContext;
   
-  // cache key -> last access time
+  // Cache key -> last access time
   private HashMap<String, Long> mLastAccessTimes;
   
   // The path where a serialized mLastAccessTimes is saved serialized.
@@ -73,7 +77,10 @@ public class ExternalCacheManager {
   }
   
   /**
-   * Write the mapping key -> obj to the cache.
+   * Write the mapping key -> obj to the cache. Errors (e.g., IOError) are simply ignored.
+   * 
+   * @param key The cache entry key. It is used as the filename in the cache dir, so it shall not contain 
+   * chars such as '/'.
    */
   public synchronized void write(String key, Serializable obj) {
     FileOutputStream data_out = null;
@@ -93,7 +100,8 @@ public class ExternalCacheManager {
   }
   
   /**
-   * If object for "key" is in the cache, return it. Else, or in case of an I/O error, return null.
+   * If object for "key" is in the cache, return it. Else, or in case of an error (e.g., IOError)
+   * return null.
    */
   public synchronized Object read(String key) {
     FileInputStream data_in = null;
