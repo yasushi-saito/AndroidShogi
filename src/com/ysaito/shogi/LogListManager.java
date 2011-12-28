@@ -47,7 +47,7 @@ public class LogListManager {
   public static class UndoToken {
     public enum Op {  // the operation to undo 
       DELETED  // the log was deleted (the undo will restore the log)
-    };
+    }
     public UndoToken(Op o, GameLog l) { op = o; log = l; }
     public final Op op;
     public final GameLog log;
@@ -74,7 +74,7 @@ public class LogListManager {
   public enum Mode {
     READ_SDCARD_SUMMARY,
     RESET_SDCARD_SUMMARY,
-  };
+  }
 
   private class Work {
     private final Handler mHandler = new Handler();
@@ -213,14 +213,14 @@ public class LogListManager {
     
     private void publishLogs(Collection<GameLog> logs) {
       final class GameLogReporter implements Runnable {
-        Collection<GameLog> logs;
-        public void run() {
-          mListener.onNewGameLogs(logs); 
+        Collection<GameLog> l;
+        @Override public void run() {
+          mListener.onNewGameLogs(l); 
         }
       }
 
       GameLogReporter r = new GameLogReporter();
-      r.logs = logs;
+      r.l = logs;
       post(r);
     }
 
@@ -259,7 +259,7 @@ public class LogListManager {
 
       final class FinishReporter implements Runnable {
         ListLogsListener listener;
-        public void run() { listener.onFinish(); }
+        @Override public void run() { listener.onFinish(); }
       }
       FinishReporter r = new FinishReporter();
       r.listener = mListener;
@@ -268,7 +268,7 @@ public class LogListManager {
 
     private void scanDirectory(File downloadDir, LogList summary) {
       String[] files = downloadDir.list(new FilenameFilter(){
-        public boolean accept(File dir, String filename) {
+        @Override public boolean accept(File dir, String filename) {
           return isHtml(filename) || isKif(filename);
         }
       });

@@ -6,15 +6,17 @@ import android.content.res.Resources;
 import android.test.InstrumentationTestCase;
 import android.util.Log;
 
-import com.ysaito.shogi.KifuDatabasePlayerListParser;
+import com.ysaito.shogi.OptusParser;
+import com.ysaito.shogi.OptusParser.Player;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 
 /**
  * @author saito@google.com (Yaz Saito)
  *
  */
-public class KifuDatabasePlayerListParserTest extends InstrumentationTestCase {
+public class OptusParserTest extends InstrumentationTestCase {
   static final String TAG = "Test";
   
   private InputStream openRawFile(int resource_id) {
@@ -22,11 +24,11 @@ public class KifuDatabasePlayerListParserTest extends InstrumentationTestCase {
     return resources.openRawResource(resource_id);
   }
 
-  public void testParse() throws Throwable {
+  public void testKisiParse() throws Throwable {
     Log.d(TAG, "testParse");
     InputStream in = openRawFile(R.raw.optus_kisi);
-    KifuDatabasePlayerListParser.Player[] players = 
-        KifuDatabasePlayerListParser.parse(in);
+    OptusParser.Player[] players = OptusParser.listPlayers(in);
+              
     assertEquals("愛達治", players[0].name);
     assertEquals(41, players[0].num_games);
     assertEquals(1, players[0].hrefs.length, 1);

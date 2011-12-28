@@ -63,4 +63,6 @@
     <string name="log_save_format">棋譜記録フォーマット</string>    
     <string name="human_player_name">ユーザ名</string>
     <string name="default_human_player_name">人</string>
+    <string name="visit_optus">棋譜DB</string>
+
 </resources>

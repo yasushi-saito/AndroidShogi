@@ -1,5 +1,6 @@
 package com.ysaito.shogi;
 
+
 import android.util.Log;
 
 import org.jsoup.Jsoup;
@@ -12,17 +13,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 
-/*
-import org.xml.sax.InputSource;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathFactory;
-*/
-public class KifuDatabasePlayerListParser {
-  private static final String TAG = "KifuPlayerList";
+/**
+ * Class for parsing web pages at http://wiki.optus.nu, aka Kifu database.
+ * 
+ * @author saito@google.com (Yaz Saito)
+ */
+public class OptusParser {
+  private static final String TAG = "OptusParser";
+  public static final String KISI_URL = "http://wiki.optus.nu/shogi/index.php?lan=jp&page=index_kisi";
+  
+  public interface PlayerListener {
+    void added(Player[] players);
+    void deleted(String[] player_names);
+  }
   
   public static class Player {
     public Player(String n, int g, String[] refs) {
@@ -32,11 +35,23 @@ public class KifuDatabasePlayerListParser {
     }
     
     public final String name;
+    
+    // Total # of games played by this player.
     public final int num_games;
+    
+    // List of href links of the games played by this player. 
     public final String[] hrefs;
   }
   
-  public static Player[] parse(InputStream in) throws IOException {
+  /**
+   * List players in KISI_URL.
+   *   
+   * @param in Contents of web page KISI_URL. @p in will be closed by this method.
+   * @return List of players found in @p in. 
+   * @throws IOException
+   */
+  public static Player[] listPlayers(
+      InputStream in) throws IOException {
     ArrayList<Player> players = new ArrayList<Player>();
     ArrayList<String> tmp_refs = new ArrayList<String>();
     String[] tmpString = new String[0];
@@ -46,7 +61,6 @@ public class KifuDatabasePlayerListParser {
         new ByteArrayInputStream(contents),
         Util.detectEncoding(contents, null),
         "http://www.example.com");
-    Log.d(TAG, "Parsed");
     Elements player_list = doc.select("tr:has(td:containsOwn(名前)) ~ tr");
     
     for (Element player : player_list) {

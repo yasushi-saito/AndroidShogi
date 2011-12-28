@@ -45,19 +45,19 @@ public class GameLogListActivity extends ListActivity  {
       mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
     }
 
-    public int getCount() {
+    @Override public int getCount() {
       return mLogs.size();
     }
 
-    public Object getItem(int position) {
+    @Override public Object getItem(int position) {
+      return null;
+    }
+
+    @Override public long getItemId(int position) {
       return position;
     }
 
-    public long getItemId(int position) {
-      return position;
-    }
-
-    public View getView(int position, View convertView, ViewGroup parent) {
+    @Override public View getView(int position, View convertView, ViewGroup parent) {
       TextView text;
 
       if (convertView == null) {
@@ -146,13 +146,13 @@ public class GameLogListActivity extends ListActivity  {
     
     LogListManager.getSingletonInstance().listLogs(
         new LogListManager.ListLogsListener() {
-          public void onNewGameLogs(Collection<GameLog> logs) {
+          @Override public void onNewGameLogs(Collection<GameLog> logs) {
             if (mLogs.addAll(logs)) {
               mLogsSorted = false;
               mAdapter.notifyDataSetChanged();
             }
           }
-          public void onFinish() { mAdapter.notifyDataSetChanged(); }
+          @Override public void onFinish() { mAdapter.notifyDataSetChanged(); }
         },
         this,
         mode);
@@ -170,7 +170,7 @@ public class GameLogListActivity extends ListActivity  {
       return;
     }
     Intent intent = new Intent(this, ReplayGameActivity.class);
-    Serializable ss = (Serializable)log;
+    Serializable ss = log;
     intent.putExtra("gameLog", ss);
     startActivity(intent);
   }
@@ -237,6 +237,7 @@ public class GameLogListActivity extends ListActivity  {
       if (log != null) { 
         LogListManager.getSingletonInstance().deleteLog(
             new LogListManager.DeleteLogListener() {
+              @Override 
               public void onFinish(LogListManager.UndoToken undoToken) {
                 if (undoToken != null) { // no error happened
                   addUndoToken(undoToken);
@@ -254,7 +255,9 @@ public class GameLogListActivity extends ListActivity  {
       if (log != null) {
         LogListManager.getSingletonInstance().saveLogInSdcard(
             new LogListManager.TrivialListener() {
-              public void onFinish() { startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY); }
+              @Override public void onFinish() { 
+                startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY); 
+              }
             },
             this,
             log);
@@ -270,6 +273,7 @@ public class GameLogListActivity extends ListActivity  {
         .setTitle(R.string.game_log_properties)
         .setView(view)
         .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+          @Override 
           public void onClick(DialogInterface dialog, int whichButton) { }
         }).create().show();
       }
@@ -298,7 +302,9 @@ public class GameLogListActivity extends ListActivity  {
         final LogListManager.UndoToken undo = mUndoTokens.remove(lastIndex);
         LogListManager.getSingletonInstance().undo(
             new LogListManager.TrivialListener() {
-              public void onFinish() { startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY); }
+              @Override public void onFinish() { 
+                startListLogs(LogListManager.Mode.READ_SDCARD_SUMMARY); 
+              }
             },
             this,
             undo);
