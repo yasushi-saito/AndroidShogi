@@ -21,17 +21,18 @@ public class GenericListUpdater<T> {
   public interface Env<T> {
     String getListLabel(T obj);
     T[] listObjects(InputStream in) throws Throwable;
+    void startProgressAnimation();
+    void stopProgressAnimation();
   }
   
   private class MyAdapter extends BaseAdapter {
     private final LayoutInflater mInflater;
-    private T[] mObjects;
+    private ArrayList<T> mObjects = new ArrayList<T>();
     
     public MyAdapter(Context context) { 
       mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE); 
-      mObjects = null;
     }
-    @Override public int getCount() { return mObjects == null ? 0 : mObjects.length; }
+    @Override public int getCount() { return mObjects.size(); }
     @Override public Object getItem(int position) { return getObject(position); } 
     @Override public long getItemId(int position) { return position; }
     @Override public View getView(int position, View convertView, ViewGroup parent) {
@@ -48,13 +49,19 @@ public class GenericListUpdater<T> {
     }
 
     public void setObjects(T[] p) {
-      mObjects = p;
+      mObjects.clear();
+      addObjects(p);
+    }
+    
+    public void addObjects(T[] p) {
+      mObjects.ensureCapacity(mObjects.size() + p.length);
+      for (T obj : p) mObjects.add(obj);
       notifyDataSetChanged();
     }
     
     public T getObject(int position) {
-      if (mObjects == null || position >= mObjects.length) return null;
-      return mObjects[position];
+      if (mObjects == null || position >= mObjects.size()) return null;
+      return mObjects.get(position);
     }
   }
   
@@ -79,22 +86,28 @@ public class GenericListUpdater<T> {
   }
 
   private ProgressDialog mProgressDialog = null;
-  
   public BaseAdapter adapter() { return mAdapter; }
   public void startListing() {
-    mProgressDialog = ProgressDialog.show(
-        mContext,
-        "Please wait...", "Doing Extreme Calculations...", 
-        true);
     ListThread thread = new ListThread();
+    mEnv.startProgressAnimation();
     thread.execute(0/*not used*/);
   }
 
   public T getObjectAtPosition(int position) {
     return mAdapter.getObject(position);
   }
+
+  private static class ListingStatus<T> {
+    public ListingStatus(T[] o, boolean d) {
+      objects = o;
+      deleteExistingObjects = d;
+    }
+    
+    public final T[] objects;
+    public final boolean deleteExistingObjects;
+  }
   
-    private class ListThread extends AsyncTask<Integer, T[], String> {
+  private class ListThread extends AsyncTask<Integer, ListingStatus<T>, String> {
     @Override
     protected String doInBackground(Integer... unused) {
       final long now = System.currentTimeMillis(); 
@@ -102,20 +115,29 @@ public class GenericListUpdater<T> {
         ExternalCacheManager.ReadResult r = mCache.read(mCacheKey);
         if (r.obj != null) {
           Log.d(TAG, "Found cache");
-          publishProgress((T[])r.obj);
+          publishProgress(new ListingStatus<T>((T[])r.obj, false));
         }
         if (r.needRefresh) {
-          ArrayList<T> aggr = new ArrayList<T>();
+          ArrayList<T> aggregate = new ArrayList<T>();
           T[] objs = null;
           for (int i = 0; i < mUrls.length; ++i) {
             URL url = new URL(mUrls[i]);
             Log.d(TAG, "Start reading player list page " + String.valueOf(i));
             objs = mEnv.listObjects(url.openStream());
-            for (T obj : objs) aggr.add(obj);
+            for (T obj: objs) aggregate.add(obj);
+            if (r.obj == null) {
+              publishProgress(new ListingStatus<T>(objs, false));
+            } else {
+              // If the screet was already filled with a stale cache,
+              // buffer the new contents until it is complete, so that
+              // we don't have delete the screen contents midway.
+            } 
           }
-          objs = aggr.toArray(objs);
-          publishProgress(objs);
+          objs = aggregate.toArray(objs);
           mCache.write(mCacheKey, objs);
+          if (r.obj != null) {
+            publishProgress(new ListingStatus<T>(objs, true));
+          }
         }
       } catch (Throwable e) {
         // TODO: show error on screen
@@ -125,17 +147,19 @@ public class GenericListUpdater<T> {
     }
     
     @Override
-    protected void onProgressUpdate(T[]... players_list) {
-      for (T[] p : players_list) {
-        mAdapter.setObjects(p);  // TODO: just take the last list
+    protected void onProgressUpdate(ListingStatus<T>... list) {
+      for (ListingStatus<T> status : list) {
+        if (status.deleteExistingObjects) {
+          mAdapter.setObjects(status.objects);
+        } else {
+          mAdapter.addObjects(status.objects);
+       } 
       }
-      if (mProgressDialog != null) {
-        mProgressDialog.dismiss();
-        
-        // Set to null so that the dialog will disappear on the first 
-        // call to this method.
-        mProgressDialog = null;
-      }
+    }
+    
+    @Override
+    protected void onPostExecute(String unused) {
+      mEnv.stopProgressAnimation();
     }
   }
 }

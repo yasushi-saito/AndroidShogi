@@ -8,7 +8,10 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
 import android.widget.ListView;
+import android.widget.TextView;
+
 import java.io.InputStream;
 import java.io.Serializable;
 import java.net.URL;
@@ -26,14 +29,25 @@ public class OptusGameLogListActivity extends ListActivity {
   private ExternalCacheManager mCache;
   private GenericListUpdater<OptusParser.LogRef> mUpdater;
   private OptusParser.Player mPlayer;
+  private View mProgressBar;
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    boolean supportsCustomTitle = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
     mPlayer = (OptusParser.Player)getIntent().getExtras().getSerializable("player");
-    setTitle(mPlayer.name);
     Log.d(TAG, "PLAIER=" + mPlayer.name);
     setContentView(R.layout.game_log_list);
+
+    if (supportsCustomTitle) {
+      getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.title_bar_with_progress);
+      TextView titleView = (TextView)findViewById(R.id.title_bar_with_progress_title);
+      titleView.setText(mPlayer.name);
+      mProgressBar = findViewById(R.id.title_bar_with_progress_progress);
+    } else {
+      setTitle(mPlayer.name);
+    }
+    
     mCache = ExternalCacheManager.getInstance(getApplicationContext(), "optus");
     
     String[] urls = new String[mPlayer.hrefs.length];
@@ -79,6 +93,14 @@ public class OptusGameLogListActivity extends ListActivity {
     public OptusParser.LogRef[] listObjects(InputStream in) throws Throwable { 
       return OptusParser.listLogRefs(in); 
     }
+    
+    @Override public void startProgressAnimation() {
+      if (mProgressBar != null) mProgressBar.setVisibility(View.VISIBLE);
+    }
+    
+    @Override public void stopProgressAnimation() {
+      if (mProgressBar != null) mProgressBar.setVisibility(View.INVISIBLE);
+    }
   }
   
   private ProgressDialog mProgressDialog = null;
@@ -107,7 +129,7 @@ public class OptusGameLogListActivity extends ListActivity {
       throw new AssertionError("MessageDigest.NoSuchAlgorithmException: " + e.getMessage());
     }
   }
-  
+
   /**
    * A thread for downloading a game log from the optus web site. Once the 
    * downloading completes, start an activity to replay the game. 

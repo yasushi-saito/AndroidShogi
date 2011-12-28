@@ -5,7 +5,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
 import android.widget.ListView;
+import android.widget.TextView;
+
 import java.io.InputStream;
 
 /**
@@ -18,11 +21,22 @@ public class OptusPlayerListActivity extends ListActivity {
   private static final String TAG = "OptusPlayerList";
   private ExternalCacheManager mCache;
   private GenericListUpdater<OptusParser.Player> mUpdater;
+  private View mProgressBar;
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    boolean supportsCustomTitle = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
     setContentView(R.layout.game_log_list);
+    if (supportsCustomTitle) {
+      getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.title_bar_with_progress);
+      TextView titleView = (TextView)findViewById(R.id.title_bar_with_progress_title);
+      titleView.setText("Player list");
+      mProgressBar = findViewById(R.id.title_bar_with_progress_progress);
+    } else {
+      setTitle("Player list");
+    }
+    
     mCache = ExternalCacheManager.getInstance(getApplicationContext(), "optus");
     
     String[] url = new String[1];
@@ -56,6 +70,14 @@ public class OptusPlayerListActivity extends ListActivity {
 
     @Override
     public OptusParser.Player[] listObjects(InputStream in) throws Throwable { return OptusParser.listPlayers(in); }
+    
+    @Override public void startProgressAnimation() {
+      if (mProgressBar != null) mProgressBar.setVisibility(View.VISIBLE);
+    }
+    
+    @Override public void stopProgressAnimation() {
+      if (mProgressBar != null) mProgressBar.setVisibility(View.INVISIBLE);
+    }
   }
   
   @Override 
