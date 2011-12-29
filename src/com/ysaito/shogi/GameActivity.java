@@ -185,6 +185,7 @@ public class GameActivity extends Activity {
     b.putSerializable("shogi_move_cookies", mMoveCookies);
   }
   
+  @SuppressWarnings(value="unchecked")
   private final void initializeInstanceState(Bundle b) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(
         getBaseContext());

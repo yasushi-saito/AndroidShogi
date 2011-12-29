@@ -4,6 +4,9 @@ import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.widget.ListView;
@@ -49,9 +52,25 @@ public class OptusPlayerListActivity extends ListActivity {
         "@@player_list");
     registerForContextMenu(findViewById(android.R.id.list));
     setListAdapter(mUpdater.adapter());
-    mUpdater.startListing();
+    mUpdater.startListing(GenericListUpdater.MAY_READ_FROM_CACHE);
   }
 
+  @Override 
+  public boolean onCreateOptionsMenu(Menu menu) {
+    MenuInflater inflater = getMenuInflater();
+    inflater.inflate(R.menu.optus_list_option_menu, menu);
+    return true;
+  }
+  
+  @Override public boolean onOptionsItemSelected(MenuItem item) {
+    switch (item.getItemId()) {
+    case R.id.menu_reload:
+      mUpdater.startListing(GenericListUpdater.FORCE_RELOAD);
+      return true;
+    }
+    return false;
+  }
+  
   private class MyEnv implements GenericListUpdater.Env<OptusParser.Player> {
     // All calls to getListLabel() are from one thread, so share one builder.
     final StringBuilder mBuilder = new StringBuilder();

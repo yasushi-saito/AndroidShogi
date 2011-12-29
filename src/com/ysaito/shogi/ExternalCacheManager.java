@@ -22,7 +22,7 @@ public class ExternalCacheManager {
   private static final String TAG = "ExtenalCacheManager"; 
   private final File mDir;
   private final Context mContext;
-  private static final int MAX_CACHE_STALENESS_MS = 7200 * 1000; // 2h
+  private static final int MAX_CACHE_STALENESS_MS = 7 * 24 * 3600 * 1000; // 1 week
   
   // Cache key -> last access time
   private HashMap<String, Long> mLastAccessTimes;
@@ -54,6 +54,7 @@ public class ExternalCacheManager {
   
   // TODO: add background purging
   
+  @SuppressWarnings(value="unchecked")
   private ExternalCacheManager(Context context, String id) {
     mContext = context;
     mDir = new File(context.getCacheDir(), id);

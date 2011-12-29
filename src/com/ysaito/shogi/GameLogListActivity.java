@@ -132,6 +132,7 @@ public class GameLogListActivity extends ListActivity  {
     mAdapter = new MyAdapter(this);
     
     ListView listView = (ListView)findViewById(android.R.id.list);
+    listView.setStackFromBottom(true);
     registerForContextMenu(listView);
     
     // Use an existing ListAdapter that will map an array

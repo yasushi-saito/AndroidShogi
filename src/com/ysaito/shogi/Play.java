@@ -266,14 +266,11 @@ public class Play implements java.io.Serializable {
       modifier |= myMoveDir;
       
       boolean hasPieceWithSameMoveDir = false;
-      int otherMoveDirs = 0;
       for (Board.Position p: others) {
         int dir = moveDirection(board, p.x, p.y, mToX, mToY);
         if (dir == myMoveDir) {
           hasPieceWithSameMoveDir = true;
-        } else {
-          otherMoveDirs |= dir;
-        }
+        } 
       }
       
       if (!hasPieceWithSameMoveDir) {

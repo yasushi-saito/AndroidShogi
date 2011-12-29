@@ -7,6 +7,9 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.widget.ListView;
@@ -60,12 +63,27 @@ public class OptusGameLogListActivity extends ListActivity {
         urls,
         mCache,
         mPlayer.name);
-    ListView v = (ListView)findViewById(android.R.id.list);
     registerForContextMenu(findViewById(android.R.id.list));
     setListAdapter(mUpdater.adapter());
-    mUpdater.startListing();
+    mUpdater.startListing(GenericListUpdater.MAY_READ_FROM_CACHE);
   }
 
+  @Override 
+  public boolean onCreateOptionsMenu(Menu menu) {
+    MenuInflater inflater = getMenuInflater();
+    inflater.inflate(R.menu.optus_list_option_menu, menu);
+    return true;
+  }
+  
+  @Override public boolean onOptionsItemSelected(MenuItem item) {
+    switch (item.getItemId()) {
+    case R.id.menu_reload:
+      mUpdater.startListing(GenericListUpdater.FORCE_RELOAD);
+      return true;
+    }
+    return false;
+  }
+  
   private class MyEnv implements GenericListUpdater.Env<OptusParser.LogRef> {
     // All calls to getListLabel() are from one thread, so share one builder.
     final StringBuilder mBuilder = new StringBuilder();
@@ -113,7 +131,7 @@ public class OptusGameLogListActivity extends ListActivity {
       mProgressDialog = ProgressDialog.show(
           this,
           "",
-          "Doing Extreme Calculations...", 
+          getResources().getString(R.string.fetching_game_log),
           true);
       LogDownloadThread thread = new LogDownloadThread(this);
       thread.execute(log);
@@ -150,7 +168,6 @@ public class OptusGameLogListActivity extends ListActivity {
       mLogRef = logRefs[0];
       String text_href = OptusParser.LOG_LIST_BASE_URL + mLogRef.href.replace("cmds=display", "cmds=displaytxt");
       
-      final long now = System.currentTimeMillis();
       final String cacheKey = arbitraryTextToCacheKey(text_href);
       GameLog log = null;
       try {

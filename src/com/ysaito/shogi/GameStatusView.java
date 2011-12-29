@@ -33,8 +33,6 @@ public class GameStatusView extends LinearLayout {
     private long mLastThinkTimeSeconds;
   }
 
-  private static final String TAG = "ShogiStatus";
-  
   private TextView mGameStatus;
   private TextView mPlayHistory;
   private Timer mBlackTime;
