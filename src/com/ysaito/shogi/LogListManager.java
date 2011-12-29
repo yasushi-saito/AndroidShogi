@@ -177,7 +177,8 @@ public class LogListManager {
   private synchronized void maybeStartBackgroundThread() {
     if (mThread == null) {
       mThread = new Thread(
-          new Runnable() { public void run() { threadBody(); } },
+          new Runnable() { @Override
+          public void run() { threadBody(); } },
       "LogLister");
       mThread.start();
     }
@@ -214,6 +215,7 @@ public class LogListManager {
     private void publishLogs(Collection<GameLog> logs) {
       final class GameLogReporter implements Runnable {
         Collection<GameLog> l;
+        @Override
         public void run() {
           mListener.onNewGameLogs(l); 
         }
@@ -259,6 +261,7 @@ public class LogListManager {
 
       final class FinishReporter implements Runnable {
         ListLogsListener listener;
+        @Override
         public void run() { listener.onFinish(); }
       }
       FinishReporter r = new FinishReporter();
@@ -268,6 +271,7 @@ public class LogListManager {
 
     private void scanDirectory(File downloadDir, LogList summary) {
       String[] files = downloadDir.list(new FilenameFilter(){
+        @Override
         public boolean accept(File dir, String filename) {
           return isHtml(filename) || isKif(filename);
         }
@@ -333,6 +337,7 @@ public class LogListManager {
     private GameLog mLog;
 
     final class FinishReporter implements Runnable {
+      @Override
       public void run() { mListener.onFinish(); }
     }
     
@@ -384,6 +389,7 @@ public class LogListManager {
     private final UndoToken mUndo;
 
     final class FinishReporter implements Runnable {
+      @Override
       public void run() { mListener.onFinish(); }
     }
     
@@ -425,6 +431,7 @@ public class LogListManager {
     final class FinishReporter implements Runnable {
       UndoToken mUndoToken;
       FinishReporter(UndoToken undoToken) { mUndoToken = undoToken; }
+      @Override
       public void run() { mListener.onFinish(mUndoToken); }
     }
     
@@ -484,6 +491,7 @@ public class LogListManager {
         mActivity = a;
         mMessage = m;
       }
+      @Override
       public void run() {
         Toast.makeText(mActivity, mMessage, Toast.LENGTH_SHORT).show();
       }

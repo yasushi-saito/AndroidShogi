@@ -19,7 +19,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.io.File;
 import java.util.regex.Pattern;
@@ -156,7 +155,6 @@ public class StartScreenActivity extends Activity {
     .setIcon(android.R.drawable.ic_dialog_info)
     .setPositiveButton(R.string.visit_marketplace, new DialogInterface.OnClickListener() {
       public void onClick(DialogInterface dialog, int which) {
-        // TODO Auto-generated method stub
         Uri marketUri = Uri.parse(mMarketUri);
         Intent intent = new Intent(Intent.ACTION_VIEW).setData(marketUri);
         startActivity(intent);
@@ -169,10 +167,9 @@ public class StartScreenActivity extends Activity {
   private void newGame() {
     if (!hasRequiredFiles(mExternalDir)) {
       // Note: this shouldn't happen, since the button is disabled if !hasRequiredFiles
-      Toast.makeText(
+      Util.showErrorDialog(
           getBaseContext(),
-          "Please download the shogi database files first",
-          Toast.LENGTH_LONG).show();
+          "Please download the shogi database files first");
     } else {
       showDialog(DIALOG_NEW_GAME);
     }

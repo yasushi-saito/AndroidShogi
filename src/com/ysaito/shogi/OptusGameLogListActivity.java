@@ -16,7 +16,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import java.io.InputStream;
-import java.io.Serializable;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -39,7 +38,6 @@ public class OptusGameLogListActivity extends ListActivity {
     super.onCreate(savedInstanceState);
     boolean supportsCustomTitle = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
     mPlayer = (OptusParser.Player)getIntent().getExtras().getSerializable("player");
-    Log.d(TAG, "PLAIER=" + mPlayer.name);
     setContentView(R.layout.game_log_list);
 
     if (supportsCustomTitle) {
@@ -148,11 +146,16 @@ public class OptusGameLogListActivity extends ListActivity {
     }
   }
 
+  private static class DownloadResult {
+    public GameLog log;
+    String error;  // null if ok
+  }
+  
   /**
    * A thread for downloading a game log from the optus web site. Once the 
    * downloading completes, start an activity to replay the game. 
    */
-  private class LogDownloadThread extends AsyncTask<OptusParser.LogRef, String/*notused*/, GameLog> {
+  private class LogDownloadThread extends AsyncTask<OptusParser.LogRef, String/*notused*/, DownloadResult> {
     private final Activity mActivity;
     private OptusParser.LogRef mLogRef;
     
@@ -162,43 +165,43 @@ public class OptusGameLogListActivity extends ListActivity {
     }
         
     @Override
-    protected GameLog doInBackground(OptusParser.LogRef... logRefs) {
+    protected DownloadResult doInBackground(OptusParser.LogRef... logRefs) {
       // The default href link will show Java applet screen.
       // Replacing display with displaytxt will show the log in KIF-format text.
       mLogRef = logRefs[0];
       String text_href = OptusParser.LOG_LIST_BASE_URL + mLogRef.href.replace("cmds=display", "cmds=displaytxt");
       
       final String cacheKey = arbitraryTextToCacheKey(text_href);
-      GameLog log = null;
+      DownloadResult dr = new DownloadResult();
       try {
         ExternalCacheManager.ReadResult r = mCache.read(cacheKey);
         if (r.obj != null) {
           Log.d(TAG, "Found cache");
-          log = (GameLog)r.obj;
+          dr.log = (GameLog)r.obj;
         }
         if (r.needRefresh) {
           URL url = new URL(text_href);
           Log.d(TAG, "Start reading " + text_href);
-          log = GameLog.parseHtml(null/*no local storage*/, url.openStream());
-          mCache.write(cacheKey, log);
+          dr.log = GameLog.parseHtml(null/*no local storage*/, url.openStream());
+          mCache.write(cacheKey, dr.log);
         }
       } catch (Throwable e) {
-        // TODO: show error on screen
-        Log.d(TAG, "Failed to download log: " + e.toString());
+        Log.d(TAG, "Failed to download log: " + e.getMessage());
+        dr.error = "Failed to download log: " + e.getMessage();
       }
-      return log;
+      return dr;
     }
     
     @Override
-    protected void onPostExecute(GameLog log) {
+    protected void onPostExecute(DownloadResult dr) {
       if (mProgressDialog != null) {
         mProgressDialog.dismiss();
         mProgressDialog = null;
       }
-      if (log != null) {
+      if (dr.error != null) Util.showErrorDialog(getBaseContext(), dr.error);
+      if (dr.log != null) {
         Intent intent = new Intent(mActivity, ReplayGameActivity.class);
-        Serializable ss = log;
-        intent.putExtra("gameLog", ss);
+        intent.putExtra("gameLog", dr.log);
         mActivity.startActivity(intent);
       }
     }

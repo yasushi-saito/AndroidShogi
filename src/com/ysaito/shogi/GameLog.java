@@ -29,8 +29,6 @@ import android.util.Log;
 /**
  * GameLog stores the log of a single game, along with its attributes, such as the date and time of the game 
  * and the names of the players.
- * 
- * TODO: remember the source filename
  */
 public class GameLog implements Serializable {
   private static final String TAG = "GameLog";

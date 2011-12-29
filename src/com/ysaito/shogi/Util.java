@@ -4,6 +4,10 @@ package com.ysaito.shogi;
 
 import org.mozilla.universalchardet.UniversalDetector;
 
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -62,5 +66,24 @@ public class Util {
       hex.append(Integer.toHexString(b[i] & 0xff));
     }        
     return hex.toString();
+  }
+  
+  public static String throwableToString(Throwable e) {
+    StringBuilder b = new StringBuilder();
+    b.append(e.toString()).append("\n");
+    for (StackTraceElement elem : e.getStackTrace()) {
+      b.append(elem.toString()).append("\n");
+    }
+    return b.toString();
+  }
+  
+  public static void showErrorDialog(Context context, String error) {
+    AlertDialog.Builder b = new AlertDialog.Builder(context);
+    b.setMessage(error)
+    .setCancelable(false)
+    .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+      public void onClick(DialogInterface dialog, int id) {  };
+    });
+    b.create().show();
   }
 }

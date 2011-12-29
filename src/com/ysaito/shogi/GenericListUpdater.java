@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -15,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class GenericListUpdater<T> {
   private static final String TAG = "GenericListUpdater";
@@ -118,9 +121,10 @@ public class GenericListUpdater<T> {
   
   private class ParallelFetcher {
     private ExecutorService mThreads;
-    ArrayList<T[]> mResults;
-    boolean[] mDone;
-    int mNextIndexToRead;
+    private ArrayList<T[]> mResults;
+    private boolean[] mDone;
+    private int mNextIndexToRead;
+    private String mError;
     
     public ParallelFetcher(String[] urls) {
       mNextIndexToRead = 0;
@@ -134,7 +138,9 @@ public class GenericListUpdater<T> {
         mThreads.submit(new Fetcher(i, urls[i]));
       }
     }
-
+    
+    public synchronized String error() { return mError; }
+    
     public void shutdown() {
       mThreads.shutdown();
     }
@@ -159,6 +165,10 @@ public class GenericListUpdater<T> {
       notify();
     }
     
+    private synchronized void setError(String e) {
+      if (mError == null) mError = e;
+    }
+    
     private class Fetcher implements Runnable {
       final int mIndex;
       final String mUrl;
@@ -177,6 +187,7 @@ public class GenericListUpdater<T> {
             objs = mEnv.listObjects(url.openStream());
           } catch (Throwable e) {
             Log.d(TAG, "Failed to download " + mUrl + ": " + e.toString());
+            setError(Util.throwableToString(e));
           }
         } finally {
           yieldResult(mIndex, objs);
@@ -184,11 +195,17 @@ public class GenericListUpdater<T> {
       }
     }
   }
+  
+  /**
+   * @param mode either FORCE_RELOAD or MAY_READ_FROM_CACHE
+   * 
+   * @return an error message, or null on success
+   */
   private class ListThread extends AsyncTask<Integer, ListingStatus<T>, String> {
     @Override
     protected String doInBackground(Integer... mode) {
+      ParallelFetcher fetcher = null;
       try {
-        ParallelFetcher fetcher = null;
         try {
           ExternalCacheManager.ReadResult r;
           if (mode[0] == FORCE_RELOAD) {
@@ -197,7 +214,8 @@ public class GenericListUpdater<T> {
           } else {
             r = mCache.read(mCacheKey);
           }
-          if (r.obj != null) {
+          final boolean hitCache = (r.obj != null); 
+          if (hitCache) {
             Log.d(TAG, "Found cache");
             publishProgress(new ListingStatus<T>((T[])r.obj, false));
           }
@@ -207,30 +225,38 @@ public class GenericListUpdater<T> {
             fetcher = new ParallelFetcher(mUrls);
             for (int i = 0; i < mUrls.length; ++i) {
               objs = fetcher.next();
-              for (T obj: objs) aggregate.add(obj);
-              if (r.obj == null) {
-                publishProgress(new ListingStatus<T>(objs, false));
-              } else {
-                // If the screet was already filled with a stale cache,
-                // buffer the new contents until it is complete, so that
-                // we don't have delete the screen contents midway.
-              } 
+              if (objs != null) {
+                for (T obj: objs) aggregate.add(obj);
+                if (!hitCache) {
+                  // Incrementally update the screen as results arrive
+                  publishProgress(new ListingStatus<T>(objs, false));
+                } else {
+                  // If the screet was already filled with a stale cache,
+                  // buffer the new contents until it is complete, so that
+                  // we don't have delete the screen contents midway.
+                } 
+              }
             }
-            fetcher.shutdown();
-            objs = aggregate.toArray(objs);
-            mCache.write(mCacheKey, objs);
-            if (r.obj != null) {
-              publishProgress(new ListingStatus<T>(objs, true));
+            if (fetcher.error() == null) {
+              objs = aggregate.toArray(objs);
+              mCache.write(mCacheKey, objs);
+              if (hitCache) {
+                publishProgress(new ListingStatus<T>(objs, true));
+              }
             }
           }
         } finally {
           if (fetcher != null) fetcher.shutdown();
         }
       } catch (Throwable e) {
-        // TODO: show error on screen
-        return e.toString();
+        return Util.throwableToString(e);
       }
-      return "";
+      if (fetcher != null) {
+        return fetcher.error();
+      } else {
+        // shouldn't happen
+        return null;
+      }
     }
     
     @Override
@@ -245,8 +271,9 @@ public class GenericListUpdater<T> {
     }
     
     @Override
-    protected void onPostExecute(String unused) {
+    protected void onPostExecute(String error) {
       mEnv.stopProgressAnimation();
+      if (error != null) Util.showErrorDialog(mContext, error);
     }
   }
 }

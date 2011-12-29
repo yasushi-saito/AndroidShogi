@@ -74,7 +74,7 @@ public class ExternalCacheManager {
     } catch (FileNotFoundException e) {
       // ignore
     } catch (Throwable e) {
-      Log.d(TAG, SUMMARY_PATH + ": failed to read summary: " + e.toString());
+      Log.d(TAG, SUMMARY_PATH + ": failed to read summary: " + Util.throwableToString(e));
     }
   }
   
@@ -90,7 +90,7 @@ public class ExternalCacheManager {
       mLastAccessTimes = new HashMap<String, Long>();
       saveSummary();
     } catch (IOException e) {
-      Log.d(TAG, SUMMARY_PATH + ": Failed to clear cache: " + e.toString());
+      Log.d(TAG, SUMMARY_PATH + ": Failed to clear cache: " + Util.throwableToString(e));
     }
   }
 
@@ -122,7 +122,7 @@ public class ExternalCacheManager {
         if (data_out != null) data_out.close();
       }
     } catch (IOException e) {
-      Log.d(TAG, "Failed to write: " + e.toString());
+      Log.d(TAG, "Failed to write: " + Util.throwableToString(e));
     }
   }
   
@@ -157,7 +157,7 @@ public class ExternalCacheManager {
       }
     } catch (FileNotFoundException e) {
     } catch (Throwable e) {
-      Log.d(TAG, SUMMARY_PATH + ": failed to write: " + e.toString());
+      Log.d(TAG, SUMMARY_PATH + ": failed to write: " + Util.throwableToString(e));
     }
     return r;
   }
