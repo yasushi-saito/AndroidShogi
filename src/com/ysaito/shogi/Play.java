@@ -2,6 +2,7 @@
 
 package com.ysaito.shogi;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -10,7 +11,8 @@ import java.util.regex.Pattern;
 /**
  * A class representing a single play
  */
-public class Play implements java.io.Serializable {
+@SuppressWarnings("serial")
+public class Play implements Serializable {
   // Japanese move display support
   public static final String japaneseNumbers[] = {
     null, "一", "二", "三", "四", "五", "六", "七", "八", "九",    

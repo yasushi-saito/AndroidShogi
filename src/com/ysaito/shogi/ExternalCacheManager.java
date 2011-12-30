@@ -30,8 +30,7 @@ public class ExternalCacheManager {
   // The path where a serialized mLastAccessTimes is saved serialized.
   private static final String SUMMARY_PATH = "external_cache_summary";
 
-  private static final HashMap<String, ExternalCacheManager> mInstances =
-      new HashMap<String, ExternalCacheManager>();
+  private static ExternalCacheManager mInstance;
 
   /**
    * Create and return a process-wide cache instance. This method must be called by the
@@ -43,21 +42,20 @@ public class ExternalCacheManager {
    * It should be unique within the application, so that
    * multiple instances of this class can partition the per-application cache space.
    */
-  public static ExternalCacheManager getInstance(Context context, String id) {
-    ExternalCacheManager c = mInstances.get(id);
-    if (c == null) {
-      c = new ExternalCacheManager(context, id);
-      mInstances.put(id, c);
+  public static ExternalCacheManager getInstance(Context context) {
+    if (mInstance == null) {
+      mInstance = new ExternalCacheManager(context);
     }
-    return c;
+    Assert.isTrue(mInstance.mContext == context);
+    return mInstance;
   }
   
   // TODO: add background purging
   
   @SuppressWarnings(value="unchecked")
-  private ExternalCacheManager(Context context, String id) {
+  private ExternalCacheManager(Context context) {
     mContext = context;
-    mDir = new File(context.getCacheDir(), id);
+    mDir = context.getExternalCacheDir();
     mDir.mkdirs();
     Log.d(TAG, "CACHE=" + mDir.getAbsolutePath());
     mLastAccessTimes = new HashMap<String, Long>();
@@ -94,6 +92,7 @@ public class ExternalCacheManager {
     }
   }
 
+  @SuppressWarnings("serial") 
   private static class CacheEntry implements Serializable {
     long createMs;  // The time the entry was created. Millisec since the epoch
     Serializable obj;
@@ -165,8 +164,6 @@ public class ExternalCacheManager {
   private void saveSummary() throws IOException {
     FileOutputStream out = null;
     try {
-      if (mContext ==null) Log.d(TAG, "NULL");
-      else Log.d(TAG, "NONNULL:" + SUMMARY_PATH);
       out = mContext.openFileOutput(SUMMARY_PATH, Context.MODE_PRIVATE);
       new ObjectOutputStream(out).writeObject(mLastAccessTimes);
     } finally {

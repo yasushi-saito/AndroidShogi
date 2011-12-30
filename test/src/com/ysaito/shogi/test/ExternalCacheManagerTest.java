@@ -7,6 +7,7 @@ import com.ysaito.shogi.ExternalCacheManager;
 import android.test.InstrumentationTestCase;
 
 public class ExternalCacheManagerTest extends InstrumentationTestCase {
+  @SuppressWarnings("serial")
   private static class TestObject implements Serializable {
     public final int value;
     TestObject(int v) { value = v; }
@@ -28,7 +29,7 @@ public class ExternalCacheManagerTest extends InstrumentationTestCase {
   private ExternalCacheManager mCache = null;
   private ExternalCacheManager newCache() {
     if (mCache == null) {
-      mCache = ExternalCacheManager.getInstance(getInstrumentation().getTargetContext(), "test");
+      mCache = ExternalCacheManager.getInstance(getInstrumentation().getTargetContext());
     }
     mCache.clearAll();
     return mCache;

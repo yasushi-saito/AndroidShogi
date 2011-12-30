@@ -29,14 +29,14 @@ public class OptusParserTest extends InstrumentationTestCase {
     OptusParser.Player[] players = OptusParser.listPlayers(in);
               
     assertEquals("愛達治", players[0].name);
-    assertEquals(41, players[0].num_games);
+    assertEquals(41, players[0].numGames);
     assertEquals(1, players[0].hrefs.length, 1);
     assertEquals(        
         "index.php?page=53b22a79b9c0959b50e1c8d6df106233",
         players[0].hrefs[0]);
     assertEquals(390, players.length);
     assertEquals("和田印哲", players[389].name);
-    assertEquals(16, players[389].num_games);
+    assertEquals(16, players[389].numGames);
     assertEquals(1, players[389].hrefs.length, 1);
     assertEquals(
         "index.php?page=4c8c3a08dd738c13bedf2ef9604e09c1",

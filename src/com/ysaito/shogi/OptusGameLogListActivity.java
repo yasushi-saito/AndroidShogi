@@ -13,12 +13,13 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import java.io.InputStream;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Comparator;
 
 /**
  * Class for scraping wiki.optus.nu pages and showing them as scrolling lists.
@@ -31,37 +32,29 @@ public class OptusGameLogListActivity extends ListActivity {
   private ExternalCacheManager mCache;
   private GenericListUpdater<OptusParser.LogRef> mUpdater;
   private OptusParser.Player mPlayer;
-  private View mProgressBar;
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     boolean supportsCustomTitle = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
     mPlayer = (OptusParser.Player)getIntent().getExtras().getSerializable("player");
+    
+    mCache = ExternalCacheManager.getInstance(getApplicationContext());
     setContentView(R.layout.game_log_list);
+    ProgressBar progressBar = null;
 
+    final String title = mPlayer.name;
     if (supportsCustomTitle) {
       getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.title_bar_with_progress);
       TextView titleView = (TextView)findViewById(R.id.title_bar_with_progress_title);
-      titleView.setText(mPlayer.name);
-      mProgressBar = findViewById(R.id.title_bar_with_progress_progress);
+      titleView.setText(title);
+      progressBar = (ProgressBar)findViewById(R.id.title_bar_with_progress_progress);
     } else {
-      setTitle(mPlayer.name);
+      setTitle(title);
     }
     
-    mCache = ExternalCacheManager.getInstance(getApplicationContext(), "optus");
-    
-    String[] urls = new String[mPlayer.hrefs.length];
-    for (int i = 0; i < mPlayer.hrefs.length; ++i) {
-      urls[i] = OptusParser.LOG_LIST_BASE_URL + mPlayer.hrefs[i];
-    }
     mUpdater = new GenericListUpdater<OptusParser.LogRef>(
-        new MyEnv(),
-        this,
-        urls,
-        mCache,
-        mPlayer.name);
-    registerForContextMenu(findViewById(android.R.id.list));
+        new MyEnv(mPlayer.hrefs), this, mPlayer.name, progressBar);
     setListAdapter(mUpdater.adapter());
     mUpdater.startListing(GenericListUpdater.MAY_READ_FROM_CACHE);
   }
@@ -69,22 +62,58 @@ public class OptusGameLogListActivity extends ListActivity {
   @Override 
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
-    inflater.inflate(R.menu.optus_list_option_menu, menu);
+    inflater.inflate(R.menu.optus_game_log_list_option_menu, menu);
     return true;
   }
+  
+  public static final Comparator<OptusParser.LogRef> BY_DATE = new Comparator<OptusParser.LogRef>() {
+    public int compare(OptusParser.LogRef l1, OptusParser.LogRef l2) {
+      return l1.date.compareTo(l2.date);
+    }
+    @Override 
+    public boolean equals(Object o) { return o == this; }
+  };
+
+  public static final Comparator<OptusParser.LogRef> BY_TOURNAMENT = new Comparator<OptusParser.LogRef>() {
+    public int compare(OptusParser.LogRef l1, OptusParser.LogRef l2) {
+      return l1.tournament.compareTo(l2.tournament);
+    }
+    @Override 
+    public boolean equals(Object o) { return o == this; }
+  };
+  
+  public static final Comparator<OptusParser.LogRef> BY_OPENING_MOVES = new Comparator<OptusParser.LogRef>() {
+    public int compare(OptusParser.LogRef l1, OptusParser.LogRef l2) {
+      return l1.openingMoves.compareTo(l2.openingMoves);
+    }
+    @Override 
+    public boolean equals(Object o) { return o == this; }
+  };
   
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
     case R.id.menu_reload:
       mUpdater.startListing(GenericListUpdater.FORCE_RELOAD);
       return true;
+    case R.id.menu_sort_by_date:
+      mUpdater.sort(BY_DATE);
+      return true;
+    case R.id.menu_sort_by_tournament:
+      mUpdater.sort(BY_TOURNAMENT);
+      return true;
+    case R.id.menu_sort_by_opening_moves:
+      mUpdater.sort(BY_OPENING_MOVES);
+      return true;
     }
     return false;
   }
   
   private class MyEnv implements GenericListUpdater.Env<OptusParser.LogRef> {
+    MyEnv(String[] hrefs) { mHrefs = hrefs; }
+    
     // All calls to getListLabel() are from one thread, so share one builder.
-    final StringBuilder mBuilder = new StringBuilder();
+    private final StringBuilder mBuilder = new StringBuilder();
+    private final String[] mHrefs;
     
     @Override 
     public String getListLabel(OptusParser.LogRef p) { 
@@ -98,24 +127,17 @@ public class OptusGameLogListActivity extends ListActivity {
       if (!p.whitePlayer.equals(mPlayer.name)) {
         mBuilder.append(": △").append(p.whitePlayer);
       }
-      mBuilder.append(": ")
-      .append(p.tournament)
-      .append(": ")
-      .append(p.openingMoves);
+      mBuilder.append(": ").append(p.tournament).append(": ").append(p.openingMoves);
       return mBuilder.toString();
     }
 
     @Override
-    public OptusParser.LogRef[] listObjects(InputStream in) throws Throwable { 
-      return OptusParser.listLogRefs(in); 
-    }
+    public int numStreams() { return mHrefs.length; }
     
-    @Override public void startProgressAnimation() {
-      if (mProgressBar != null) mProgressBar.setVisibility(View.VISIBLE);
-    }
-    
-    @Override public void stopProgressAnimation() {
-      if (mProgressBar != null) mProgressBar.setVisibility(View.INVISIBLE);
+    @Override
+    public OptusParser.LogRef[] readNthStream(int index) throws Throwable {
+      URL url = new URL(OptusParser.LOG_LIST_BASE_URL + mHrefs[index]);
+      return OptusParser.listLogRefs(url.openStream());
     }
   }
   

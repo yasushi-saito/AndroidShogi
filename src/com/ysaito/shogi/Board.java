@@ -1,15 +1,17 @@
 package com.ysaito.shogi;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
  * Store the state of a Shogi board.
  */
-public class Board implements java.io.Serializable {
+@SuppressWarnings("serial") 
+public class Board implements Serializable {
   // X and Y dimensions of a board
   public static final int DIM = 9; 
 
-  public static class CapturedPiece implements java.io.Serializable {
+  public static class CapturedPiece implements Serializable {
     public CapturedPiece(int p, int _n) { piece = p; n = _n; }
     public final int piece;  // one of Piece.*
     public final int n;      // number of pieces of the same type

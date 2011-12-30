@@ -25,6 +25,7 @@
     <string name="quit_game">対局終了</string>
     <string name="start_game">対局開始</string>    
     <string name="undo">待った</string>
+    <string name="optus_search">棋譜データベース検索</string>
     <string name="undo_operation">操作取り消し</string>
     <string name="undo_disallowed">待ったなし</string>
     <string name="undos_remaining">待った(残り%d回)</string>
@@ -39,6 +40,10 @@
     <string name="sort_by_date">日時順リスト</string>
     <string name="sort_by_black_player">先手名順リスト</string>    
     <string name="sort_by_white_player">後手名順リスト</string>        
+    <string name="sort_by_player">棋士名順リスト</string>        
+    <string name="sort_by_number_of_games">対局数順リスト</string>
+    <string name="sort_by_tournament">棋戦順リスト</string>
+    <string name="sort_by_opening_moves">戦型順リスト</string>
     <string name="game_log_properties">棋譜情報</string>        
     <string name="date">日時</string>
     <string name="save_in_sdcard">SDカードに保存</string>

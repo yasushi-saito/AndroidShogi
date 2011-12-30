@@ -1,5 +1,7 @@
 package com.ysaito.shogi;
 
+import java.io.Serializable;
+
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -153,7 +155,8 @@ public class BonanzaController {
    *  The result of each asynchronous request. Packed in the "result" part of 
    *  the Message.getData() bundle.
    */
-  public static class Result implements java.io.Serializable {
+  @SuppressWarnings("serial") 
+  public static class Result implements Serializable {
     // The new state of the board
     public Board board;
     

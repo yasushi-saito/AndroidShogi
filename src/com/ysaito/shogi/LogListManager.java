@@ -157,6 +157,7 @@ public class LogListManager {
   private final LinkedList<Work> mPendingWork = new LinkedList<Work>();
   private LogList mSummary;
 
+  @SuppressWarnings("serial") 
   private static class LogList implements Serializable {
     public LogList(LogList src) {
       lastScanTimeMs = src.lastScanTimeMs;
