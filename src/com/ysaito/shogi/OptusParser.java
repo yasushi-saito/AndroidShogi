@@ -76,7 +76,19 @@ public class OptusParser {
     String player2;
     String startDate;
     String endDate;
-    // TODO(saito): add more query conditions
+    String tournament;
+    String openingMoves;
+    
+    public String toString() {
+      StringBuilder b = new StringBuilder();
+      if (player1 != null) b.append(" player1=").append(player1);
+      if (player2 != null) b.append(" player2=").append(player2);
+      if (startDate != null) b.append(" startDate=").append(startDate);
+      if (endDate != null) b.append(" endDate=").append(endDate);
+      if (openingMoves!= null) b.append(" openingMoves=").append(openingMoves);
+      if (tournament != null) b.append(" tournament=").append(tournament);
+      return b.toString();
+    }
   }
   
   public static LogRef[] runQuery(SearchParameters q) {
@@ -86,19 +98,26 @@ public class OptusParser {
     try {
       p.add(new BasicNameValuePair("cmd", "kif"));
       p.add(new BasicNameValuePair("cmds", "query3"));
+      if (q.tournament != null) {
+        p.add(new BasicNameValuePair("kisen_check", "checked"));
+        p.add(new BasicNameValuePair("kisen", q.tournament));
+      }
       if (q.player1 != null || q.player2 != null) {
         p.add(new BasicNameValuePair("kisi_check", "checked"));
         if (q.player1 != null) p.add(new BasicNameValuePair("kisi_a", q.player1));
         if (q.player2 != null) p.add(new BasicNameValuePair("kisi_b", q.player2));
       }
-      
+      if (q.openingMoves != null) {
+        p.add(new BasicNameValuePair("senkei_check", "checked"));
+        p.add(new BasicNameValuePair("senkei", q.openingMoves));
+      }
       if (q.startDate != null || q.endDate != null) {
         p.add(new BasicNameValuePair("dplay_check", "checked"));
         if (q.startDate != null) p.add(new BasicNameValuePair("d_start", q.startDate));
         if (q.endDate != null) p.add(new BasicNameValuePair("d_end", q.endDate));
       }
       p.add(new BasicNameValuePair("pagex", "0"));
-      p.add(new BasicNameValuePair("pagey", "500"));    
+      p.add(new BasicNameValuePair("pagey", "100"));    
     
       // Optus only accepts EUC-JP encoding
       httpPost.setEntity(new UrlEncodedFormEntity(p, "EUC-JP"));

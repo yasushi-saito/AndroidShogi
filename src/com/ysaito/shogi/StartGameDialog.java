@@ -23,9 +23,9 @@ public class StartGameDialog {
   private CheckBox mFlipScreen;
   
   public StartGameDialog(
-  		Context context, 
-  		String title,
-  		DialogInterface.OnClickListener onClick) {
+      Context context, 
+      String title,
+      DialogInterface.OnClickListener onClick) {
     mContext = context;
     mPrefs = PreferenceManager.getDefaultSharedPreferences(mContext);
     mOnClickStartButton = onClick;

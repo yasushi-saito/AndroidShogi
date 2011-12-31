@@ -67,4 +67,13 @@
     <string name="human_player_name">Player name</string>
     <string name="default_human_player_name">Human</string>
     <string name="fetching_game_log">Fetching game log</string>
+    <string name="tournament">Tournament</string>
+    <string name="player">Player</string>
+    <string name="date_range">Date range</string>
+    <string name="upper_bound">Max</string>
+    <string name="lower_bound">Min</string>
+    <string name="change">Change</string>
+    <string name="opening_moves">Opening moves</string>
+    <string name="search">Search</string>
+    <string name="unspecified">(Unspecified)</string>
 </resources>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:orientation="vertical"
+  android:layout_width="fill_parent"
+  android:layout_height="fill_parent">
+
+  <TextView android:layout_height="wrap_content"
+            android:layout_width="fill_parent"
+            android:text="@string/player"/>
+
+  <EditText
+      android:id="@+id/optus_player1"
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"/>
+      
+
+  <EditText
+      android:id="@+id/optus_player2"
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"/>
+
+  <TextView android:layout_height="wrap_content"
+            android:layout_width="fill_parent"
+            android:text="@string/tournament"/>
+  <Spinner android:id="@+id/optus_tournament"
+           android:layout_height="wrap_content"
+           android:layout_width="fill_parent"
+           android:drawSelectorOnTop="true"
+           android:prompt = "@string/tournament" />
+
+  <TextView android:layout_height="wrap_content"
+            android:layout_width="fill_parent"
+            android:text="@string/opening_moves"/>
+
+  <Spinner android:id="@+id/optus_opening_moves"
+           android:layout_height="wrap_content"
+           android:layout_width="fill_parent"
+           android:drawSelectorOnTop="true"
+           android:prompt = "@string/opening_moves"/>
+  
+  <TextView
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/date_range" />
+  
+  <TableLayout
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"
+      android:stretchColumns="1"
+      >
+      <TableRow>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/lower_bound"
+            android:layout_weight="2" 
+			android:layout_marginRight="20dp"  />
+        <TextView
+            android:id="@+id/optus_start_date_text"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/lower_bound"
+            android:layout_weight="2" />
+
+        <Button
+            android:id="@+id/optus_start_date_button"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/change"
+            android:layout_weight="1" />
+      </TableRow>
+      
+      <TableRow>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/upper_bound" 
+            android:layout_weight="2"
+			android:layout_marginRight="20dp"/>
+        <TextView
+            android:id="@+id/optus_end_date_text"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/upper_bound" 
+            android:layout_weight="2"/>
+
+  	    <Button
+  	        android:id="@+id/optus_end_date_button"
+  	        android:layout_width="fill_parent"
+  	        android:layout_height="wrap_content"
+  	        android:text="@string/change"
+  	        android:layout_weight="1" />
+      </TableRow>
+  </TableLayout>
+
+      
+  </LinearLayout>
+  
+  

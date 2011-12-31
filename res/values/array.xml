@@ -98,4 +98,105 @@
     <item>kif_dos</item>
     <item>kif_utf8</item>
   </string-array>
+
+  <string-array name="opening_moves_values">
+    <item>(全て)</item>
+	<item>矢倉</item>
+    <item>角換わり</item>
+    <item>横歩取り</item>
+    <item>相掛かり</item>
+    <item>ひねり飛車</item>
+    <item>居飛車力戦</item>
+    <item>四間飛車</item>
+    <item>三間飛車</item>
+    <item>中飛車</item>
+    <item>向飛車</item>
+    <item>陽動振飛車</item>
+    <item>相振飛車</item>
+    <item>その他</item>
+  </string-array>
+
+  <string-array name="tournament_values">
+    <item>(全て)</item>
+    <item>順位戦</item>
+    <item>名人戦</item>
+    <item>竜王戦</item>
+    <item>王将戦</item>
+    <item>王位戦</item>
+    <item>王座戦</item>
+    <item>棋聖戦</item>
+    <item>棋王戦</item>
+    <item>>朝日OP</item>
+    <item>銀河戦</item>
+    <item>NHK杯</item>
+    <item>ＪＴ杯</item>
+  	<item>新人王戦</item>
+  	<item>達人戦</item>
+    <item>女流名人位戦</item>
+    <item>女流王将戦</item>
+    <item>女流王位戦</item>
+    <item>倉敷藤花戦</item>
+    <item>レディースOP</item>
+   	<item>鹿島杯</item>
+  	<item>近将杯</item>
+	<item>三段リーグ</item>
+	<item>奨励会</item>
+	<item>女流育成会</item>
+	<item>その他新聞棋戦</item>
+	<item>その他</item>
+	<item>十段戦</item>
+	<item>九段戦</item>
+	<item>全日本選手権</item>
+	<item>全日本プロ</item>
+	<item>早指戦</item>
+	<item>早指新鋭戦</item>
+	<item>勝抜戦</item>
+	<item>東京新聞杯</item>
+	<item>三社杯</item>
+	<item>早指王位戦</item>
+	<item>産経杯</item>
+	<item>名棋戦</item>
+	<item>若駒戦</item>
+	<item>最強者決定戦</item>
+	<item>古豪新鋭戦</item>
+	<item>日本一杯</item>
+	<item>九八七段戦</item>
+	<item>六五四段戦</item>
+	<item>天王戦</item>
+	<item>連盟杯</item>
+	<item>東西対抗勝継戦</item>
+	<item>若獅子戦</item>
+	<item>名将戦</item>
+	<item>IBM杯</item>
+	<item>ＧＣ戦</item>
+	<item>平成最強戦</item>
+	<item>レーティング戦</item>
+	<item>アマ名人戦</item>
+	<item>アマ竜王戦</item>
+	<item>アマ王将戦</item>
+	<item>朝日アマ名人戦</item>
+	<item>赤旗名人戦</item>
+	<item>支部対抗戦</item>
+	<item>シニア名人戦</item>
+	<item>オール学生戦</item>
+	<item>学生選手権</item>
+	<item>学生名人戦</item>
+	<item>学生王将戦</item>
+	<item>学生王座戦</item>
+	<item>高校選手権</item>
+	<item>高校竜王戦</item>
+	<item>高校新人戦</item>
+	<item>中学生選抜戦</item>
+	<item>中学生名人戦</item>
+	<item>中学生王将戦</item>
+	<item>小学生名人戦</item>
+	<item>アマ女王戦</item>
+	<item>女流アマ名人戦</item>
+	<item>関西女流アマ名人戦</item>
+    <item>学生女流名人戦</item>
+    <item>高校女流名人戦</item>
+    <item>高校女流新人戦</item>
+    <item>中学生女子選抜戦</item>
+  </string-array>
+  
 </resources>

@@ -70,4 +70,13 @@
     <string name="default_human_player_name">人</string>
     <string name="visit_optus">棋譜DB</string>
     <string name="fetching_game_log">棋譜読み込み中</string>
+    <string name="tournament">棋戦</string>
+    <string name="player">対局者</string>
+    <string name="date_range">対局日</string>
+    <string name="lower_bound">下限</string>
+    <string name="upper_bound">上限</string>
+    <string name="change">変更</string>
+    <string name="opening_moves">戦型</string>
+    <string name="search">検索</string>
+    <string name="unspecified">(指定なし)</string>
 </resources>
