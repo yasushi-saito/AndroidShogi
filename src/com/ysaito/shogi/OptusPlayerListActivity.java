@@ -42,7 +42,7 @@ public class OptusPlayerListActivity extends ListActivity {
     }
     
     mUpdater = new GenericListUpdater<OptusParser.Player>(
-        new MyEnv(OptusParser.KISI_URL), this, "@@player_list", progressBar);
+        new MyEnv(), this, "@@player_list", progressBar);
     setListAdapter(mUpdater.adapter());
     mUpdater.startListing(GenericListUpdater.MAY_READ_FROM_CACHE);
   }
@@ -82,13 +82,17 @@ public class OptusPlayerListActivity extends ListActivity {
     case R.id.menu_sort_by_number_of_games:
       mUpdater.sort(BY_NUMBER_OF_GAMES);
       return true;
+    case R.id.menu_search: {
+      Intent intent = new Intent(this, OptusGameLogListActivity.class);
+      intent.putExtra("search", new OptusParser.SearchParameters());
+      startActivity(intent);
+      return true;
+    }
     }
     return false;
   }
   
   private class MyEnv implements GenericListUpdater.Env<OptusParser.Player> {
-    MyEnv(String url) { mUrl = url; }
-    
     @Override 
     public String getListLabel(OptusParser.Player p) { 
       if (p == null) return "";
@@ -106,13 +110,11 @@ public class OptusPlayerListActivity extends ListActivity {
     
     @Override
     public OptusParser.Player[] readNthStream(int index) throws Throwable { 
-      URL url = new URL(mUrl);
-      return OptusParser.listPlayers(url.openStream()); 
+      return OptusParser.listPlayers();
     }
     
     // All calls to getListLabel() are from one thread, so share one builder.
     private final StringBuilder mBuilder = new StringBuilder();
-    private final String mUrl;
   }
   
   @Override 

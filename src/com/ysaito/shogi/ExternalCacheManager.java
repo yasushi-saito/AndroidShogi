@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 
 import android.content.Context;
@@ -48,6 +50,17 @@ public class ExternalCacheManager {
     }
     Assert.isTrue(mInstance.mContext == context);
     return mInstance;
+  }
+
+  /** Convert the caller-supplied @p key to an internal key that can be safely used as a filename */
+  private static String toKey(String k) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-1");
+      digest.update(k.getBytes());
+      return Util.bytesToHexText(digest.digest());
+    } catch (NoSuchAlgorithmException e) {
+      throw new AssertionError("MessageDigest.NoSuchAlgorithmException: " + e.getMessage());
+    }
   }
   
   // TODO: add background purging
@@ -104,8 +117,9 @@ public class ExternalCacheManager {
    * @param key The cache entry key. It is used as the filename in the cache dir, so it shall not contain 
    * chars such as '/'.
    */
-  public synchronized void write(String key, Serializable obj) {
-    CacheEntry ent = new CacheEntry();
+  public synchronized void write(String suppliedKey, Serializable obj) {
+    final String key = toKey(suppliedKey);
+    final CacheEntry ent = new CacheEntry();
     ent.createMs = System.currentTimeMillis();
     ent.obj = obj;
     
@@ -134,7 +148,8 @@ public class ExternalCacheManager {
     public boolean needRefresh;
   }
   
-  public synchronized ReadResult read(String key) {
+  public synchronized ReadResult read(String suppliedKey) {
+    final String key = toKey(suppliedKey);
     final long now = System.currentTimeMillis(); 
     ReadResult r = new ReadResult();
     r.obj = null;
@@ -170,5 +185,4 @@ public class ExternalCacheManager {
       if (out != null) out.close();
     }
   }
-
 }

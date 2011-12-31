@@ -131,6 +131,7 @@ public class GameLog implements Serializable {
   public final int numPlays() { return mPlays.size(); }
   public final ArrayList<Play> plays() { return mPlays; }
 
+  // TODO(saito) Move GameLog comparators to the use site.
   /**
    * A Comparator to sort GameLog by date (oldest first)
    */

@@ -17,8 +17,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.net.URL;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 
 /**
@@ -31,30 +29,30 @@ public class OptusGameLogListActivity extends ListActivity {
   private static final String TAG = "OptusGameLogList";
   private ExternalCacheManager mCache;
   private GenericListUpdater<OptusParser.LogRef> mUpdater;
-  private OptusParser.Player mPlayer;
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     boolean supportsCustomTitle = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
-    mPlayer = (OptusParser.Player)getIntent().getExtras().getSerializable("player");
-    
     mCache = ExternalCacheManager.getInstance(getApplicationContext());
     setContentView(R.layout.game_log_list);
-    ProgressBar progressBar = null;
-
-    final String title = mPlayer.name;
-    if (supportsCustomTitle) {
-      getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.title_bar_with_progress);
-      TextView titleView = (TextView)findViewById(R.id.title_bar_with_progress_title);
-      titleView.setText(title);
-      progressBar = (ProgressBar)findViewById(R.id.title_bar_with_progress_progress);
-    } else {
-      setTitle(title);
-    }
     
-    mUpdater = new GenericListUpdater<OptusParser.LogRef>(
-        new MyEnv(mPlayer.hrefs), this, mPlayer.name, progressBar);
+    final Bundle bundle = getIntent().getExtras();
+    final OptusParser.Player player = (OptusParser.Player)bundle.getSerializable("player");
+
+    if (player != null) {
+      setTitle(supportsCustomTitle, player.name);
+      mUpdater = new GenericListUpdater<OptusParser.LogRef>(
+          new PlayerEnv(player), this, player.name,
+          (ProgressBar)findViewById(R.id.title_bar_with_progress_progress)/*could be null*/);
+    } else {
+      final OptusParser.SearchParameters mSearch = 
+          (OptusParser.SearchParameters)bundle.getSerializable("search");
+      setTitle(supportsCustomTitle, "query");
+      mUpdater = new GenericListUpdater<OptusParser.LogRef>(
+          new SearchEnv(mSearch), this, null,
+          (ProgressBar)findViewById(R.id.title_bar_with_progress_progress)/*could be null*/);
+    }
     setListAdapter(mUpdater.adapter());
     mUpdater.startListing(GenericListUpdater.MAY_READ_FROM_CACHE);
   }
@@ -107,37 +105,72 @@ public class OptusGameLogListActivity extends ListActivity {
     }
     return false;
   }
+
+  private void setTitle(boolean supportsCustomTitle, String title) {
+    if (supportsCustomTitle) {
+      getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.title_bar_with_progress);
+      TextView titleView = (TextView)findViewById(R.id.title_bar_with_progress_title);
+      titleView.setText(title);
+    } else {
+      setTitle(title);
+    }
+  }
+
+  private static final String logRefToString(OptusParser.LogRef l, String thisPlayerName) {
+    if (l == null) return "";
+      
+    final StringBuilder b = new StringBuilder();
+    b.setLength(0);
+    b.append(l.date);
+    if (thisPlayerName == null || !l.blackPlayer.equals(thisPlayerName)) {
+      b.append(": ▲").append(l.blackPlayer);
+    }
+    if (thisPlayerName == null || !l.whitePlayer.equals(thisPlayerName)) {
+      b.append(": △").append(l.whitePlayer);
+    }
+    b.append(": ").append(l.tournament).append(": ").append(l.openingMoves);
+    return b.toString();
+  }
   
-  private class MyEnv implements GenericListUpdater.Env<OptusParser.LogRef> {
-    MyEnv(String[] hrefs) { mHrefs = hrefs; }
-    
-    // All calls to getListLabel() are from one thread, so share one builder.
-    private final StringBuilder mBuilder = new StringBuilder();
-    private final String[] mHrefs;
+  /**
+   * An environment object for fetching the game logs for particular, pre-compiled player pages.
+   */
+  private class PlayerEnv implements GenericListUpdater.Env<OptusParser.LogRef> {
+    PlayerEnv(OptusParser.Player p) { mPlayer = p; }
+    private final OptusParser.Player mPlayer;
     
     @Override 
-    public String getListLabel(OptusParser.LogRef p) { 
-      if (p == null) return "";
-      
-      mBuilder.setLength(0);
-      mBuilder.append(p.date);
-      if (!p.blackPlayer.equals(mPlayer.name)) {
-        mBuilder.append(": ▲").append(p.blackPlayer);
-      }
-      if (!p.whitePlayer.equals(mPlayer.name)) {
-        mBuilder.append(": △").append(p.whitePlayer);
-      }
-      mBuilder.append(": ").append(p.tournament).append(": ").append(p.openingMoves);
-      return mBuilder.toString();
+    public String getListLabel(OptusParser.LogRef l) { 
+      return logRefToString(l, mPlayer.name); 
     }
 
     @Override
-    public int numStreams() { return mHrefs.length; }
+    public int numStreams() { return mPlayer.hrefs.length; }
     
     @Override
     public OptusParser.LogRef[] readNthStream(int index) throws Throwable {
-      URL url = new URL(OptusParser.LOG_LIST_BASE_URL + mHrefs[index]);
-      return OptusParser.listLogRefs(url.openStream());
+      return OptusParser.listLogRefs(mPlayer.hrefs[index]);
+    }
+  }
+
+  /**
+   * An environment object for issuing db query on the optus web page.
+   */
+  private class SearchEnv implements GenericListUpdater.Env<OptusParser.LogRef> {
+    SearchEnv(OptusParser.SearchParameters p) { mSearch = p; }
+    private final OptusParser.SearchParameters mSearch;
+    
+    @Override 
+    public String getListLabel(OptusParser.LogRef l) { 
+      return logRefToString(l, null);
+    }
+
+    @Override
+    public int numStreams() { return 1; }
+    
+    @Override
+    public OptusParser.LogRef[] readNthStream(int index) throws Throwable {
+      return OptusParser.runQuery(mSearch);
     }
   }
   
@@ -158,16 +191,6 @@ public class OptusGameLogListActivity extends ListActivity {
     }
   }
   
-  private static String arbitraryTextToCacheKey(String k) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-1");
-      digest.update(k.getBytes());
-      return Util.bytesToHexText(digest.digest());
-    } catch (NoSuchAlgorithmException e) {
-      throw new AssertionError("MessageDigest.NoSuchAlgorithmException: " + e.getMessage());
-    }
-  }
-
   private static class DownloadResult {
     public GameLog log;
     String error;  // null if ok
@@ -193,7 +216,7 @@ public class OptusGameLogListActivity extends ListActivity {
       mLogRef = logRefs[0];
       String text_href = OptusParser.LOG_LIST_BASE_URL + mLogRef.href.replace("cmds=display", "cmds=displaytxt");
       
-      final String cacheKey = arbitraryTextToCacheKey(text_href);
+      final String cacheKey = text_href;
       DownloadResult dr = new DownloadResult();
       try {
         ExternalCacheManager.ReadResult r = mCache.read(cacheKey);

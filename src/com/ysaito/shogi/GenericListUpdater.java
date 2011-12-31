@@ -212,7 +212,7 @@ public class GenericListUpdater<T> {
       try {
         try {
           ExternalCacheManager.ReadResult r;
-          if (mode[0] == FORCE_RELOAD) {
+          if (mCacheKey == null || mode[0] == FORCE_RELOAD) {
             r = new ExternalCacheManager.ReadResult();
             r.needRefresh = true;
           } else {
@@ -245,7 +245,7 @@ public class GenericListUpdater<T> {
             }
             if (fetcher.error() == null) {
               objs = aggregate.toArray(objs);
-              mCache.write(mCacheKey, objs);
+              if (mCacheKey != null) mCache.write(mCacheKey, objs);
               if (hitCache) {
                 publishProgress(new ListingStatus<T>(objs, true));
               }
