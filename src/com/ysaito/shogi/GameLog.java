@@ -131,7 +131,12 @@ public class GameLog implements Serializable {
   public final int numPlays() { return mPlays.size(); }
   public final ArrayList<Play> plays() { return mPlays; }
 
-  // TODO(saito) Move GameLog comparators to the use site.
+  public final String getPlayer(String playerAttr) {
+    String name = mAttrs.get(playerAttr);
+    if (name == null) name = "";
+    return name;
+  }
+
   /**
    * A Comparator to sort GameLog by date (oldest first)
    */
@@ -174,12 +179,6 @@ public class GameLog implements Serializable {
     @Override
     public boolean equals(Object o) { return o == this; }
   };
-  
-  private final String getPlayer(String playerAttr) {
-    String name = mAttrs.get(playerAttr);
-    if (name == null) name = "";
-    return name;
-  }
   
   //
   // Methods to parse .kif and .html files into a GameLog object

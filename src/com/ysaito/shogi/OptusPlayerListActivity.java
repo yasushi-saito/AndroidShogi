@@ -84,7 +84,10 @@ public class OptusPlayerListActivity extends ListActivity {
       return true;
     case R.id.menu_search: {
       Intent intent = new Intent(this, OptusGameLogListActivity.class);
-      intent.putExtra("search", new OptusParser.SearchParameters());
+      OptusParser.SearchParameters q = new OptusParser.SearchParameters();
+      q.player1 = "谷川";
+      q.player2 = "中原";
+      intent.putExtra("search", q); 
       startActivity(intent);
       return true;
     }

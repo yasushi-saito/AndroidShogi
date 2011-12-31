@@ -6,6 +6,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
@@ -20,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.io.StringBufferInputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,111 +72,37 @@ public class OptusParser {
   
   @SuppressWarnings("serial")
   public static class SearchParameters implements Serializable {
-    String blackPlayer;
-    String whitePlayer;
+    String player1;
+    String player2;
+    String startDate;
+    String endDate;
     // TODO(saito): add more query conditions
   }
   
   public static LogRef[] runQuery(SearchParameters q) {
     HttpClient httpClient = new DefaultHttpClient();
     HttpPost httpPost = new HttpPost("http://wiki.optus.nu/shogi/index.php");
-/**
-    ------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="cmd"
-
-kif
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="cmds"
-
-query3
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="keyword"
-
-
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="kisen"
-
-½ç°ÌÀï
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="kisi_check"
-
-checked
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="kisi_a"
-
-º´Æ£
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="kisi_b"
-
-Ãæ¸¶
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="senkei"
-
-ÌðÁÒ
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="teai"
-
-Ê¿¼ê
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="y_play1"
-
-2011
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="m_play1"
-
-00
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="d_play1"
-
-00
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="y_play2"
-
-2011
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="m_play2"
-
-12
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="d_play2"
-
-31
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="d_start"
-
-
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="d_end"
-
-
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="filename"
-
-
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="pagex"
-
-0
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB
-Content-Disposition: form-data; name="pagey"
-
-100
-------WebKitFormBoundaryeXdNwTSeWKW6kYhB--
-*/
-    List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-    nameValuePairs.add(new BasicNameValuePair("cmd", "kif"));
-    nameValuePairs.add(new BasicNameValuePair("cmds", "query3"));
-    //nameValuePairs.add(new BasicNameValuePair("kisi_check", "checked"));
-    //nameValuePairs.add(new BasicNameValuePair("kisi_a", "中原"));
-    //nameValuePairs.add(new BasicNameValuePair("kisi_b", "大山"));
-    nameValuePairs.add(new BasicNameValuePair("dplay_check", "checked"));
-    nameValuePairs.add(new BasicNameValuePair("d_start", "2011-12-01"));
-    nameValuePairs.add(new BasicNameValuePair("d_end", "2011-12-31"));    
-    nameValuePairs.add(new BasicNameValuePair("pagex", "0"));
-    nameValuePairs.add(new BasicNameValuePair("pagey", "500"));    
-    
+    List<NameValuePair> p = new ArrayList<NameValuePair>();
     try {
-      httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+      p.add(new BasicNameValuePair("cmd", "kif"));
+      p.add(new BasicNameValuePair("cmds", "query3"));
+      if (q.player1 != null || q.player2 != null) {
+        p.add(new BasicNameValuePair("kisi_check", "checked"));
+        if (q.player1 != null) p.add(new BasicNameValuePair("kisi_a", q.player1));
+        if (q.player2 != null) p.add(new BasicNameValuePair("kisi_b", q.player2));
+      }
+      
+      if (q.startDate != null || q.endDate != null) {
+        p.add(new BasicNameValuePair("dplay_check", "checked"));
+        if (q.startDate != null) p.add(new BasicNameValuePair("d_start", q.startDate));
+        if (q.endDate != null) p.add(new BasicNameValuePair("d_end", q.endDate));
+      }
+      p.add(new BasicNameValuePair("pagex", "0"));
+      p.add(new BasicNameValuePair("pagey", "500"));    
+    
+      // Optus only accepts EUC-JP encoding
+      httpPost.setEntity(new UrlEncodedFormEntity(p, "EUC-JP"));
+      
       ResponseHandler<String> responseHandler = new BasicResponseHandler();
       String response = httpClient.execute(httpPost, responseHandler);
       Log.d(TAG, "GOT: " + response);
@@ -207,7 +135,7 @@ Content-Disposition: form-data; name="pagey"
       return logs.toArray(new LogRef[0]);
     } catch (Throwable e) {
       // TODO Auto-generated catch block
-      e.printStackTrace();
+      Log.d(TAG, "Query failed: " + e.toString());
     }
     return null;
   }
@@ -253,6 +181,10 @@ Content-Disposition: form-data; name="pagey"
       ++n;
     }
     return players.toArray(new Player[0]);
+  }
+  
+  private static String reencode(String s) throws UnsupportedEncodingException {
+    return new String(s.getBytes("SHIFT-JIS"));
   }
   
   public static LogRef[] listLogRefs(String relativeUrl) throws IOException {
