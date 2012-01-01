@@ -126,6 +126,7 @@ public class GameLogListActivity extends ListActivity  {
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.game_log_list);
+    setTitle(getResources().getString(R.string.game_logs));
 
     mLogSorter = GameLog.SORT_BY_DATE;
     mLogs = new ArrayList<GameLog>();
@@ -134,6 +135,7 @@ public class GameLogListActivity extends ListActivity  {
     ListView listView = (ListView)findViewById(android.R.id.list);
     listView.setStackFromBottom(true);
     registerForContextMenu(listView);
+  
     
     // Use an existing ListAdapter that will map an array
     // of strings to TextViews
