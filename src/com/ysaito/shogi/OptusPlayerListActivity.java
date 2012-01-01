@@ -24,11 +24,12 @@ import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import java.net.URL;
+import java.util.Calendar;
 import java.util.Comparator;
 
 /**
- * Class for scraping wiki.optus.nu pages and showing them as scrolling lists.
+ * Class for showing wiki.optus.nu statically generated pages for 
+ * individual players. 
  * 
  * @author saito@google.com (Yaz Saito)
  *
@@ -44,22 +45,27 @@ public class OptusPlayerListActivity extends ListActivity {
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
     mActivity = this;
+    super.onCreate(savedInstanceState);
     boolean supportsCustomTitle = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
     setContentView(R.layout.game_log_list);
     ProgressBar progressBar = null;
+    final String title = getResources().getString(R.string.player_list);
     if (supportsCustomTitle) {
       getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.title_bar_with_progress);
       TextView titleView = (TextView)findViewById(R.id.title_bar_with_progress_title);
-      titleView.setText("Player list");
+      titleView.setText(title);
       progressBar = (ProgressBar)findViewById(R.id.title_bar_with_progress_progress);
     } else {
-      setTitle("Player list");
+      setTitle(title);
     }
     
     mUpdater = new GenericListUpdater<OptusParser.Player>(
-        new MyEnv(), this, "@@player_list", progressBar);
+        new MyEnv(), this, 
+        "@@player_list" /*cache key*/,
+        ExternalCacheManager.MAX_STATIC_PAGE_CACHE_STALENESS_MS,
+        progressBar,
+        new OptusParser.Player[0]/*tmp*/);
     setListAdapter(mUpdater.adapter());
     mUpdater.startListing(GenericListUpdater.MAY_READ_FROM_CACHE);
   }
@@ -71,7 +77,7 @@ public class OptusPlayerListActivity extends ListActivity {
     return true;
   }
   
-  public static final Comparator<OptusParser.Player> BY_LIST_ORDER = new Comparator<OptusParser.Player>() {
+  private static final Comparator<OptusParser.Player> BY_LIST_ORDER = new Comparator<OptusParser.Player>() {
     public int compare(OptusParser.Player p1, OptusParser.Player p2) {
       return p1.listOrder - p2.listOrder;
     }
@@ -79,7 +85,7 @@ public class OptusPlayerListActivity extends ListActivity {
     public boolean equals(Object o) { return o == this; }
   };
   
-  public static final Comparator<OptusParser.Player> BY_NUMBER_OF_GAMES = new Comparator<OptusParser.Player>() {
+  private static final Comparator<OptusParser.Player> BY_NUMBER_OF_GAMES = new Comparator<OptusParser.Player>() {
     public int compare(OptusParser.Player p1, OptusParser.Player p2) {
       // Place players with many games first
       return -(p1.numGames - p2.numGames);
@@ -88,7 +94,8 @@ public class OptusPlayerListActivity extends ListActivity {
     public boolean equals(Object o) { return o == this; }
   };
   
-  @Override public boolean onOptionsItemSelected(MenuItem item) {
+  @Override
+  public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
     case R.id.menu_reload:
       mUpdater.startListing(GenericListUpdater.FORCE_RELOAD);
@@ -99,10 +106,9 @@ public class OptusPlayerListActivity extends ListActivity {
     case R.id.menu_sort_by_number_of_games:
       mUpdater.sort(BY_NUMBER_OF_GAMES);
       return true;
-    case R.id.menu_search: {
+    case R.id.menu_search: 
       showDialog(DIALOG_SEARCH);
       return true;
-    }
     }
     return false;
   }
@@ -140,7 +146,7 @@ public class OptusPlayerListActivity extends ListActivity {
     case DIALOG_START_DATE: {
       final DatePickerDialog.OnDateSetListener listener = new DatePickerDialog.OnDateSetListener() {
         @Override public void onDateSet(DatePicker view, int year, int month, int day) {
-          mStartDate = new PickedDate(year, month, day);
+          mStartDate = new PickedDate(year, month - Calendar.JANUARY + 1, day);
           setDateText(mStartDateTextView, mStartDate);
         }
       };
@@ -149,11 +155,18 @@ public class OptusPlayerListActivity extends ListActivity {
     case DIALOG_END_DATE: {
       final DatePickerDialog.OnDateSetListener listener = new DatePickerDialog.OnDateSetListener() {
         @Override public void onDateSet(DatePicker view, int year, int month, int day) {
-          mEndDate = new PickedDate(year, month, day);
+          mEndDate = new PickedDate(year, month - Calendar.JANUARY + 1, day);
           setDateText(mEndDateTextView, mEndDate);
         }
       };
-      return new DatePickerDialog(this, listener, 2100, 1, 1);
+      
+      // By default, use today as the upper limit.
+      Calendar c = Calendar.getInstance();
+      return new DatePickerDialog(this, listener, 
+          c.get(Calendar.YEAR), 
+          c.get(Calendar.MONTH) - Calendar.JANUARY + 1,
+          c.get(Calendar.DAY_OF_MONTH));
+      
     }
     case DIALOG_SEARCH: {
       final Context context = this;

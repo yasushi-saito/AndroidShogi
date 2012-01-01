@@ -78,18 +78,25 @@ public class GenericListUpdater<T> {
   private final Env<T> mEnv;
   private final ExternalCacheManager mCache;
   private final String mCacheKey;
+  private final int mMaxCacheStalenessMillis;
   private final ProgressBar mProgressBar;
+  private final T[] mTmpArray;
   
-  public GenericListUpdater(Env<T> env, 
+  public GenericListUpdater(
+      Env<T> env, 
       Context context,
       String cacheKey,
-      ProgressBar progressBar) {
+      int maxCacheStalenessMillis,
+      ProgressBar progressBar,
+      T[] tmpArray) {
     mContext = context;
     mAdapter = new MyAdapter(context);
     mEnv = env;
     mCache = ExternalCacheManager.getInstance(context.getApplicationContext());
+    mMaxCacheStalenessMillis = maxCacheStalenessMillis;
     mCacheKey = cacheKey;
     mProgressBar = progressBar;
+    mTmpArray = tmpArray;
     if (mProgressBar != null) mProgressBar.setVisibility(View.INVISIBLE);
   }
 
@@ -127,14 +134,21 @@ public class GenericListUpdater<T> {
     public final boolean deleteExistingObjects;
   }
   
-  private class ParallelFetcher {
-    private ExecutorService mThreads;
-    private ArrayList<T[]> mResults;
-    private boolean[] mDone;
+  /**
+   * Helper class for fetching multiple streams, as provided by myEnv, in parallel.
+   * 
+   * The results are always yielded in the order listed in myEnv. 
+   */
+  private static class ParallelFetcher<T> {
+    private final Env<T> mEnv;
+    private final ExecutorService mThreads;
+    private final ArrayList<T[]> mResults;
+    private final boolean[] mDone;
     private int mNextIndexToRead;
     private String mError;
     
-    public ParallelFetcher() {
+    public ParallelFetcher(Env<T> env) {
+      mEnv = env;
       final int numStreams = mEnv.numStreams();
       mNextIndexToRead = 0;
       int numThreads = numStreams;
@@ -154,6 +168,8 @@ public class GenericListUpdater<T> {
       mThreads.shutdown();
     }
 
+    public synchronized boolean hasNext() { return mNextIndexToRead < mDone.length; }
+    
     public synchronized T[] next() {
       while (!mDone[mNextIndexToRead]) {
         try {
@@ -163,12 +179,10 @@ public class GenericListUpdater<T> {
       }
       T[] r = mResults.get(mNextIndexToRead);
       ++mNextIndexToRead;
-      Log.d(TAG, "RETURN: " + String.valueOf(mNextIndexToRead) + ": " + String.valueOf(r != null ? r.length : -1));
       return r;
     }
     
     private synchronized void yieldResult(int index, T[] r) {
-      Log.d(TAG, "Yield : " + String.valueOf(index) + ": " + String.valueOf(r != null ? r.length : -1));
       mResults.set(index, r);
       mDone[index] = true;
       notify();
@@ -179,11 +193,9 @@ public class GenericListUpdater<T> {
     }
     
     private class Fetcher implements Runnable {
-      final int mIndex;
+      private final int mIndex;
       
-      public Fetcher(int index) {
-        mIndex = index;
-      }
+      public Fetcher(int index) { mIndex = index; }
       
       public void run() {
         T[] objs = null;
@@ -200,15 +212,15 @@ public class GenericListUpdater<T> {
     }
   }
   
-  /**
-   * @param mode either FORCE_RELOAD or MAY_READ_FROM_CACHE
-   * 
-   * @return an error message, or null on success
-   */
   private class ListThread extends AsyncTask<Integer, ListingStatus<T>, String> {
+    /**
+     * @param mode either FORCE_RELOAD or MAY_READ_FROM_CACHE
+     * 
+     * @return an error message, or null on success
+     */
     @Override
     protected String doInBackground(Integer... mode) {
-      ParallelFetcher fetcher = null;
+      ParallelFetcher<T> fetcher = null;
       try {
         try {
           ExternalCacheManager.ReadResult r;
@@ -216,35 +228,31 @@ public class GenericListUpdater<T> {
             r = new ExternalCacheManager.ReadResult();
             r.needRefresh = true;
           } else {
-            r = mCache.read(mCacheKey);
+            r = mCache.read(mCacheKey, mMaxCacheStalenessMillis);
           }
           final boolean hitCache = (r.obj != null); 
           if (hitCache) {
-            Log.d(TAG, "Found cache");
             publishProgress(new ListingStatus<T>((T[])r.obj, false));
           }
           if (r.needRefresh) {
             ArrayList<T> aggregate = new ArrayList<T>();
-            T[] objs = null;
-            fetcher = new ParallelFetcher();
-            
-            final int numStreams = mEnv.numStreams();
-            for (int i = 0; i < numStreams; ++i) {
-              objs = fetcher.next();
+            fetcher = new ParallelFetcher<T>(mEnv);
+            while (fetcher.hasNext()) {
+              T[] objs = fetcher.next();
               if (objs != null) {
                 for (T obj: objs) aggregate.add(obj);
                 if (!hitCache) {
                   // Incrementally update the screen as results arrive
                   publishProgress(new ListingStatus<T>(objs, false));
                 } else {
-                  // If the screet was already filled with a stale cache,
+                  // If the screen was already filled with a stale cache,
                   // buffer the new contents until it is complete, so that
                   // we don't have delete the screen contents midway.
                 } 
               }
             }
             if (fetcher.error() == null) {
-              objs = aggregate.toArray(objs);
+              T[] objs = aggregate.toArray(mTmpArray);
               if (mCacheKey != null) mCache.write(mCacheKey, objs);
               if (hitCache) {
                 publishProgress(new ListingStatus<T>(objs, true));

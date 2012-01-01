@@ -76,4 +76,6 @@
     <string name="opening_moves">Opening moves</string>
     <string name="search">Search</string>
     <string name="unspecified">(Unspecified)</string>
+    <string name="player_list">Player list</string>
+    <string name="query_result">Query result</string>
 </resources>

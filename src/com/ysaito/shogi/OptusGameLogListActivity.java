@@ -39,19 +39,27 @@ public class OptusGameLogListActivity extends ListActivity {
     
     final Bundle bundle = getIntent().getExtras();
     final OptusParser.Player player = (OptusParser.Player)bundle.getSerializable("player");
-
+    final OptusParser.LogRef tmpArray[] = new OptusParser.LogRef[0];
+    
     if (player != null) {
       setTitle(supportsCustomTitle, player.name);
+      final ProgressBar progressBar = (ProgressBar)findViewById(R.id.title_bar_with_progress_progress); /*could be null*/
       mUpdater = new GenericListUpdater<OptusParser.LogRef>(
-          new PlayerEnv(player), this, player.name,
-          (ProgressBar)findViewById(R.id.title_bar_with_progress_progress)/*could be null*/);
+          new PlayerEnv(player), this, 
+          player.name /*cache key*/,
+          ExternalCacheManager.MAX_STATIC_PAGE_CACHE_STALENESS_MS,
+          progressBar, tmpArray);
     } else {
       final OptusParser.SearchParameters mSearch = 
           (OptusParser.SearchParameters)bundle.getSerializable("search");
-      setTitle(supportsCustomTitle, "query");
+      setTitle(supportsCustomTitle, 
+          getResources().getString(R.string.query_result));
+      final ProgressBar progressBar = (ProgressBar)findViewById(R.id.title_bar_with_progress_progress); /*could be null*/
       mUpdater = new GenericListUpdater<OptusParser.LogRef>(
-          new SearchEnv(mSearch), this, null,
-          (ProgressBar)findViewById(R.id.title_bar_with_progress_progress)/*could be null*/);
+          new SearchEnv(mSearch), this, 
+          mSearch.toString() /*cache key*/,
+          ExternalCacheManager.MAX_QUERY_CACHE_STALENSS_MS,
+          progressBar, tmpArray);
     }
     setListAdapter(mUpdater.adapter());
     mUpdater.startListing(GenericListUpdater.MAY_READ_FROM_CACHE);
@@ -149,7 +157,7 @@ public class OptusGameLogListActivity extends ListActivity {
     
     @Override
     public OptusParser.LogRef[] readNthStream(int index) throws Throwable {
-      return OptusParser.listLogRefs(mPlayer.hrefs[index]);
+      return OptusParser.listLogsForPlayer(mPlayer.hrefs[index]);
     }
   }
 
@@ -170,7 +178,7 @@ public class OptusGameLogListActivity extends ListActivity {
     
     @Override
     public OptusParser.LogRef[] readNthStream(int index) throws Throwable {
-      return OptusParser.runQuery(mSearch);
+      return OptusParser.runSearch(mSearch);
     }
   }
   
@@ -219,7 +227,9 @@ public class OptusGameLogListActivity extends ListActivity {
       final String cacheKey = text_href;
       DownloadResult dr = new DownloadResult();
       try {
-        ExternalCacheManager.ReadResult r = mCache.read(cacheKey);
+        ExternalCacheManager.ReadResult r = mCache.read(
+            cacheKey, 
+            ExternalCacheManager.MAX_STATIC_PAGE_CACHE_STALENESS_MS);
         if (r.obj != null) {
           Log.d(TAG, "Found cache");
           dr.log = (GameLog)r.obj;

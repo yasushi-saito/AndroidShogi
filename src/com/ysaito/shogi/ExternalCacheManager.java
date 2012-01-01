@@ -24,7 +24,8 @@ public class ExternalCacheManager {
   private static final String TAG = "ExtenalCacheManager"; 
   private final File mDir;
   private final Context mContext;
-  private static final int MAX_CACHE_STALENESS_MS = 7 * 24 * 3600 * 1000; // 1 week
+  public static final int MAX_STATIC_PAGE_CACHE_STALENESS_MS = 7 * 24 * 3600 * 1000; // 1 week
+  public static final int MAX_QUERY_CACHE_STALENSS_MS = 24 * 3600 * 1000; // 1 day
   
   // Cache key -> last access time
   private HashMap<String, Long> mLastAccessTimes;
@@ -70,7 +71,7 @@ public class ExternalCacheManager {
     mContext = context;
     mDir = context.getExternalCacheDir();
     mDir.mkdirs();
-    Log.d(TAG, "CACHE=" + mDir.getAbsolutePath());
+    Log.d(TAG, "Cache=" + mDir.getAbsolutePath());
     mLastAccessTimes = new HashMap<String, Long>();
     
     FileInputStream summary_in = null;
@@ -148,7 +149,9 @@ public class ExternalCacheManager {
     public boolean needRefresh;
   }
   
-  public synchronized ReadResult read(String suppliedKey) {
+  public synchronized ReadResult read(
+      String suppliedKey,
+      int maxCacheStalenessMillis) {
     final String key = toKey(suppliedKey);
     final long now = System.currentTimeMillis(); 
     ReadResult r = new ReadResult();
@@ -162,7 +165,7 @@ public class ExternalCacheManager {
         CacheEntry ent = (CacheEntry)(new ObjectInputStream(data_in).readObject());
         if (ent != null) {
           r.obj = ent.obj;
-          r.needRefresh = (now - ent.createMs >= MAX_CACHE_STALENESS_MS);
+          r.needRefresh = (now - ent.createMs >= maxCacheStalenessMillis);
         }
         mLastAccessTimes.put(key, now);
         saveSummary();

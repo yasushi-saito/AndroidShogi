@@ -40,7 +40,7 @@
     <string name="sort_by_date">日時順リスト</string>
     <string name="sort_by_black_player">先手名順リスト</string>    
     <string name="sort_by_white_player">後手名順リスト</string>        
-    <string name="sort_by_player">棋士名順リスト</string>        
+    <string name="sort_by_player">対局者順リスト</string>        
     <string name="sort_by_number_of_games">対局数順リスト</string>
     <string name="sort_by_tournament">棋戦順リスト</string>
     <string name="sort_by_opening_moves">戦型順リスト</string>
@@ -79,4 +79,6 @@
     <string name="opening_moves">戦型</string>
     <string name="search">検索</string>
     <string name="unspecified">(指定なし)</string>
+    <string name="player_list">対局者リスト</string>
+    <string name="query_result">検索結果</string>
 </resources>

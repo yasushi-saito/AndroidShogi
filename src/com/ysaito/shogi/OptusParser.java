@@ -6,7 +6,6 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
@@ -20,8 +19,6 @@ import android.util.Log;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
-import java.io.StringBufferInputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,29 +36,16 @@ public class OptusParser {
   // Parsed result of a player
   @SuppressWarnings("serial") 
   public static class Player implements Serializable {
-    public Player(int lo, String n, int g, String[] refs) {
-      listOrder = lo;
-      name = n;
-      numGames = g;
-      hrefs = refs;
-    }
-
-    // The order of appearance in the web site. This is the pronunciation order.
-    public final int listOrder;
-    
-    public final String name;
-    
-    // Total # of games played by this player.
-    public final int numGames;
-    
-    // List of href links of the games played by this player. 
-    public final String[] hrefs;
+    public String name;
+    public int listOrder;   // The order of appearance in the web site (pronunciation order).
+    public int numGames;    // Total # of games played by this player.
+    public String[] hrefs;  // List of href links of the games played by this player. 
   }
 
   // Parsed result of a game log
   @SuppressWarnings("serial") 
   public static class LogRef implements Serializable {
-    public String href;
+    public String href;          // href to the play page
     public String tournament;
     public String blackPlayer;
     public String whitePlayer;
@@ -70,15 +54,18 @@ public class OptusParser {
     public int numPlays;         // 手数
   }
   
+  // Search parameters
   @SuppressWarnings("serial")
   public static class SearchParameters implements Serializable {
-    String player1;
-    String player2;
-    String startDate;
-    String endDate;
-    String tournament;
-    String openingMoves;
-    
+    public String player1;       // substring matching 
+    public String player2;       // substring matching 
+    public String startDate;     // YYYY-MM-DD
+    public String endDate;       // YYYY-MM-DD
+    public String tournament;    // "王位戦", etc
+    public String openingMoves;  // "四間飛車", etc
+
+    // Caution: toString() is used as the cache lookup key, so it must
+    // an injection.
     public String toString() {
       StringBuilder b = new StringBuilder();
       if (player1 != null) b.append(" player1=").append(player1);
@@ -90,8 +77,8 @@ public class OptusParser {
       return b.toString();
     }
   }
-  
-  public static LogRef[] runQuery(SearchParameters q) {
+
+  public static LogRef[] runSearch(SearchParameters q) {
     HttpClient httpClient = new DefaultHttpClient();
     HttpPost httpPost = new HttpPost("http://wiki.optus.nu/shogi/index.php");
     List<NameValuePair> p = new ArrayList<NameValuePair>();
@@ -187,34 +174,32 @@ public class OptusParser {
       // (2) number of game logs
       // (3) list of ref links to the games
       tmp_refs.clear();
-      String player_name = player.child(0).text();
-      int num_games = Integer.parseInt(player.child(2).text());
+      Player p = new Player();
+      p.listOrder = n++;
+      p.name = player.child(0).text();
+      p.numGames = Integer.parseInt(player.child(2).text());
       for (Element ref : player.child(3).children()) {
         tmp_refs.add(ref.attr("href"));
       }
-      players.add(new Player(
-          n,
-          player_name, 
-          num_games, 
-          tmp_refs.toArray(tmpString)));
-      ++n;
+      p.hrefs = tmp_refs.toArray(tmpString);
+      players.add(p);
     }
     return players.toArray(new Player[0]);
   }
   
-  private static String reencode(String s) throws UnsupportedEncodingException {
-    return new String(s.getBytes("SHIFT-JIS"));
-  }
-  
-  public static LogRef[] listLogRefs(String relativeUrl) throws IOException {
+  /**
+   * List game logs in a player's page
+   * 
+   */
+  public static LogRef[] listLogsForPlayer(String relativeUrl) throws IOException {
     URL url = new URL(LOG_LIST_BASE_URL + relativeUrl);
-    ArrayList<LogRef> logs = new ArrayList<LogRef>();
     byte[] contents = Util.streamToBytes(url.openStream());
     Document doc = Jsoup.parse(
         new ByteArrayInputStream(contents),
         Util.detectEncoding(contents, null),
         "http://www.example.com");
     Elements log_list = doc.select("tr:has(td:containsOwn(kid)) ~ tr");
+    ArrayList<LogRef> logs = new ArrayList<LogRef>();
     for (Element log : log_list) {
       // (0) ref
       // (1) tournament name
