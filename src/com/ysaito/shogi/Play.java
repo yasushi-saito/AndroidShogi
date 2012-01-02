@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import android.util.Log;
+
 /**
  * A class representing a single play
  */
@@ -108,8 +110,9 @@ public class Play implements Serializable {
   private static final Pattern KIF_MOVE_PATTERN = Pattern.compile("([1-9１-９])(.)(.+)\\((.)(.)\\)\\s*");
   private static final Pattern KIF_MOVE2_PATTERN = Pattern.compile("同[　\\s]*(.+)\\((.)(.)\\)\\s*");
   private static final Pattern KIF_DROP_PATTERN = Pattern.compile("([1-9１-９])([一二三四五六七八九])(.*)");
+  
   // Parse a KIF-format string. It looks like
-  // "８四歩(83)" (move FU at 83 to 84).
+  // "８四歩(83)" (move FU at 83 to 84). Returns null if the play is a noop.
   public static final Play fromKifString(Play prevMove, Player player, String kifMove) throws ParseException {
     Matcher m = KIF_MOVE_PATTERN.matcher(kifMove);
     try {
@@ -132,7 +135,12 @@ public class Play implements Serializable {
             -1, -1, arabicToXCoord(m.group(1)), japaneseToYCoord(m.group(2)));
         return mm;
       }
-      throw new ParseException("Failed to parse " + kifMove);
+      if (kifMove.startsWith("千日手")) {
+        // Ignore
+        // TODO(saito) Display the game outcome
+        return null;
+      }
+      throw new ParseException("Illegal play string: \"" + kifMove + "\"");
     } catch (NumberFormatException e) {
       throw new ParseException("Failed to parse " + kifMove + ": " + e.getMessage()); 
     }

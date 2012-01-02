@@ -13,6 +13,7 @@
     <string name="already_downloaded">Database files are already downloaded. Do you want to delete them and download them again?</string>
     <string name="shogi_data_download">Please install the shogi database application first by visiting
         market://details?id=com.ysaito.shogidata</string>
+    <string name="start_shogi_data">Shogi data files are not found. Run Shogi Data installer?</string>
     <string name="visit_marketplace">Visit Android Marketplace</string>
         <string name="preferences">Preferences</string>
     <string name="player_types">Players</string>

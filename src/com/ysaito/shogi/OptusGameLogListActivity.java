@@ -28,12 +28,14 @@ import java.util.Comparator;
 public class OptusGameLogListActivity extends ListActivity {
   private static final String TAG = "OptusGameLogList";
   private ExternalCacheManager mCache;
+  private Activity mActivity;
   private GenericListUpdater<OptusParser.LogRef> mUpdater;
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     boolean supportsCustomTitle = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
+    mActivity = this;
     mCache = ExternalCacheManager.getInstance(getApplicationContext());
     setContentView(R.layout.game_log_list);
     
@@ -253,7 +255,7 @@ public class OptusGameLogListActivity extends ListActivity {
         mProgressDialog.dismiss();
         mProgressDialog = null;
       }
-      if (dr.error != null) Util.showErrorDialog(getBaseContext(), dr.error);
+      if (dr.error != null) Util.showErrorDialog(mActivity, dr.error);
       if (dr.log != null) {
         Intent intent = new Intent(mActivity, ReplayGameActivity.class);
         intent.putExtra("gameLog", dr.log);

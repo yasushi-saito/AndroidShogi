@@ -371,8 +371,10 @@ public class GameLog implements Serializable {
           continue;
         } else {
           Play m = Play.fromKifString(prevPlay, curPlayer, playString);
-          l.mPlays.add(m);
-          prevPlay = m;
+          if (m != null) {
+            l.mPlays.add(m);
+            prevPlay = m;
+          }
           curPlayer = curPlayer.opponent();
         }
         continue;

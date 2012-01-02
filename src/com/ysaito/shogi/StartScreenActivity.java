@@ -3,9 +3,12 @@ package com.ysaito.shogi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.ComponentName;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -21,17 +24,19 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.File;
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * @author yasushi.saito@gmail.com 
+ * The activity launched when the Shogi application starts
  *
  */
 public class StartScreenActivity extends Activity {
   static final String TAG = "ShogiStart";
   static final int DIALOG_NEW_GAME = 1233;
-  static final int DIALOG_DATA_DOWNLOAD = 1234;
-  static final int DIALOG_FATAL_ERROR = 1235;
+  static final int DIALOG_INSTALL_SHOGI_DATA = 1234;
+  static final int DIALOG_START_SHOGI_DATA = 1235;
+  static final int DIALOG_FATAL_ERROR = 1236;
   private File mExternalDir;
   private SharedPreferences mPrefs;
   private String mErrorMessage;
@@ -45,7 +50,11 @@ public class StartScreenActivity extends Activity {
       FatalError("Please mount the sdcard on the device");
       return;
     } else if (!hasRequiredFiles(mExternalDir)) {
-      showDialog(DIALOG_DATA_DOWNLOAD);
+      if (hasShogiDataApplication()) {
+        showDialog(DIALOG_START_SHOGI_DATA);
+      } else {
+        showDialog(DIALOG_INSTALL_SHOGI_DATA);
+      }
       return;
     }
     mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
@@ -72,6 +81,21 @@ public class StartScreenActivity extends Activity {
     new BonanzaInitializeThread().start();
   }
 
+  private final Intent newShogiDataIntent() {
+    Intent intent = new Intent(Intent.ACTION_MAIN);
+    intent.setComponent(new ComponentName(
+        "com.ysaito.shogidata",
+        "com.ysaito.shogidata.AndroidShogiDataActivity"));
+    return intent;
+  }
+  
+  private boolean hasShogiDataApplication() {
+    List<ResolveInfo> list = getPackageManager().queryIntentActivities(
+        newShogiDataIntent(),
+        PackageManager.MATCH_DEFAULT_ONLY);  
+    return list.size() > 0;  
+  }
+  
   @Override
   public boolean onCreateOptionsMenu(Menu menu) {
     MenuInflater inflater = getMenuInflater();
@@ -107,8 +131,10 @@ public class StartScreenActivity extends Activity {
           );
       return d.getDialog();
     }
-    case DIALOG_DATA_DOWNLOAD: 
-      return newDataDownloadDialog();
+    case DIALOG_INSTALL_SHOGI_DATA: 
+      return newInstallShogiDataDialog();
+    case DIALOG_START_SHOGI_DATA: 
+      return newStartShogiDataDialog();
     case DIALOG_FATAL_ERROR: 
       return newFatalErrorDialog();
     default:    
@@ -141,7 +167,20 @@ public class StartScreenActivity extends Activity {
 
   static final String mMarketUri = new String("market://details?id=com.ysaito.shogidata");
 
-  private Dialog newDataDownloadDialog() {
+  private Dialog newStartShogiDataDialog() {
+    return new AlertDialog.Builder(this)
+    .setMessage(R.string.start_shogi_data)
+    .setCancelable(true)
+    .setIcon(android.R.drawable.ic_dialog_info)
+    .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+      public void onClick(DialogInterface dialog, int which) {
+        startActivity(newShogiDataIntent());
+      }
+    })
+    .create();
+  }
+  
+  private Dialog newInstallShogiDataDialog() {
     final TextView message = new TextView(this);
     final SpannableString s = 
         new SpannableString(getText(R.string.shogi_data_download));

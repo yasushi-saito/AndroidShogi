@@ -26,6 +26,7 @@ public enum Handicap {
   static Handicap parseJapaneseString(String s) throws InvalidParameterException {
     if (s.startsWith("平手")) return NONE;
     if (s.startsWith("香落")) return KYO;
+    if (s.startsWith("右香落")) return KYO;
     if (s.startsWith("角落")) return KAKU;
     if (s.startsWith("飛落") || s.startsWith("飛車落")) return HI;
     if (s.startsWith("飛香落")) return HI_KYO;       
