@@ -14,13 +14,11 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -34,40 +32,24 @@ import java.util.Comparator;
  * @author saito@google.com (Yaz Saito)
  *
  */
-public class OptusPlayerListActivity extends ListActivity {
+public class OptusPlayerListActivity extends GenericListActivity<OptusParser.Player> {
   private static final String TAG = "OptusPlayerList";
   private static final int DIALOG_SEARCH = 1234;
   private static final int DIALOG_START_DATE = 1235;  
   private static final int DIALOG_END_DATE = 1236;    
   
-  private GenericListUpdater<OptusParser.Player> mUpdater;
   private ListActivity mActivity;  // ==this
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
     mActivity = this;
     super.onCreate(savedInstanceState);
-    boolean supportsCustomTitle = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
-    setContentView(R.layout.game_log_list);
-    ProgressBar progressBar = null;
-    final String title = getResources().getString(R.string.player_list);
-    if (supportsCustomTitle) {
-      getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.title_bar_with_progress);
-      TextView titleView = (TextView)findViewById(R.id.title_bar_with_progress_title);
-      titleView.setText(title);
-      progressBar = (ProgressBar)findViewById(R.id.title_bar_with_progress_progress);
-    } else {
-      setTitle(title);
-    }
-    
-    mUpdater = new GenericListUpdater<OptusParser.Player>(
-        new MyEnv(), this, 
-        "@@player_list" /*cache key*/,
+    initialize(
+        "@@player_list", /*cache key*/
         ExternalCacheManager.MAX_STATIC_PAGE_CACHE_STALENESS_MS,
-        progressBar,
+        getResources().getString(R.string.player_list),
         new OptusParser.Player[0]/*tmp*/);
-    setListAdapter(mUpdater.adapter());
-    mUpdater.startListing(GenericListUpdater.MAY_READ_FROM_CACHE);
+    startListing(GenericListActivity.MAY_READ_FROM_CACHE);
   }
 
   @Override 
@@ -98,13 +80,13 @@ public class OptusPlayerListActivity extends ListActivity {
   public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
     case R.id.menu_reload:
-      mUpdater.startListing(GenericListUpdater.FORCE_RELOAD);
+      startListing(GenericListActivity.FORCE_RELOAD);
       return true;
     case R.id.menu_sort_by_player:
-      mUpdater.sort(BY_LIST_ORDER);
+      setSorter(BY_LIST_ORDER);
       return true;
     case R.id.menu_sort_by_number_of_games:
-      mUpdater.sort(BY_NUMBER_OF_GAMES);
+      setSorter(BY_NUMBER_OF_GAMES);
       return true;
     case R.id.menu_search: 
       showDialog(DIALOG_SEARCH);
@@ -140,68 +122,65 @@ public class OptusPlayerListActivity extends ListActivity {
     }
   }
 
-  @Override
-  protected Dialog onCreateDialog(int id) {
-    switch (id) {
-    case DIALOG_START_DATE: {
-      final DatePickerDialog.OnDateSetListener listener = new DatePickerDialog.OnDateSetListener() {
-        @Override public void onDateSet(DatePicker view, int year, int month, int day) {
-          mStartDate = new PickedDate(year, month - Calendar.JANUARY + 1, day);
-          setDateText(mStartDateTextView, mStartDate);
-        }
-      };
-      return new DatePickerDialog(this, listener, 2000, 1, 1);
-    }
-    case DIALOG_END_DATE: {
-      final DatePickerDialog.OnDateSetListener listener = new DatePickerDialog.OnDateSetListener() {
-        @Override public void onDateSet(DatePicker view, int year, int month, int day) {
-          mEndDate = new PickedDate(year, month - Calendar.JANUARY + 1, day);
-          setDateText(mEndDateTextView, mEndDate);
-        }
-      };
-      
-      // By default, use today as the upper limit.
-      Calendar c = Calendar.getInstance();
-      return new DatePickerDialog(this, listener, 
-          c.get(Calendar.YEAR), 
-          c.get(Calendar.MONTH) - Calendar.JANUARY + 1,
-          c.get(Calendar.DAY_OF_MONTH));
-      
-    }
-    case DIALOG_SEARCH: {
-      final Context context = this;
-      AlertDialog.Builder builder = new AlertDialog.Builder(context);
-      LayoutInflater inflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-      View layout = (View)inflater.inflate(R.layout.optus_search_dialog, null);
+  private final Dialog newStartDateDialog() { 
+    final DatePickerDialog.OnDateSetListener listener = new DatePickerDialog.OnDateSetListener() {
+      @Override public void onDateSet(DatePicker view, int year, int month, int day) {
+        mStartDate = new PickedDate(year, month - Calendar.JANUARY + 1, day);
+        setDateText(mStartDateTextView, mStartDate);
+      }
+    };
+    return new DatePickerDialog(this, listener, 2000, 1, 1);
+  }
+  
+  private final Dialog newEndDateDialog() {
+    final DatePickerDialog.OnDateSetListener listener = new DatePickerDialog.OnDateSetListener() {
+      @Override public void onDateSet(DatePicker view, int year, int month, int day) {
+        mEndDate = new PickedDate(year, month - Calendar.JANUARY + 1, day);
+        setDateText(mEndDateTextView, mEndDate);
+      }
+    };
+    
+    // By default, use today as the upper limit.
+    Calendar c = Calendar.getInstance();
+    return new DatePickerDialog(this, listener, 
+        c.get(Calendar.YEAR), 
+        c.get(Calendar.MONTH) - Calendar.JANUARY + 1,
+        c.get(Calendar.DAY_OF_MONTH));
+  }
 
-      setSpinnerList(layout, R.id.optus_tournament, R.array.tournament_values);
-      setSpinnerList(layout, R.id.optus_opening_moves, R.array.opening_moves_values);
-
-      // TODO(saito) set reasonable default date range
-      mStartDateTextView = (TextView)layout.findViewById(R.id.optus_start_date_text);
-      setDateText(mStartDateTextView, mStartDate);
-      Button startDate = (Button)layout.findViewById(R.id.optus_start_date_button);
-      startDate.setOnClickListener(new View.OnClickListener() {
-          public void onClick(View v) {
-              showDialog(DIALOG_START_DATE);
-          }
-      });
-      
-      mEndDateTextView = (TextView)layout.findViewById(R.id.optus_end_date_text);
-      setDateText(mEndDateTextView, mEndDate);
-      Button endDate = (Button)layout.findViewById(R.id.optus_end_date_button);
-      endDate.setOnClickListener(new View.OnClickListener() {
-          public void onClick(View v) {
-              showDialog(DIALOG_END_DATE);
-          }
-      });
-      
-      builder.setView(layout);
-      builder.setCancelable(true);
-      builder.setPositiveButton(R.string.search, new DialogInterface.OnClickListener() {
-        public void onClick(DialogInterface intf, int id) {
-          AlertDialog d = (AlertDialog)intf;
-          
+  private final Dialog newSearchDialog() {
+    final Context context = this;
+    AlertDialog.Builder builder = new AlertDialog.Builder(context);
+    LayoutInflater inflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+    View layout = (View)inflater.inflate(R.layout.optus_search_dialog, null);
+    
+    setSpinnerList(layout, R.id.optus_tournament, R.array.tournament_values);
+    setSpinnerList(layout, R.id.optus_opening_moves, R.array.opening_moves_values);
+    
+    mStartDateTextView = (TextView)layout.findViewById(R.id.optus_start_date_text);
+    setDateText(mStartDateTextView, mStartDate);
+    Button startDate = (Button)layout.findViewById(R.id.optus_start_date_button);
+    startDate.setOnClickListener(new View.OnClickListener() {
+      public void onClick(View v) {
+        showDialog(DIALOG_START_DATE);
+      }
+    });
+    
+    mEndDateTextView = (TextView)layout.findViewById(R.id.optus_end_date_text);
+    setDateText(mEndDateTextView, mEndDate);
+    Button endDate = (Button)layout.findViewById(R.id.optus_end_date_button);
+    endDate.setOnClickListener(new View.OnClickListener() {
+      public void onClick(View v) {
+        showDialog(DIALOG_END_DATE);
+      }
+    });
+    
+    builder.setView(layout);
+    builder.setCancelable(true);
+    builder.setPositiveButton(R.string.search, new DialogInterface.OnClickListener() {
+      public void onClick(DialogInterface intf, int id) {
+        AlertDialog d = (AlertDialog)intf;
+        
           OptusParser.SearchParameters q = new OptusParser.SearchParameters();  
           String player1 = ((EditText)d.findViewById(R.id.optus_player1)).getText().toString().trim();
           if (player1.length() > 0) q.player1 = player1;
@@ -234,41 +213,47 @@ public class OptusPlayerListActivity extends ListActivity {
           startActivity(intent);
         }
        });
-
       return builder.create();
-    }
+    
+  }
+  
+  @Override
+  protected Dialog onCreateDialog(int id) {
+    switch (id) {
+    case DIALOG_START_DATE: return newStartDateDialog();
+    case DIALOG_END_DATE: return newEndDateDialog();
+    case DIALOG_SEARCH: return newSearchDialog();
     }
     return null;
   }
   
-  private class MyEnv implements GenericListUpdater.Env<OptusParser.Player> {
-    @Override 
-    public String getListLabel(OptusParser.Player p) { 
-      if (p == null) return "";
-      
-      mBuilder.setLength(0);
-      mBuilder.append(p.name)
-      .append(" (")
-      .append(p.numGames)
-      .append("局)");
-      return mBuilder.toString();
-    }
-
-    @Override
-    public int numStreams() { return 1; }
+  @Override 
+  public String getListLabel(OptusParser.Player p) { 
+    if (p == null) return "";
     
-    @Override
-    public OptusParser.Player[] readNthStream(int index) throws Throwable { 
-      return OptusParser.listPlayers();
-    }
-    
-    // All calls to getListLabel() are from one thread, so share one builder.
-    private final StringBuilder mBuilder = new StringBuilder();
+    mBuilder.setLength(0);
+    mBuilder.append(p.name)
+    .append(" (")
+    .append(p.numGames)
+    .append("局)");
+    return mBuilder.toString();
   }
+
+  @Override
+  public int numStreams() { return 1; }
+  
+  @Override
+  public OptusParser.Player[] readNthStream(int index) throws Throwable { 
+    return OptusParser.listPlayers();
+  }
+  
+  // All calls to getListLabel() are from one thread, so share one builder.
+  private final StringBuilder mBuilder = new StringBuilder();
+
   
   @Override 
   public void onListItemClick(ListView l, View v, int position, long id) {
-    OptusParser.Player player = mUpdater.getObjectAtPosition(position);
+    OptusParser.Player player = getObjectAtPosition(position);
     if (player != null) {
       Log.d(TAG, "Click: " + player.name);
       Intent intent = new Intent(this, OptusGameLogListActivity.class);

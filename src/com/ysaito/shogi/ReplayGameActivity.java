@@ -8,6 +8,7 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.view.Menu;
@@ -26,6 +27,9 @@ public class ReplayGameActivity extends Activity {
   private GameStatusView mStatusView;
   private SeekBar mSeekBar;
 
+  private Activity mActivity;
+  private GameLogListManager mGameLogList;
+  
   // Game preferences
   private boolean mFlipScreen;
 
@@ -45,6 +49,9 @@ public class ReplayGameActivity extends Activity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    mActivity = this;
+    mGameLogList = GameLogListManager.getInstance();
+    
     setContentView(R.layout.replay_game);
     initializeInstanceState(savedInstanceState);
 
@@ -175,12 +182,13 @@ public class ReplayGameActivity extends Activity {
       showDialog(DIALOG_RESUME_GAME);
       return true;
     case R.id.menu_save_in_sdcard: {
-      LogListManager.getSingletonInstance().saveLogInSdcard(
-          new LogListManager.TrivialListener() { 
-            public void onFinish() { }
-          },
-          this, 
-          mLog);
+      new AsyncTask<GameLog, String, String>() {
+        @Override
+        protected String doInBackground(GameLog... logs) {
+          mGameLogList.saveLogInSdcard(mActivity, logs[0]);
+          return null;
+        }
+      }.execute(mLog);
       return true;
     }
     case R.id.menu_log_properties:

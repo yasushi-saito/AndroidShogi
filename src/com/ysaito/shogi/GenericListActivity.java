@@ -6,25 +6,61 @@ import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import android.app.ListActivity;
 import android.content.Context;
 import android.os.AsyncTask;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.BaseAdapter;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-public class GenericListUpdater<T> {
-  private static final String TAG = "GenericListUpdater";
+public abstract class GenericListActivity<T> extends ListActivity {
   
-  public interface Env<T> {
-    String getListLabel(T obj);
-    int numStreams();
-    T[] readNthStream(int index) throws Throwable;
+  /** Given an object, return the string to be displayed in the list.
+   */
+  protected abstract String getListLabel(T obj);
+  
+  /** Return the number of input streams */
+  protected abstract int numStreams();
+  
+  /** Read the @p index'th input stream. This method is allowed to block. */ 
+  protected abstract T[] readNthStream(int index) throws Throwable;
+
+  /**
+   *
+   * @pre The caller must be the main thread
+   * @param mode one of MAY_READ_FROM_CACHE or FORCE_RELOAD.
+   */
+  public static final int MAY_READ_FROM_CACHE = 0;
+  public static final int FORCE_RELOAD = 1;
+  public void startListing(int mode) {
+    ListThread thread = new ListThread();
+    if (mProgressBar != null) {
+      if (mProgressBar != null) mProgressBar.setVisibility(View.VISIBLE);
+    }
+    thread.execute(mode);
+  }
+
+  /**
+   * @pre The caller must be the main thread
+   * @param sorter
+   */
+  public void setSorter(Comparator<T> sorter) {
+    mAdapter.setSorter(sorter);
   }
   
+  /**
+   * @pre The caller must be the main thread
+   * @param position
+   * @return
+   */
+  public T getObjectAtPosition(int position) {
+    return mAdapter.getObject(position);
+  }
+
   private class MyAdapter extends BaseAdapter {
     private final LayoutInflater mInflater;
     private ArrayList<T> mObjects = new ArrayList<T>();
@@ -45,7 +81,7 @@ public class GenericListUpdater<T> {
         text = (TextView)convertView;
       }
       text.setHorizontallyScrolling(false);
-      text.setText(mEnv.getListLabel(getObject(position)));
+      text.setText(getListLabel(getObject(position)));
       return text;
     }
 
@@ -66,62 +102,49 @@ public class GenericListUpdater<T> {
       return mObjects.get(position);
     }
     
-    public void sort(Comparator<T> sorter) {
+    public void setSorter(Comparator<T> sorter) {
       mSorter = sorter;
       if (mSorter != null) Collections.sort(mObjects, mSorter);
       notifyDataSetChanged();
     }
   }
   
-  private final Context mContext;
-  private final MyAdapter mAdapter;
-  private final Env<T> mEnv;
-  private final ExternalCacheManager mCache;
-  private final String mCacheKey;
-  private final int mMaxCacheStalenessMillis;
-  private final ProgressBar mProgressBar;
-  private final T[] mTmpArray;
+  private GenericListActivity<T> mActivity;
+  private MyAdapter mAdapter;
+  private ExternalCacheManager mCache;
+  private String mCacheKey;
+  private int mMaxCacheStalenessMillis;
+  private ProgressBar mProgressBar;
+  private T[] mTmpArray;
   
-  public GenericListUpdater(
-      Env<T> env, 
-      Context context,
+  protected void initialize(
       String cacheKey,
       int maxCacheStalenessMillis,
-      ProgressBar progressBar,
+      String title,
       T[] tmpArray) {
-    mContext = context;
-    mAdapter = new MyAdapter(context);
-    mEnv = env;
-    mCache = ExternalCacheManager.getInstance(context.getApplicationContext());
+    mActivity = this;
+    mAdapter = new MyAdapter(this);
+    mCache = ExternalCacheManager.getInstance(getApplicationContext());
     mMaxCacheStalenessMillis = maxCacheStalenessMillis;
     mCacheKey = cacheKey;
-    mProgressBar = progressBar;
+    boolean supportsCustomTitle = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
+    setContentView(R.layout.game_log_list);
     mTmpArray = tmpArray;
-    if (mProgressBar != null) mProgressBar.setVisibility(View.INVISIBLE);
-  }
-
-  public BaseAdapter adapter() { return mAdapter; }
-  
-  /**
-   * 
-   * @param mode one of MAY_READ_FROM_CACHE or FORCE_RELOAD.
-   */
-  public static final int MAY_READ_FROM_CACHE = 0;
-  public static final int FORCE_RELOAD = 1;
-  public void startListing(int mode) {
-    ListThread thread = new ListThread();
-    if (mProgressBar != null) {
-      if (mProgressBar != null) mProgressBar.setVisibility(View.VISIBLE);
+    mProgressBar = null;
+    
+    if (supportsCustomTitle) {
+      getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.title_bar_with_progress);
+      mProgressBar = (ProgressBar)findViewById(R.id.title_bar_with_progress_progress); /*could be null*/
+      mProgressBar.setVisibility(View.INVISIBLE);
+      TextView titleView = (TextView)findViewById(R.id.title_bar_with_progress_title);
+      titleView.setText(title);
+    } else {
+      setTitle(title);
     }
-    thread.execute(mode);
-  }
-
-  public void sort(Comparator<T> sorter) {
-    mAdapter.sort(sorter);
-  }
-  
-  public T getObjectAtPosition(int position) {
-    return mAdapter.getObject(position);
+    
+    // Use an existing ListAdapter that will map an array
+    // of strings to TextViews
+    setListAdapter(mAdapter);
   }
 
   private static class ListingStatus<T> {
@@ -139,17 +162,15 @@ public class GenericListUpdater<T> {
    * 
    * The results are always yielded in the order listed in myEnv. 
    */
-  private static class ParallelFetcher<T> {
-    private final Env<T> mEnv;
+  private class ParallelFetcher {
     private final ExecutorService mThreads;
     private final ArrayList<T[]> mResults;
     private final boolean[] mDone;
     private int mNextIndexToRead;
     private String mError;
     
-    public ParallelFetcher(Env<T> env) {
-      mEnv = env;
-      final int numStreams = mEnv.numStreams();
+    public ParallelFetcher() {
+      final int numStreams = mActivity.numStreams();
       mNextIndexToRead = 0;
       int numThreads = numStreams;
       if (numThreads >= 6) numThreads = 6;
@@ -201,7 +222,7 @@ public class GenericListUpdater<T> {
         T[] objs = null;
         try {
           try {
-            objs = mEnv.readNthStream(mIndex);
+            objs = mActivity.readNthStream(mIndex);
           } catch (Throwable e) {
             setError(Util.throwableToString(e));
           }
@@ -220,7 +241,7 @@ public class GenericListUpdater<T> {
      */
     @Override
     protected String doInBackground(Integer... mode) {
-      ParallelFetcher<T> fetcher = null;
+      ParallelFetcher fetcher = null;
       try {
         try {
           ExternalCacheManager.ReadResult r;
@@ -236,7 +257,7 @@ public class GenericListUpdater<T> {
           }
           if (r.needRefresh) {
             ArrayList<T> aggregate = new ArrayList<T>();
-            fetcher = new ParallelFetcher<T>(mEnv);
+            fetcher = new ParallelFetcher();
             while (fetcher.hasNext()) {
               T[] objs = fetcher.next();
               if (objs != null) {
@@ -289,7 +310,7 @@ public class GenericListUpdater<T> {
       if (mProgressBar != null) {
         if (mProgressBar != null) mProgressBar.setVisibility(View.INVISIBLE);
       }
-      if (error != null) Util.showErrorDialog(mContext, error);
+      if (error != null) Util.showErrorDialog(mActivity, error);
     }
   }
 }

@@ -8,6 +8,7 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -41,6 +42,10 @@ public class GameActivity extends Activity {
   // Make this field per-player attribute.
   private int mUndosRemaining;
 
+  // Constants after onCreate().
+  private Activity mActivity; 
+  private GameLogListManager mGameLogList;
+  
   // View components
   private AlertDialog mPromoteDialog;
   private BonanzaController mController;
@@ -74,6 +79,8 @@ public class GameActivity extends Activity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    mActivity = this;
+    mGameLogList = GameLogListManager.getInstance();
     setContentView(R.layout.game);
 
     initializeInstanceState(savedInstanceState);
@@ -408,12 +415,14 @@ public class GameActivity extends Activity {
       if (mHandicap != Handicap.NONE) {
         attrs.put(GameLog.ATTR_HANDICAP, mHandicap.toJapaneseString());
       }
-      
-      LogListManager.getSingletonInstance().addLog(
-          this, 
-          GameLog.newLog(mStartTimeMs, attrs.entrySet(), mPlays, 
-              null /* not on sdcard yet */
-              ));
+
+      new AsyncTask<GameLog, String, String>() {
+        @Override
+        protected String doInBackground(GameLog... logs) {
+          mGameLogList.saveLogInMemory(mActivity, logs[0]);
+          return null;
+        }
+      }.execute(GameLog.newLog(mStartTimeMs, attrs.entrySet(), mPlays,  null /* not on sdcard yet */));
     }
   }
   
