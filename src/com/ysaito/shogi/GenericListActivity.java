@@ -147,14 +147,19 @@ public abstract class GenericListActivity<T> extends ListActivity {
     setListAdapter(mAdapter);
   }
 
+  private static enum ListingMode {
+    DELETE_EXISTING_OBJECTS,
+    ADD_TO_EXISTING_OBJECTS,
+  };
+  
   private static class ListingStatus<T> {
-    public ListingStatus(T[] o, boolean d) {
+    public ListingStatus(T[] o, ListingMode m) {
       objects = o;
-      deleteExistingObjects = d;
+      mode = m;
     }
     
     public final T[] objects;
-    public final boolean deleteExistingObjects;
+    public final ListingMode mode;
   }
   
   /**
@@ -251,20 +256,25 @@ public abstract class GenericListActivity<T> extends ListActivity {
           } else {
             r = mCache.read(mCacheKey, mMaxCacheStalenessMillis);
           }
-          final boolean hitCache = (r.obj != null); 
+          final boolean hitCache = (r.obj != null);
           if (hitCache) {
-            publishProgress(new ListingStatus<T>((T[])r.obj, false));
+            publishProgress(new ListingStatus<T>((T[])r.obj, ListingMode.DELETE_EXISTING_OBJECTS));
           }
+          
           if (r.needRefresh) {
             ArrayList<T> aggregate = new ArrayList<T>();
             fetcher = new ParallelFetcher();
+            boolean firstPublish = true;
             while (fetcher.hasNext()) {
               T[] objs = fetcher.next();
               if (objs != null) {
                 for (T obj: objs) aggregate.add(obj);
                 if (!hitCache) {
                   // Incrementally update the screen as results arrive
-                  publishProgress(new ListingStatus<T>(objs, false));
+                  publishProgress(new ListingStatus<T>(objs, 
+                      (firstPublish ? ListingMode.DELETE_EXISTING_OBJECTS :
+                        ListingMode.ADD_TO_EXISTING_OBJECTS)));
+                  firstPublish = false;
                 } else {
                   // If the screen was already filled with a stale cache,
                   // buffer the new contents until it is complete, so that
@@ -276,7 +286,7 @@ public abstract class GenericListActivity<T> extends ListActivity {
               T[] objs = aggregate.toArray(mTmpArray);
               if (mCacheKey != null) mCache.write(mCacheKey, objs);
               if (hitCache) {
-                publishProgress(new ListingStatus<T>(objs, true));
+                publishProgress(new ListingStatus<T>(objs, ListingMode.DELETE_EXISTING_OBJECTS));
               }
             }
           }
@@ -297,7 +307,7 @@ public abstract class GenericListActivity<T> extends ListActivity {
     @Override
     protected void onProgressUpdate(ListingStatus<T>... list) {
       for (ListingStatus<T> status : list) {
-        if (status.deleteExistingObjects) {
+        if (status.mode == ListingMode.DELETE_EXISTING_OBJECTS) {
           mAdapter.setObjects(status.objects);
         } else {
           mAdapter.addObjects(status.objects);

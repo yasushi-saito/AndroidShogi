@@ -99,7 +99,7 @@ public class GameLogListActivity extends GenericListActivity<GameLog> {
 
   @Override
   public GameLog[] readNthStream(int index) throws Throwable {
-    Collection<GameLog> list = GameLogListManager.getInstance().listLogs(this, mMode);
+    Collection<GameLog> list = mGameLogList.listLogs(this, mMode);
     return list.toArray(new GameLog[0]);
   }
   
