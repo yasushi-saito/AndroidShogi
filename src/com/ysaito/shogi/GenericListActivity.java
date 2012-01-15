@@ -42,9 +42,7 @@ public abstract class GenericListActivity<T> extends ListActivity {
   public static final int FORCE_RELOAD = 1;
   public void startListing(int mode) {
     ListThread thread = new ListThread();
-    if (mProgressBar != null) {
-      mProgressBar.setVisibility(View.VISIBLE);
-    }
+    setProgressBarIndeterminateVisibility(true);
     thread.execute(mode);
   }
 
@@ -122,7 +120,6 @@ public abstract class GenericListActivity<T> extends ListActivity {
   private ExternalCacheManager mCache;
   private String mCacheKey;
   private int mMaxCacheStalenessMillis;
-  private ProgressBar mProgressBar;
   private T[] mTmpArray;
   
   protected void initialize(
@@ -135,20 +132,11 @@ public abstract class GenericListActivity<T> extends ListActivity {
     mCache = ExternalCacheManager.getInstance(getApplicationContext());
     mMaxCacheStalenessMillis = maxCacheStalenessMillis;
     mCacheKey = cacheKey;
-    boolean supportsCustomTitle = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
+    requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
     setContentView(R.layout.game_log_list);
     mTmpArray = tmpArray;
-    mProgressBar = null;
     
-    if (supportsCustomTitle) {
-      getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.title_bar_with_progress);
-      mProgressBar = (ProgressBar)findViewById(R.id.title_bar_with_progress_progress); /*could be null*/
-      mProgressBar.setVisibility(View.INVISIBLE);
-      TextView titleView = (TextView)findViewById(R.id.title_bar_with_progress_title);
-      titleView.setText(title);
-    } else {
-      setTitle(title);
-    }
+    setTitle(title);
     
     // Use an existing ListAdapter that will map an array
     // of strings to TextViews
@@ -325,9 +313,7 @@ public abstract class GenericListActivity<T> extends ListActivity {
     
     @Override
     protected void onPostExecute(String error) {
-      if (mProgressBar != null) {
-        if (mProgressBar != null) mProgressBar.setVisibility(View.INVISIBLE);
-      }
+      setProgressBarIndeterminateVisibility(false);
       if (error != null) Util.showErrorDialog(mActivity, error);
     }
   }
