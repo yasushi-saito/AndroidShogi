@@ -9,17 +9,18 @@
             android:layout_width="fill_parent"
             android:text="@string/player"/>
 
-  <EditText
+  <AutoCompleteTextView
       android:id="@+id/optus_player1"
       android:layout_width="fill_parent"
-      android:layout_height="wrap_content"/>
-      
-
-  <EditText
+      android:layout_height="wrap_content"
+      android:inputType="text" />
+  
+  <AutoCompleteTextView
       android:id="@+id/optus_player2"
       android:layout_width="fill_parent"
-      android:layout_height="wrap_content"/>
-
+      android:layout_height="wrap_content"
+      android:inputType="text" />
+  
   <TextView android:layout_height="wrap_content"
             android:layout_width="fill_parent"
             android:text="@string/tournament"/>

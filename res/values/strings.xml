@@ -10,14 +10,12 @@
     <string name="promote">Promote</string>
     <string name="app_name">Android Shogi</string>
     <string name="new_game">New Game</string>
-    <string name="already_downloaded">Database files are already downloaded. Do you want to delete them and download them again?</string>
     <string name="shogi_data_download">Please install the shogi database application first by visiting
         market://details?id=com.ysaito.shogidata</string>
     <string name="start_shogi_data">Shogi data files are not found. Run Shogi Data installer?</string>
     <string name="visit_marketplace">Visit Android Marketplace</string>
         <string name="preferences">Preferences</string>
     <string name="player_types">Players</string>
-    <string name="computer">Computer</string>
     <string name="computer_difficulty">Computer Difficulty</string>
     <string name="reset_preferences">Reset Preferences</string>
     <string name="flip_screen">Flip Screen</string>
@@ -63,7 +61,6 @@
     <string name="attr_tournament">Tournament</string>
     <string name="attr_black_player">Black player</string>
     <string name="attr_white_player">White player</string>
-    <string name="shogi_db_source">Shogi DB Source URL</string>
     <string name="log_save_format">Log file format</string>
     <string name="human_player_name">Player name</string>
     <string name="default_human_player_name">Human</string>
@@ -79,4 +76,6 @@
     <string name="unspecified">(Unspecified)</string>
     <string name="player_list">Player list</string>
     <string name="query_result">Query result</string>
+    <string name="next">Next</string>
+    <string name="prev">Prev</string>
 </resources>

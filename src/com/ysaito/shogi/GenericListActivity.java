@@ -17,6 +17,10 @@ import android.widget.BaseAdapter;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+/**
+ * An activity that implements a scrolling list scraped from an URL.
+ * Used by the game log activity, optus player list activity, and optus player game log activity.
+ */
 public abstract class GenericListActivity<T> extends ListActivity {
   
   /** Given an object, return the string to be displayed in the list.
@@ -39,7 +43,7 @@ public abstract class GenericListActivity<T> extends ListActivity {
   public void startListing(int mode) {
     ListThread thread = new ListThread();
     if (mProgressBar != null) {
-      if (mProgressBar != null) mProgressBar.setVisibility(View.VISIBLE);
+      mProgressBar.setVisibility(View.VISIBLE);
     }
     thread.execute(mode);
   }
@@ -51,6 +55,8 @@ public abstract class GenericListActivity<T> extends ListActivity {
   public void setSorter(Comparator<T> sorter) {
     mAdapter.setSorter(sorter);
   }
+  
+  public int numObjects() { return mAdapter.numObjects(); }
   
   /**
    * @pre The caller must be the main thread
@@ -96,6 +102,8 @@ public abstract class GenericListActivity<T> extends ListActivity {
       if (mSorter != null) Collections.sort(mObjects, mSorter);
       notifyDataSetChanged();
     }
+    
+    public int numObjects() { return mObjects.size(); }
     
     public T getObject(int position) {
       if (mObjects == null || position >= mObjects.size()) return null;
@@ -211,7 +219,7 @@ public abstract class GenericListActivity<T> extends ListActivity {
     private synchronized void yieldResult(int index, T[] r) {
       mResults.set(index, r);
       mDone[index] = true;
-      notify();
+      notifyAll();
     }
     
     private synchronized void setError(String e) {

@@ -612,8 +612,8 @@ public class BoardView extends View implements View.OnTouchListener {
     // Draw the gridlines
     p.setColor(0xff000000);
     for (int i = 0; i < Board.DIM; ++i) {
-      float sx = layout.screenX(i);
-      float sy = layout.screenY(i);
+      final float sx = layout.screenX(i);
+      final float sy = layout.screenY(i);
       canvas.drawLine(sx, boardRect.top, sx, boardRect.bottom, p);
       canvas.drawLine(boardRect.left, sy, boardRect.right, sy, p);
     }
@@ -688,10 +688,10 @@ public class BoardView extends View implements View.OnTouchListener {
 
   // Load bitmaps for pieces. Called once when this view is created.
   private final void initializePieceBitmaps(Context context) {
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    String prefix = prefs.getString("piece_style", "kinki_simple");
+    final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+    final String prefix = prefs.getString("piece_style", "kinki_simple");
     Log.d(TAG, "PREFIX: " + prefix);
-    Resources r = getResources();
+    final Resources r = getResources();
     mBlackBitmaps = new BitmapDrawable[Piece.NUM_TYPES];
     mWhiteBitmaps = new BitmapDrawable[Piece.NUM_TYPES];
     String koma_names[] = {
@@ -700,7 +700,7 @@ public class BoardView extends View implements View.OnTouchListener {
         "to", "nari_kyo", "nari_kei", "nari_gin", null, "uma", "ryu"
     };
 
-    Matrix flip = new Matrix();
+    final Matrix flip = new Matrix();
     flip.postRotate(180);
 
     for (int i = 1; i < Piece.NUM_TYPES; ++i) {

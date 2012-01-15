@@ -15,6 +15,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
@@ -148,12 +149,27 @@ public class OptusPlayerListActivity extends GenericListActivity<OptusParser.Pla
         c.get(Calendar.DAY_OF_MONTH));
   }
 
+  private void setAutoCompleteTextView(View layout, int id, String[] completions) {
+    AutoCompleteTextView textView = (AutoCompleteTextView)layout.findViewById(id);
+    ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+        this, 
+        android.R.layout.simple_dropdown_item_1line,
+        completions);
+    textView.setAdapter(adapter);
+  }
+
   private final Dialog newSearchDialog() {
     final Context context = this;
     AlertDialog.Builder builder = new AlertDialog.Builder(context);
     LayoutInflater inflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
     View layout = (View)inflater.inflate(R.layout.optus_search_dialog, null);
-    
+
+    String[] PLAYERS = new String[numObjects()];
+    for (int i = 0; i < PLAYERS.length; ++i) {
+      PLAYERS[i] = getObjectAtPosition(i).name;
+    }
+    setAutoCompleteTextView(layout, R.id.optus_player1, PLAYERS);
+    setAutoCompleteTextView(layout, R.id.optus_player2, PLAYERS);    
     setSpinnerList(layout, R.id.optus_tournament, R.array.tournament_values);
     setSpinnerList(layout, R.id.optus_opening_moves, R.array.opening_moves_values);
     
@@ -202,10 +218,10 @@ public class OptusPlayerListActivity extends GenericListActivity<OptusParser.Pla
 
           final String unspecifiedDate = getResources().getString(R.string.unspecified);
           String s = mStartDateTextView.getText().toString();
-          if (s != unspecifiedDate) q.startDate = s;
+          if (!s.equals(unspecifiedDate)) q.startDate = s;
 
           s = mEndDateTextView.getText().toString();
-          if (s != unspecifiedDate) q.endDate = s;
+          if (!s.equals(unspecifiedDate)) q.endDate = s;
           
           Log.d(TAG, "QUERY=" + q.toString());
           Intent intent = new Intent(mActivity, OptusGameLogListActivity.class);
