@@ -240,6 +240,7 @@ public abstract class GenericListActivity<T> extends ListActivity {
      * 
      * @return an error message, or null on success
      */
+    @SuppressWarnings("unchecked")
     @Override
     protected String doInBackground(Integer... mode) {
       ParallelFetcher fetcher = null;
