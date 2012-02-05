@@ -66,7 +66,6 @@ public class ExternalCacheManager {
   
   // TODO: add background purging
   
-  @SuppressWarnings(value="unchecked")
   private ExternalCacheManager(Context context) {
     mContext = context;
     mDir = context.getExternalCacheDir();
@@ -79,7 +78,7 @@ public class ExternalCacheManager {
       try {
         summary_in = context.openFileInput(SUMMARY_PATH);
         ObjectInputStream oin = new ObjectInputStream(summary_in);
-        mLastAccessTimes = (HashMap<String, Long>)oin.readObject();
+        mLastAccessTimes = HashMap<String, Long>.cast(oin.readObject());
       } finally {
         if (summary_in != null) summary_in.close();
       }

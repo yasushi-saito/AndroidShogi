@@ -69,9 +69,17 @@ public class GameLog implements Serializable {
     }
     return b.toString();
   }
+
+  @Override public boolean equals(Object o) {
+    if (o instanceof GameLog) {
+      return digest().equals(((GameLog)o).digest());
+    } else {
+      return false;
+    }
+  }
   
   @Override public int hashCode() {
-    throw new AssertionError("hashCode not implemented");
+    return digest().hashCode();
   }
 
   /**

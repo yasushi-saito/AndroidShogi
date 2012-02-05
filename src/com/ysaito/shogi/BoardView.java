@@ -25,6 +25,7 @@ import com.ysaito.shogi.Board;
 
 public class BoardView extends View implements View.OnTouchListener {
   static public final String TAG = "ShogiView";
+  
   /**
    * Interface for communicating user moves to the owner of this view.
    * onHumanMove is called when a human player moves a piece, or drops a
@@ -438,8 +439,11 @@ public class BoardView extends View implements View.OnTouchListener {
     public final int x, y;
   }
   
+  @Override public boolean equals(Object o) { return this == o; }
+  
   @Override public int hashCode() {
-    throw new AssertionError("hashCode not supported");
+    // Really not used, but some phone apparently calls this function for no good reason.
+    return 0;
   }
 
   // Draw a dark square at board position <px, py>.
@@ -474,7 +478,7 @@ public class BoardView extends View implements View.OnTouchListener {
     }
     
     @Override public int hashCode() {
-      throw new AssertionError("hashCode not supported");
+      return position + piece + n;
     }
     
     public final int position;  // 0: leftmost piece on the screen, 1: 2nd from the left, etc
@@ -690,7 +694,6 @@ public class BoardView extends View implements View.OnTouchListener {
   private final void initializePieceBitmaps(Context context) {
     final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
     final String prefix = prefs.getString("piece_style", "kinki_simple");
-    Log.d(TAG, "PREFIX: " + prefix);
     final Resources r = getResources();
     mBlackBitmaps = new BitmapDrawable[Piece.NUM_TYPES];
     mWhiteBitmaps = new BitmapDrawable[Piece.NUM_TYPES];

@@ -45,15 +45,19 @@ public class Play implements Serializable {
   public final int toY() { return mToY; }  
   
   @Override public boolean equals(Object o) {
-    Play m = (Play)o;
-    return (m != null &&
-        m.mPiece == mPiece &&
-        m.mFromX == mFromX && m.mFromY == mFromY &&
-        m.mToX == mToX && m.mToY == mToY);
+    if (o instanceof Play) {
+      Play m = (Play)o;
+      return (
+          m.mPiece == mPiece &&
+          m.mFromX == mFromX && m.mFromY == mFromY &&
+          m.mToX == mToX && m.mToY == mToY);
+    } else {
+      return false;
+    }
   }
   
   @Override public int hashCode() {
-    throw new AssertionError("hashCode not supported");
+    return mPiece + mFromX + mFromY + mToX;
   }
   
   @Override public String toString() {

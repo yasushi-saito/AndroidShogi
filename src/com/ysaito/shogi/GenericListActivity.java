@@ -254,7 +254,8 @@ public abstract class GenericListActivity<T> extends ListActivity {
           }
           final boolean hitCache = (r.obj != null);
           if (hitCache) {
-            publishProgress(new ListingStatus<T>((T[])r.obj, ListingMode.DELETE_EXISTING_OBJECTS));
+            publishProgress(new ListingStatus<T>(
+                (T[])r.obj, ListingMode.DELETE_EXISTING_OBJECTS));
           }
           
           if (r.needRefresh) {
